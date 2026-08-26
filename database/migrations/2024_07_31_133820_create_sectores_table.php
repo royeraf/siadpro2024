@@ -13,22 +13,24 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('pro_sectores', function (Blueprint $table) {
-            $table->id();
+        if (!Schema::hasTable('pro_sectores')) {
+            Schema::create('pro_sectores', function (Blueprint $table) {
+                $table->id();
 
-            $table->string('nombreSector');
-            $table->string('documento')->nullable();
-            $table->string('color')->nullable();
-            $table->string('enlace')->nullable();
-            $table->string('enlacedrive')->nullable();
-            $table->string('descripcion')->nullable();
-            $table->date('fecha')->nullable();
-            $table->unsignedBigInteger('idUser');
-            $table->boolean('estado');
-            $table->foreign('idUser')->references('id')->on('users');
+                $table->string('nombreSector');
+                $table->string('documento')->nullable();
+                $table->string('color')->nullable();
+                $table->string('enlace')->nullable();
+                $table->string('enlacedrive')->nullable();
+                $table->string('descripcion')->nullable();
+                $table->date('fecha')->nullable();
+                $table->unsignedBigInteger('idUser');
+                $table->boolean('estado');
+                $table->foreign('idUser')->references('id')->on('users');
 
-            $table->timestamps();
-        });
+                $table->timestamps();
+            });
+        }
     }
 
     /**
