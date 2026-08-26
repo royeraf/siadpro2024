@@ -238,10 +238,10 @@
   #distrito{
     text-transform: uppercase;
   }
-  
 </style>
 @stop
 
+@section('js')
 <script>
   function showInstituciones(id) {
     if (!id || id.toString().trim() === '') return;
