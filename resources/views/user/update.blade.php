@@ -240,8 +240,7 @@
     let cleanId = id.toString().trim();
     if (cleanId.length === 0) return;
 
-    let baseUrl = "{{ url('api/instituciones') }}";
-    let url = baseUrl + "/" + encodeURIComponent(cleanId);
+    let url = "{{ route('buscar.institucion', ['codModular' => '__COD__']) }}".replace('__COD__', encodeURIComponent(cleanId));
 
     $.ajax({
       url: url,

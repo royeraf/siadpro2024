@@ -11,7 +11,7 @@ use App\Models\User;
 class InstitucionController extends Controller
 {
     public function __construct(){
-        $this->middleware('auth');
+        $this->middleware('auth')->except(['buscarPorCodModular']);
         
     }
     public function index(Request $request)
@@ -126,5 +126,22 @@ class InstitucionController extends Controller
         $institucion->estado = '0';
         $institucion->save();
         return redirect('/institucions');
+    }
+
+    /**
+     * Buscar institución por código modular (AJAX - sin auth)
+     */
+    public static function buscarPorCodModular($codModular)
+    {
+        $codModular = trim($codModular);
+
+        $results = Institucion::where(function($q) use ($codModular) {
+            $q->where('codModular', $codModular)
+              ->orWhere('codModular', str_pad($codModular, 7, '0', STR_PAD_LEFT))
+              ->orWhere('codModular', ltrim($codModular, '0'))
+              ->orWhere('codModular', 'LIKE', '%' . $codModular . '%');
+        })->get();
+
+        return response()->json($results);
     }
 }

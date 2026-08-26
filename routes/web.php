@@ -407,14 +407,5 @@ Route::post("/export/{tipo}", ['App\Http\Controllers\DashboardController'::class
 Route::get('/get-ugels-users', [UserController::class, 'obtenerUgels'])->name('get-ugels-users');
 Route::get('/export-users', [App\Http\Controllers\UserController::class, 'exportUsers'])->name('exportUsers');
 
-Route::get('/api/instituciones/{codModular}', function ($codModular) {
-    $codModular = trim($codModular);
-    $results = \App\Models\Institucion::where(function($q) use ($codModular) {
-            $q->where('codModular', $codModular)
-              ->orWhere('codModular', str_pad($codModular, 7, '0', STR_PAD_LEFT))
-              ->orWhere('codModular', ltrim($codModular, '0'))
-              ->orWhere('codModular', 'LIKE', '%' . $codModular . '%');
-        })
-        ->get();
-    return response()->json($results);
-})->name('api.instituciones.get');
+Route::get('/api/instituciones/{codModular}', [InstitucionController::class, 'buscarPorCodModular'])->name('api.instituciones.get');
+Route::get('/buscar-institucion/{codModular}', [InstitucionController::class, 'buscarPorCodModular'])->name('buscar.institucion');
