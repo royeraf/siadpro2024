@@ -39,14 +39,12 @@ Route::get("/sector", ['App\Http\Controllers\SectorController'::class, "index"]
 
 Route::get('/', function () {
     return view('auth.login');
-     //return view('welcomenp');
-});
+})->middleware('guest');
 
 
 Route::get('/home', function () {
     return view('auth.login');
-     //return view('welcomenp');        
-});
+})->middleware('guest');
 
 Route::middleware([
     'auth:sanctum',
