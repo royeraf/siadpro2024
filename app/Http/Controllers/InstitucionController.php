@@ -16,18 +16,59 @@ class InstitucionController extends Controller
     }
     public function index(Request $request)
     {
-        $institucions = Institucion::where('estado', '1')->orderby('id');
+        $query = Institucion::where('estado', '1');
 
-        if ($request->has('ugels') && $request->ugels != '') {
-            $institucions = $institucions->where('ugel', $request->ugels);
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->get('buscar'));
+            $query->where(function($q) use ($buscar) {
+                $q->where('nomInstitucion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('codModular', 'LIKE', "%{$buscar}%")
+                  ->orWhere('id', 'LIKE', "%{$buscar}%");
+            });
         }
 
-        // Get the total count before fetching the results
-        $total = $institucions->count();
-        
-        $institucions = $institucions->get();
+        if ($request->filled('institucion')) {
+            $nom = trim($request->get('institucion'));
+            $query->where('nomInstitucion', 'LIKE', "%{$nom}%");
+        }
 
-        return view('institucion.index', compact('institucions', 'total'));
+        if ($request->filled('codModular')) {
+            $cod = trim($request->get('codModular'));
+            $query->where('codModular', 'LIKE', "%{$cod}%");
+        }
+
+        if ($request->filled('ugels')) {
+            $query->where('ugel', $request->get('ugels'));
+        }
+
+        if ($request->filled('nivel')) {
+            $query->where('nivel', $request->get('nivel'));
+        }
+
+        $total = $query->count();
+
+        $perPage = (int) $request->get('per_page', 15);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        $institucions = $query->orderBy('id', 'asc')->paginate($perPage)->withQueryString();
+
+        $listaUgels = Institucion::where('estado', '1')
+            ->whereNotNull('ugel')
+            ->where('ugel', '!=', '')
+            ->distinct()
+            ->orderBy('ugel')
+            ->pluck('ugel');
+
+        $listaNiveles = Institucion::where('estado', '1')
+            ->whereNotNull('nivel')
+            ->where('nivel', '!=', '')
+            ->distinct()
+            ->orderBy('nivel')
+            ->pluck('nivel');
+
+        return view('institucion.index', compact('institucions', 'total', 'listaUgels', 'listaNiveles'));
     }
     
     public function create()
