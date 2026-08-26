@@ -409,9 +409,12 @@ Route::get('/export-users', [App\Http\Controllers\UserController::class, 'export
 
 Route::get('/api/instituciones/{codModular}', function ($codModular) {
     $codModular = trim($codModular);
-    $results = \App\Models\Institucion::where('codModular', $codModular)
-        ->orWhere('codModular', str_pad($codModular, 7, '0', STR_PAD_LEFT))
-        ->orWhere('codModular', ltrim($codModular, '0'))
+    $results = \App\Models\Institucion::where(function($q) use ($codModular) {
+            $q->where('codModular', $codModular)
+              ->orWhere('codModular', str_pad($codModular, 7, '0', STR_PAD_LEFT))
+              ->orWhere('codModular', ltrim($codModular, '0'))
+              ->orWhere('codModular', 'LIKE', '%' . $codModular . '%');
+        })
         ->get();
     return response()->json($results);
 })->name('api.instituciones.get');

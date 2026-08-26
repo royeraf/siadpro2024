@@ -244,68 +244,111 @@
 @section('js')
 <script>
   function showInstituciones(id) {
-    if (!id || id.toString().trim() === '') return;
+    if (!id) return;
     let cleanId = id.toString().trim();
-    let url = "{{ route('api.instituciones.get', ['codModular' => ':id']) }}".replace(':id', encodeURIComponent(cleanId));
+    if (cleanId.length === 0) return;
 
-    $.get(url, function(instituciones){
-      let selectInstituciones = document.querySelector("#institucion");
-      let selectProvincia = document.querySelector("#provincia");
-      let selectDistrito = document.querySelector("#distrito");
-      let selectUgel = document.querySelector("#ugel");
+    let baseUrl = "{{ url('api/instituciones') }}";
+    let url = baseUrl + "/" + encodeURIComponent(cleanId);
 
-      if (selectInstituciones) selectInstituciones.innerHTML = "";
-      if (selectProvincia) selectProvincia.innerHTML = "";
-      if (selectDistrito) selectDistrito.innerHTML = "";
+    $.ajax({
+      url: url,
+      type: 'GET',
+      dataType: 'json',
+      success: function(instituciones) {
+        let selectInstituciones = document.querySelector("#institucion");
+        let selectProvincia = document.querySelector("#provincia");
+        let selectDistrito = document.querySelector("#distrito");
+        let selectUgel = document.querySelector("#ugel");
+        let selectNivel = document.querySelector("#nivelinstitucion");
 
-      if (instituciones && instituciones.length > 0) {
-        instituciones.forEach(institucion => {
-          let option = document.createElement("option");
-          option.setAttribute("value", institucion.nomInstitucion);
-          option.innerHTML = institucion.nomInstitucion;
-          selectInstituciones.appendChild(option);
-        });
+        if (selectInstituciones) selectInstituciones.innerHTML = "";
+        if (selectProvincia) selectProvincia.innerHTML = "";
+        if (selectDistrito) selectDistrito.innerHTML = "";
 
-        if (selectProvincia) {
-          instituciones.forEach(provincia => {
+        if (instituciones && instituciones.length > 0) {
+          instituciones.forEach(inst => {
             let option = document.createElement("option");
-            option.setAttribute("value", provincia.provincia);
-            option.innerHTML = provincia.provincia;
-            selectProvincia.appendChild(option);
+            option.value = inst.nomInstitucion;
+            option.textContent = inst.nomInstitucion;
+            if (selectInstituciones) selectInstituciones.appendChild(option);
           });
-        }
 
-        if (selectDistrito) {
-          instituciones.forEach(distrito => {
-            let option = document.createElement("option");
-            option.setAttribute("value", distrito.distrito);
-            option.innerHTML = distrito.distrito;
-            selectDistrito.appendChild(option);
-          });
-        }
+          if (selectProvincia) {
+            instituciones.forEach(prov => {
+              let option = document.createElement("option");
+              option.value = prov.provincia;
+              option.textContent = prov.provincia;
+              selectProvincia.appendChild(option);
+            });
+          }
 
-        if (selectUgel && instituciones[0].ugel) {
-          let ugelValue = instituciones[0].ugel.toLowerCase();
-          for (let i = 0; i < selectUgel.options.length; i++) {
-            if (selectUgel.options[i].text.toLowerCase().includes(ugelValue) ||
-                selectUgel.options[i].value.toLowerCase().includes(ugelValue)) {
-              selectUgel.selectedIndex = i;
-              break;
+          if (selectDistrito) {
+            instituciones.forEach(dist => {
+              let option = document.createElement("option");
+              option.value = dist.distrito;
+              option.textContent = dist.distrito;
+              selectDistrito.appendChild(option);
+            });
+          }
+
+          if (selectUgel && instituciones[0].ugel) {
+            let ugelTarget = instituciones[0].ugel.toLowerCase().replace('ugel', '').trim();
+            for (let i = 0; i < selectUgel.options.length; i++) {
+              let optText = selectUgel.options[i].text.toLowerCase();
+              let optVal = selectUgel.options[i].value.toLowerCase();
+              if (optText.includes(ugelTarget) || optVal.includes(ugelTarget)) {
+                selectUgel.selectedIndex = i;
+                break;
+              }
             }
           }
+
+          if (selectNivel && instituciones[0].nivel) {
+            let nivel = instituciones[0].nivel.toLowerCase();
+            for (let i = 0; i < selectNivel.options.length; i++) {
+              let optText = selectNivel.options[i].text.toLowerCase();
+              if (nivel.includes("no escolariz") || nivel.includes("pronoei")) {
+                if (optText.includes("no escolarizado") || optText.includes("pronoei")) {
+                  selectNivel.selectedIndex = i;
+                  break;
+                }
+              } else if (nivel.includes("inicial") || nivel.includes("primaria") || nivel.includes("secundaria") || nivel.includes("jardin")) {
+                if (optText.includes("escolarizado") && !optText.includes("no escolarizado")) {
+                  selectNivel.selectedIndex = i;
+                  break;
+                }
+              }
+            }
+          }
+        } else {
+          if (selectInstituciones) {
+            let option = document.createElement("option");
+            option.value = "";
+            option.textContent = "-- No se encontró institución --";
+            selectInstituciones.appendChild(option);
+          }
         }
-      } else {
-        if (selectInstituciones) {
-          let option = document.createElement("option");
-          option.setAttribute("value", "");
-          option.innerHTML = "-- No se encontró institución --";
-          selectInstituciones.appendChild(option);
-        }
+      },
+      error: function(xhr, status, error) {
+        console.error("Error al buscar institución:", error);
       }
-    }).fail(function(err) {
-      console.error("Error al obtener instituciones:", err);
     });
   }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const codInput = document.getElementById('codmodular');
+    if (codInput) {
+      ['input', 'change', 'keyup', 'paste'].forEach(evt => {
+        codInput.addEventListener(evt, function() {
+          showInstituciones(this.value);
+        });
+      });
+      if (codInput.value) {
+        showInstituciones(codInput.value);
+      }
+    }
+  });
 </script> 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
