@@ -236,15 +236,23 @@
 @section('js') 
 <script>
   function showInstituciones(id) {
-    $.get("/api/instituciones/"+id, function(instituciones){
+    if (!id || id.toString().trim() === '') return;
+    let cleanId = id.toString().trim();
+    let url = "{{ route('api.instituciones.get', ['codModular' => ':id']) }}".replace(':id', encodeURIComponent(cleanId));
+
+    $.get(url, function(instituciones){
       let selectInstituciones = document.querySelector("#institucion");
-      selectInstituciones.innerHTML = "";
-      instituciones.forEach(institucion => {
-        let option = document.createElement("option");
-        option.setAttribute("value", institucion.nomInstitucion);
-        option.innerHTML = institucion.nomInstitucion;
-        selectInstituciones.appendChild(option);
-      });
+      if (selectInstituciones) {
+        selectInstituciones.innerHTML = "";
+        if (instituciones && instituciones.length > 0) {
+          instituciones.forEach(institucion => {
+            let option = document.createElement("option");
+            option.setAttribute("value", institucion.nomInstitucion);
+            option.innerHTML = institucion.nomInstitucion;
+            selectInstituciones.appendChild(option);
+          });
+        }
+      }
     });
   }
 </script>  

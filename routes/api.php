@@ -19,5 +19,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::get('instituciones/{codModular}', function ($codModular) {
-    return Institucion::where("codModular", $codModular)->get();
+    $codModular = trim($codModular);
+    $results = Institucion::where('codModular', $codModular)
+        ->orWhere('codModular', str_pad($codModular, 7, '0', STR_PAD_LEFT))
+        ->orWhere('codModular', ltrim($codModular, '0'))
+        ->get();
+
+    return response()->json($results);
 });

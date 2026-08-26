@@ -404,7 +404,14 @@ Route::get('/buscar-instituciones-por-ugel-ins', [InstitucionController::class, 
 Route::post("/export/{tipo}", ['App\Http\Controllers\DashboardController'::class, "exportData"])->name('export');
 
 
-/* RUTA PARA BUSQUEDA DE <USUARIOS */
-
 Route::get('/get-ugels-users', [UserController::class, 'obtenerUgels'])->name('get-ugels-users');
 Route::get('/export-users', [App\Http\Controllers\UserController::class, 'exportUsers'])->name('exportUsers');
+
+Route::get('/api/instituciones/{codModular}', function ($codModular) {
+    $codModular = trim($codModular);
+    $results = \App\Models\Institucion::where('codModular', $codModular)
+        ->orWhere('codModular', str_pad($codModular, 7, '0', STR_PAD_LEFT))
+        ->orWhere('codModular', ltrim($codModular, '0'))
+        ->get();
+    return response()->json($results);
+})->name('api.instituciones.get');

@@ -88,7 +88,7 @@
                             <label for="codmodular" class="col-md-4 col-form-label text-md-right">{{ __('Código Modular') }}</label>
 
                             <div class="col-md-6">
-                            <input id="codmodular" name="" type="number" class="form-control" tabindex="1" onchange="showInstituciones(this.value)" maxlength="7" oninput="if(this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);">
+                                <input id="codmodular" name="" type="text" class="form-control" tabindex="1" onchange="showInstituciones(this.value)" oninput="if(this.value.length > 7) this.value = this.value.slice(0, 7); if(this.value.length >= 6) { showInstituciones(this.value); }" maxlength="7" placeholder="Ingrese 7 dígitos">
 
                                 @error('codmodular')
                                     <span class="invalid-feedback" role="alert">
@@ -242,38 +242,69 @@
 </style>
 @stop
 
-@section('js') 
 <script>
   function showInstituciones(id) {
-    $.get("/api/instituciones/"+id, function(instituciones){
-      let selectInstituciones = document.querySelector("#institucion");
-      selectInstituciones.innerHTML = "";
-      instituciones.forEach(institucion => {
-        let option = document.createElement("option");
-        option.setAttribute("value", institucion.nomInstitucion);
-        option.innerHTML = institucion.nomInstitucion;
-        selectInstituciones.appendChild(option);
-      });
+    if (!id || id.toString().trim() === '') return;
+    let cleanId = id.toString().trim();
+    let url = "{{ route('api.instituciones.get', ['codModular' => ':id']) }}".replace(':id', encodeURIComponent(cleanId));
 
+    $.get(url, function(instituciones){
+      let selectInstituciones = document.querySelector("#institucion");
       let selectProvincia = document.querySelector("#provincia");
-      selectProvincia.innerHTML = "";
-      instituciones.forEach(provincia => {
-        let option = document.createElement("option");
-        option.setAttribute("value", provincia.provincia);
-        option.innerHTML = provincia.provincia;
-        selectProvincia.appendChild(option);
-      });
       let selectDistrito = document.querySelector("#distrito");
-      selectDistrito.innerHTML = "";
-      instituciones.forEach(distrito => {
-        let option = document.createElement("option");
-        option.setAttribute("value", distrito.distrito);
-        option.innerHTML = distrito.distrito;
-        selectDistrito.appendChild(option);
-      });
-      
+      let selectUgel = document.querySelector("#ugel");
+
+      if (selectInstituciones) selectInstituciones.innerHTML = "";
+      if (selectProvincia) selectProvincia.innerHTML = "";
+      if (selectDistrito) selectDistrito.innerHTML = "";
+
+      if (instituciones && instituciones.length > 0) {
+        instituciones.forEach(institucion => {
+          let option = document.createElement("option");
+          option.setAttribute("value", institucion.nomInstitucion);
+          option.innerHTML = institucion.nomInstitucion;
+          selectInstituciones.appendChild(option);
+        });
+
+        if (selectProvincia) {
+          instituciones.forEach(provincia => {
+            let option = document.createElement("option");
+            option.setAttribute("value", provincia.provincia);
+            option.innerHTML = provincia.provincia;
+            selectProvincia.appendChild(option);
+          });
+        }
+
+        if (selectDistrito) {
+          instituciones.forEach(distrito => {
+            let option = document.createElement("option");
+            option.setAttribute("value", distrito.distrito);
+            option.innerHTML = distrito.distrito;
+            selectDistrito.appendChild(option);
+          });
+        }
+
+        if (selectUgel && instituciones[0].ugel) {
+          let ugelValue = instituciones[0].ugel.toLowerCase();
+          for (let i = 0; i < selectUgel.options.length; i++) {
+            if (selectUgel.options[i].text.toLowerCase().includes(ugelValue) ||
+                selectUgel.options[i].value.toLowerCase().includes(ugelValue)) {
+              selectUgel.selectedIndex = i;
+              break;
+            }
+          }
+        }
+      } else {
+        if (selectInstituciones) {
+          let option = document.createElement("option");
+          option.setAttribute("value", "");
+          option.innerHTML = "-- No se encontró institución --";
+          selectInstituciones.appendChild(option);
+        }
+      }
+    }).fail(function(err) {
+      console.error("Error al obtener instituciones:", err);
     });
-    
   }
 </script> 
 <script>
