@@ -40,10 +40,22 @@
         opacity: 0.9;
         margin-top: 3px;
     }
+    #subir__arriba {
+        width: 70px;
+        height: 70px;
+        background: rgb(61, 68, 89);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 30px;
+        position: fixed;
+        bottom: 20px;
+        cursor: pointer;
+        display: none;
+    }
 </style>
-
-
-@endsection
+@stop
 
 @section('title', 'Usuario')
 
@@ -214,25 +226,6 @@
     </div>                    
                           
                     
-@stop
-
-@section('css')
-<style>
-        #subir__arriba{
-    width: 70px;
-    height: 70px;
-    background: rgb(61, 68, 89);
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 30px;
-    position: fixed;
-    bottom: 20px;
-    cursor: pointer;
-    display: none;
-}
-    </style>
 @stop
 
 @section('js')
