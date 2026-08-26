@@ -4,9 +4,13 @@
 /public/storage
 /storage/*.key
 /vendor
+
 .env
 .env.backup
 .env.production
+.env.local
+.env.*.local
+
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
@@ -14,11 +18,22 @@ auth.json
 npm-debug.log
 yarn-error.log
 error_log
+*.log
+
+# Backups, dumps and archives
 *.sql
+*.sqlite
 *.rar
 *.zip
+*.7z
 *.tar.gz
+*.bak
+
+# IDEs and OS files
+.DS_Store
+Thumbs.db
 /.fleet
 /.idea
 /.vscode
+
 
