@@ -273,46 +273,22 @@ Route::get("/sector-director", ['App\Http\Controllers\SectorController'::class, 
 
 
 
-Route::get('/get-ugels-ag', [AgendaViewController::class, 'obtenerUgels'])->name('get-ugels-ag');
-Route::get('/get-institucions', [AgendaViewController::class, 'obtenerInstitucions'])->name('get-institucions');
-
-Route::get('/buscar-instituciones', [EvidenciaController::class, 'buscador'])->name('buscarInstituciones');
-
 # nuevo sector
-Route::get('/buscar-instituciones', [SectorController::class, 'buscador'])->name('buscarInstituciones');
-
+Route::get('/buscar-instituciones-sector', [SectorController::class, 'buscador'])->name('buscarInstitucionesSector');
 
 /* BUSQUEDA DE AGENDA */
+Route::get('/agenda-general', [AgendaViewController::class, 'general'])->name('agenda.general');
+Route::get('/buscar-agenda-general', [AgendaViewController::class, 'buscarGeneral'])->name('buscarAgendaGeneral');
+Route::get('/agenda-ugel', [AgendaViewController::class, 'ugel'])->name('agenda.ugel');
+Route::get('/buscar-agenda-ugel', [AgendaViewController::class, 'buscarUgel'])->name('buscarAgendaUgel');
 
+Route::get('/get-ugels-ag', [AgendaViewController::class, 'obtenerUgels'])->name('get-ugels-ag');
+Route::get('/get-institucions', [AgendaViewController::class, 'obtenerInstitucions'])->name('get-institucions');
 Route::get('/buscar-instituciones-agenda', [AgendaViewController::class, 'buscadorinstitucion'])->name('buscarInstitucionesAgenda');
 Route::get('/buscar-docentes-agenda', [AgendaViewController::class, 'buscadordocente'])->name('buscarDocentesAgenda');
-
-Route::get('/buscar-instituciones-por-ugel-ag', [AgendaViewController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgel-ag');
-Route::get('/buscar-docentes-por-institucion-ag', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-ag');
-Route::get('/exportar-agendas', [App\Http\Controllers\AgendaViewController::class, 'exportarTodos'])->name('exportar.agendas');
-Route::get('/buscar-docente-por-institucion-agenda', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-ag');
-
-Route::get('/buscar-instituciones-agenda', [AgendaViewController::class, 'buscadorinstitucion'])->name('buscarInstitucionesAgenda');
-Route::get('/buscar-docentes-agenda', [AgendaViewController::class, 'buscadordocente'])->name('buscarDocentesAgenda');
-
-Route::get('/buscar-instituciones-por-ugel-ag', [AgendaViewController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgel-ag');
-Route::get('/buscar-docentes-por-institucion-ag', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-ag');
-Route::get('/exportar-agendas', [App\Http\Controllers\AgendaViewController::class, 'exportarTodos'])->name('exportar.agendas');
-Route::get('/buscar-docente-por-institucion-agenda', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-ag');
-
-// Rutas para la sección de agendas
-Route::get('/agenda-general', [App\Http\Controllers\AgendaViewController::class, 'general'])->name('agenda.general');
-Route::get('/buscar-agenda-general', [App\Http\Controllers\AgendaViewController::class, 'buscarGeneral'])->name('buscarAgendaGeneral');
-Route::get('/get-ugels-ag', [App\Http\Controllers\AgendaViewController::class, 'obtenerUgels'])->name('get-ugels-ag');
-Route::get('/buscar-institucion-por-ugel-ag', [App\Http\Controllers\AgendaViewController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgel-ag');
-Route::get('/exportar-agendas', [App\Http\Controllers\AgendaViewController::class, 'exportarTodos'])->name('exportar.agendas');
-Route::get('/agenda-ugel', [App\Http\Controllers\AgendaViewController::class, 'ugel'])->name('agenda.ugel');
-Route::get('/buscar-agenda-ugel', [App\Http\Controllers\AgendaViewController::class, 'buscarUgel'])->name('buscarAgendaUgel');
-
-Route::get('/get-institucions', [App\Http\Controllers\AgendaViewController::class, 'obtenerInstitucions'])->name('get-institucions');
-Route::get('/buscar-docente-por-institucion', [App\Http\Controllers\AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion');
-Route::get('/buscar-docentes-agenda', [App\Http\Controllers\AgendaViewController::class, 'buscadordocente'])->name('buscarDocentesAgenda');
-
+Route::get('/buscar-institucion-por-ugel-ag', [AgendaViewController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgel-ag');
+Route::get('/buscar-docente-por-institucion-ag', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-ag');
+Route::get('/exportar-agendas', [AgendaViewController::class, 'exportarTodos'])->name('exportar.agendas');
 /* BUSQUEDA DE AGENDA */
 
 /* BUSQUEDA DE ACCION */
