@@ -2,6 +2,15 @@
  * DataTable Nativo con Tailwind CSS
  * Sin dependencias de DataTables ni CDNs
  */
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 export function initTableEngine() {
     window.TableEngine = function(tableId, options = {}) {
         return {
@@ -273,10 +282,10 @@ export function initTableEngine() {
                 <body>
                     <table>
                         <thead>
-                            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                            <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>
                         </thead>
                         <tbody>
-                            ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+                            ${rows.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
                         </tbody>
                     </table>
                 </body>
@@ -342,10 +351,10 @@ export function initTableEngine() {
                         <h2>Reporte de Registros</h2>
                         <table>
                             <thead>
-                                <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                                <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>
                             </thead>
                             <tbody>
-                                ${rows.map(row => `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
+                                ${rows.map(row => `<tr>${row.map(c => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}
                             </tbody>
                         </table>
                         <div class="footer">Total registros: ${rows.length} | Generado: ${new Date().toLocaleString()}</div>
