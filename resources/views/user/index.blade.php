@@ -237,126 +237,27 @@
 
 @section('js')
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js></script>
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js></script>
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Tabla oculta con todos los datos para exportación
-    var fullDataTable = $('#full-users-data').DataTable({
-        dom: 'Bfrtip',
-        buttons: [],
-        "paging": false,
-        "searching": false
-    });
-    
-    // Tabla visible con datos paginados y botones de exportación
-    $('#users').DataTable({
-        scrollX: true,
-        dom: 'Bfrtip',
-        buttons: [
-            {
-                extend: 'print',
-                text: '<i class="fas fa-print"> Imprimir</i>',
-                className: 'btn btn-warning',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Excluir la columna de opciones
-                },
-                action: function (e, dt, node, config) {
-                    // Usar la acción de imprimir de la tabla visible
-                    $.fn.dataTable.ext.buttons.print.action.call(this, e, dt, node, config);
-                }
-            },
-            {
-                extend: 'excelHtml5',
-                text: '<i class="fas fa-file-excel"> Excel</i>',
-                className: 'btn btn-success',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Excluir la columna de opciones
-                },
-                action: function (e, dt, node, config) {
-                    // Usar la tabla oculta con todos los datos para exportar
-                    var exportConfig = $.extend(true, {}, config);
-                    $.fn.dataTable.ext.buttons.excelHtml5.action.call(
-                        this, 
-                        e, 
-                        fullDataTable, 
-                        node, 
-                        exportConfig
-                    );
-                }
-            },
-            {
-                extend: 'pdfHtml5',
-                text: '<i class="fas fa-file-pdf"> PDF</i>',
-                className: 'btn btn-danger',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Excluir la columna de opciones
-                },
-                action: function (e, dt, node, config) {
-                    // Usar la tabla oculta con todos los datos para exportar
-                    var exportConfig = $.extend(true, {}, config);
-                    $.fn.dataTable.ext.buttons.pdfHtml5.action.call(
-                        this, 
-                        e, 
-                        fullDataTable, 
-                        node, 
-                        exportConfig
-                    );
-                }
-            },
-            {
-                extend: 'csvHtml5',
-                text: '<i class="fas fa-file-csv"> CSV</i>',
-                className: 'btn btn-info',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Excluir la columna de opciones
-                },
-                action: function (e, dt, node, config) {
-                    // Usar la tabla oculta con todos los datos para exportar
-                    var exportConfig = $.extend(true, {}, config);
-                    $.fn.dataTable.ext.buttons.csvHtml5.action.call(
-                        this, 
-                        e, 
-                        fullDataTable, 
-                        node, 
-                        exportConfig
-                    );
-                }
-            },
-            {
-                extend: 'copy',
-                text: '<i class="fas fa-copy"> Copiar</i>',
-                className: 'btn btn-secondary',
-                exportOptions: {
-                    columns: ':not(:last-child)' // Excluir la columna de opciones
-                }
-            }
-        ],
-        "processing": true,
-        "bInfo": true,
-        "bPaginate": true,
-        "bFilter": true,
-        "pageLength": 10,
-        "lengthMenu": [[10, 25, 50, 100], [10, 25, 50, 100]]
-    });
-
     // Obtener y establecer parámetros de la URL
     const urlSearchParams = new URLSearchParams(window.location.search);
     $('#texto').val(urlSearchParams.get('texto') || '');
     $('#cargos').val(urlSearchParams.get('cargos') || '');
 
-    // Cargar las UGEL
+    // Cargar las UGEL mediante AJAX
     $.ajax({
         url: "{{ route('get-ugels-users') }}",
         method: 'GET',
         dataType: 'json',
         success: function(data) {
-            console.log("UGELs cargadas:", data); // Debugging
+            console.log("UGELs cargadas:", data);
 
             var $ugelSelect = $('#ugel');
             $ugelSelect.empty();
@@ -383,7 +284,7 @@ $(document).ready(function() {
             }
         },
         error: function(xhr, status, error) {
-            console.error("Error cargando UGELs:", error); // Debugging
+            console.error("Error cargando UGELs:", error);
             alert('Error al cargar las UGEL: ' + error);
         }
     });
@@ -403,6 +304,112 @@ $(document).ready(function() {
         const newURL = window.location.pathname + '?' + searchParams.toString();
         window.location.href = newURL;
     });
+
+    // Inicializar DataTables de manera segura
+    try {
+        if ($.fn.DataTable) {
+            // Tabla oculta con todos los datos para exportación
+            var fullDataTable = $('#full-users-data').DataTable({
+                dom: 'Bfrtip',
+                buttons: [],
+                "paging": false,
+                "searching": false
+            });
+            
+            // Tabla visible con datos paginados y botones de exportación
+            $('#users').DataTable({
+                scrollX: true,
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'print',
+                        text: '<i class="fas fa-print"> Imprimir</i>',
+                        className: 'btn btn-warning',
+                        exportOptions: {
+                            columns: ':not(:last-child)' // Excluir la columna de opciones
+                        },
+                        action: function (e, dt, node, config) {
+                            // Usar la acción de imprimir de la tabla visible
+                            $.fn.dataTable.ext.buttons.print.action.call(this, e, dt, node, config);
+                        }
+                    },
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="fas fa-file-excel"> Excel</i>',
+                        className: 'btn btn-success',
+                        exportOptions: {
+                            columns: ':not(:last-child)' // Excluir la columna de opciones
+                        },
+                        action: function (e, dt, node, config) {
+                            // Usar la tabla oculta con todos los datos para exportar
+                            var exportConfig = $.extend(true, {}, config);
+                            $.fn.dataTable.ext.buttons.excelHtml5.action.call(
+                                this, 
+                                e, 
+                                fullDataTable, 
+                                node, 
+                                exportConfig
+                            );
+                        }
+                    },
+                    {
+                        extend: 'pdfHtml5',
+                        text: '<i class="fas fa-file-pdf"> PDF</i>',
+                        className: 'btn btn-danger',
+                        exportOptions: {
+                            columns: ':not(:last-child)' // Excluir la columna de opciones
+                        },
+                        action: function (e, dt, node, config) {
+                            // Usar la tabla oculta con todos los datos para exportar
+                            var exportConfig = $.extend(true, {}, config);
+                            $.fn.dataTable.ext.buttons.pdfHtml5.action.call(
+                                this, 
+                                e, 
+                                fullDataTable, 
+                                node, 
+                                exportConfig
+                            );
+                        }
+                    },
+                    {
+                        extend: 'csvHtml5',
+                        text: '<i class="fas fa-file-csv"> CSV</i>',
+                        className: 'btn btn-info',
+                        exportOptions: {
+                            columns: ':not(:last-child)' // Excluir la columna de opciones
+                        },
+                        action: function (e, dt, node, config) {
+                            // Usar la tabla oculta con todos los datos para exportar
+                            var exportConfig = $.extend(true, {}, config);
+                            $.fn.dataTable.ext.buttons.csvHtml5.action.call(
+                                this, 
+                                e, 
+                                fullDataTable, 
+                                node, 
+                                exportConfig
+                            );
+                        }
+                    },
+                    {
+                        extend: 'copy',
+                        text: '<i class="fas fa-copy"> Copiar</i>',
+                        className: 'btn btn-secondary',
+                        exportOptions: {
+                            columns: ':not(:last-child)' // Excluir la columna de opciones
+                        }
+                    }
+                ],
+                "processing": true,
+                "bInfo": true,
+                "bPaginate": true,
+                "bFilter": true,
+                "pageLength": 10,
+                "lengthMenu": [[10, 25, 50, 100], [10, 25, 50, 100]]
+            });
+        }
+    } catch (e) {
+        console.warn("Error al inicializar DataTable:", e);
+    }
 });
 </script>
 @stop
