@@ -35,7 +35,7 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
         }
 
-        // Obtener todos los usuarios filtrados para la exportaci¨®n
+        // Obtener todos los usuarios filtrados para la exportaciï¿½ï¿½n
         $allUsersQuery = clone $usersQuery;
         $allUsers = $allUsersQuery->where('estado', '1')
                          ->orderBy('id', 'desc')
@@ -46,7 +46,7 @@ class UserController extends Controller
                             ->orderBy('id', 'desc')
                             ->paginate(10);
 
-        // Asegurarnos de incluir el par¨¢metro ugel en la paginaci¨®n
+        // Asegurarnos de incluir el parï¿½ï¿½metro ugel en la paginaciï¿½ï¿½n
         if ($request->has('page')) {
             $users->appends(request()->only(['texto', 'cargos', 'ugel']));
         }
@@ -78,7 +78,7 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$ugel}%");
         }
         
-        // Obtener todos los usuarios para la exportaci¨®n
+        // Obtener todos los usuarios para la exportaciï¿½ï¿½n
         $allUsers = $usersQuery->where('estado', '1')
                             ->orderBy('id', 'desc')
                             ->get();
@@ -113,9 +113,9 @@ class UserController extends Controller
         try {
             // Crear usuario
             User::create($request->all());
-            return response()->json(['message' => 'Usuario creado con ¨¦xito'], 200);
+            return response()->json(['message' => 'Usuario creado con ï¿½ï¿½xito'], 200);
         } catch (ValidationException $e) {
-            return response()->json(['error' => 'El DNI o correo ya est¨¢ en uso.'], 400);
+            return response()->json(['error' => 'El DNI o correo ya estï¿½ï¿½ en uso.'], 400);
         }
         $users->save();
         return redirect('/users');
@@ -132,7 +132,17 @@ class UserController extends Controller
     
 public function update(Request $request, User $user)
 {
-    // Validaci¨®n personalizada con mensajes en espa0Š9ol
+    // El formulario de asignaciÃ³n de roles (user.edit) solo envÃ­a "roles[]"
+    if ($request->has('roles') && !$request->has('name')) {
+        $validated = $request->validate([
+            'roles' => 'array',
+            'roles.*' => 'integer|exists:roles,id',
+        ]);
+        $user->roles()->sync($validated['roles'] ?? []);
+        return redirect('/users')->with('success', 'Rol actualizado correctamente.');
+    }
+
+    // Validaciï¿½ï¿½n personalizada con mensajes en espaï¿½0ï¿½9ol
     $validator = Validator::make($request->all(), [
         'dni' => 'required|unique:users,dni,' . $user->id,
         'email' => 'required|email|unique:users,email,' . $user->id,
@@ -145,12 +155,12 @@ public function update(Request $request, User $user)
         'cargo' => 'required',
         'estado' => 'required',
     ], [
-        'dni.unique' => 'Este DNI ya est¨¢ registrado en otro usuario.',
-        'email.unique' => 'Este correo electr¨®nico ya est¨¢ registrado en otro usuario.',
-        'email.email' => 'El formato del correo electr¨®nico no es v¨¢lido.',
+        'dni.unique' => 'Este DNI ya estï¿½ï¿½ registrado en otro usuario.',
+        'email.unique' => 'Este correo electrï¿½ï¿½nico ya estï¿½ï¿½ registrado en otro usuario.',
+        'email.email' => 'El formato del correo electrï¿½ï¿½nico no es vï¿½ï¿½lido.',
         'name.required' => 'El nombre es obligatorio.',
         'ugel.required' => 'La UGEL es obligatoria.',
-        'institucion.required' => 'La instituci¨®n es obligatoria.',
+        'institucion.required' => 'La instituciï¿½ï¿½n es obligatoria.',
         'nivelinstitucion.required' => 'El tipo de II.EE. es obligatorio.',
         'provincia.required' => 'La provincia es obligatoria.',
         'distrito.required' => 'El distrito es obligatorio.',
@@ -158,7 +168,7 @@ public function update(Request $request, User $user)
         'estado.required' => 'El estado es obligatorio.',
     ]);
 
-    // Si la validaci¨®n falla, redirigir con errores
+    // Si la validaciï¿½ï¿½n falla, redirigir con errores
     if ($validator->fails()) {
         return redirect()->back()
                          ->withErrors($validator)
@@ -177,12 +187,12 @@ public function update(Request $request, User $user)
     $user->provincia = Str::upper($request->get('provincia'));
     $user->estado = $request->get('estado');
     
-    // Solo actualizar la contrase0Š9a si se proporciona una nueva
+    // Solo actualizar la contraseï¿½0ï¿½9a si se proporciona una nueva
     if ($request->filled('password')) {
         $user->password = bcrypt($request->get('password'));
     }
 
-    // Sincronizar roles (mantienes tu l¨®gica original)
+    // Sincronizar roles (mantienes tu lï¿½ï¿½gica original)
     if ($request->has('roles')) {
         $user->roles()->sync($request->roles);
     }
