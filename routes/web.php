@@ -161,7 +161,10 @@ Route::post('/interInstitucion/buscar_index', function (Illuminate\Http\Request 
 Route::resource('institucions','App\Http\Controllers\InstitucionController');
 Route::resource('tallers','App\Http\Controllers\TallerController');
 Route::resource('users','App\Http\Controllers\UserController');
-Route::resource('usersi','App\Http\Controllers\UsersiController');
+// "Usuarios inhabilitados" ahora es el tab estado=0 dentro de /users.
+Route::get('/usersi', fn () => redirect()->route('users.index', ['estado' => '0']))
+    ->middleware('auth')
+    ->name('usersi.index');
 Route::resource('plans','App\Http\Controllers\PlanController');
 Route::resource('informes','App\Http\Controllers\InformeController');
 Route::resource('accions','App\Http\Controllers\AccionController');
@@ -241,7 +244,7 @@ Route::get("/buscar-sector-director",['App\Http\Controllers\SectorController'::c
 Route::get("/buscar-produccion",['App\Http\Controllers\ProduccionController'::class, "buscar"])->name('buscarProduccion')->middleware('auth');
 Route::get("/buscar-produccion-general",['App\Http\Controllers\ProduccionController'::class, "buscarGeneral"])->name('buscarProduccionGeneral')->middleware('auth');
 
-Route::get("/buscar-usuario",['App\Http\Controllers\UserController'::class, "buscar"])->name('buscarUser')->middleware('auth');
+Route::get('/buscar-usuario', [App\Http\Controllers\UserController::class, 'index'])->name('buscarUser')->middleware(['auth', 'can:users.index']);
 
 
 Route::get("/produccion-general", ['App\Http\Controllers\ProduccionController'::class, "general"])->middleware('auth')->name('produccions.view');

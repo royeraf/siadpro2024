@@ -354,13 +354,6 @@ return [
             'icon' => 'fas fa-user-tie',
             'can' => 'users.index',
         ],
-        //USUARIOS INHABILITADOS
-        [
-            'text' => 'USUARIOS INHABILITADOS',
-            'url'  => 'usersi',
-            'icon' => 'fas fa-user-slash',
-            'can'  => 'usersi.index',
-        ],
         [
             'text' => 'ACCIÓN DE SENSIBILIZACIÓN',
             'url'  => 'accions',

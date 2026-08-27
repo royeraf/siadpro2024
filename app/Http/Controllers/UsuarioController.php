@@ -49,7 +49,7 @@ class UsuarioController extends Controller
         $user->password = bcrypt($request->get('password'));
 
         $user->save();
-        return redirect('/users');
+        return redirect()->route('users.index', ['estado' => $user->estado]);
     }
 
    

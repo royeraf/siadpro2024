@@ -7,7 +7,9 @@ import {
     Search, X, FileSpreadsheet, FileText, Printer, Copy, Inbox,
     ChevronLeft, ChevronRight, Landmark, CirclePlus, School, Filter,
     Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
-    ArrowUpNarrowWide, ArrowDownWideNarrow
+    ArrowUpNarrowWide, ArrowDownWideNarrow,
+    Users, UserPlus, IdCard, Briefcase, Shield, Check,
+    UserCheck, UserX
 } from 'lucide';
 import { initTableEngine } from './components/datatable-engine';
 
@@ -23,7 +25,9 @@ window.lucideRefresh = () => createIcons({
         Search, X, FileSpreadsheet, FileText, Printer, Copy, Inbox,
         ChevronLeft, ChevronRight, Landmark, CirclePlus, School, Filter,
         Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
-        ArrowUpNarrowWide, ArrowDownWideNarrow
+        ArrowUpNarrowWide, ArrowDownWideNarrow,
+        Users, UserPlus, IdCard, Briefcase, Shield, Check,
+        UserCheck, UserX
     }
 });
 window.lucideRefresh();

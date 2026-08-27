@@ -21,7 +21,11 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        $usersQuery = User::query();
+        // Tab Activos/Inhabilitados. La columna es tinyint(1) NOT NULL y solo
+        // contiene 0 y 1, así que cualquier valor que no sea '0' cae en activos.
+        $estado = $request->get('estado') === '0' ? '0' : '1';
+
+        $usersQuery = User::where('estado', $estado);
 
         if ($request->filled('texto')) {
             $usersQuery->where('dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -35,60 +39,48 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
         }
 
-        // Obtener todos los usuarios filtrados para la exportaci��n
-        $allUsersQuery = clone $usersQuery;
-        $allUsers = $allUsersQuery->where('estado', '1')
-                         ->orderBy('id', 'desc')
-                         ->get();
+        $perPage = $this->resolvePerPage($request);
 
-        // Para la vista normal, paginar los resultados
-        $users = $usersQuery->where('estado', '1')
-                            ->orderBy('id', 'desc')
-                            ->paginate(10);
+        $users = $usersQuery->orderBy('id', 'desc')
+                            ->paginate($perPage)
+                            ->withQueryString();
 
-        // Asegurarnos de incluir el par��metro ugel en la paginaci��n
-        if ($request->has('page')) {
-            $users->appends(request()->only(['texto', 'cargos', 'ugel']));
-        }
+        $listaUgels = $this->listaUgels($estado);
 
-        return view('user.index', compact('users', 'allUsers'));
+        // Conteos para los badges de ambos tabs en una sola consulta.
+        $conteos = User::selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        return view('user.index', compact('users', 'listaUgels', 'estado', 'conteos'));
     }
 
     public function create()
     {
         return view('user.create');
     }
-    
-    public function buscar(Request $request){
-        $texto=$request->get('texto', '');
-        $cargos=trim($request->get('cargos'));
-        $ugel = trim($request->get('ugel'));
-        
-        $usersQuery = User::query();
-        
-        if (!empty($texto)) {
-            $usersQuery->where('dni', 'LIKE', "%{$texto}%");
+
+    private function resolvePerPage(Request $request): int
+    {
+        $perPageRaw = $request->get('per_page', 10);
+
+        if ($perPageRaw === 'all') {
+            return 100000;
         }
-        
-        if (!empty($cargos)) {
-            $usersQuery->where('cargo', 'LIKE', "%{$cargos}%");
-        }
-        
-        if (!empty($ugel)) {
-            $usersQuery->where('ugel', 'LIKE', "%{$ugel}%");
-        }
-        
-        // Obtener todos los usuarios para la exportaci��n
-        $allUsers = $usersQuery->where('estado', '1')
-                            ->orderBy('id', 'desc')
-                            ->get();
-        
-        // Para la vista normal, paginar los resultados
-        $users = $usersQuery->where('estado', '1')
-                            ->orderBy('id', 'desc')
-                            ->paginate(10);
-                            
-        return view('user.index', compact('users', 'allUsers'));
+
+        $perPage = (int) $perPageRaw;
+
+        return in_array($perPage, [10, 15, 25, 50, 100]) ? $perPage : 10;
+    }
+
+    private function listaUgels(string $estado)
+    {
+        return User::where('estado', $estado)
+            ->whereNotNull('ugel')
+            ->where('ugel', '!=', '')
+            ->distinct()
+            ->orderBy('ugel')
+            ->pluck('ugel');
     }
 
     public function store(Request $request)
@@ -139,7 +131,8 @@ public function update(Request $request, User $user)
             'roles.*' => 'integer|exists:roles,id',
         ]);
         $user->roles()->sync($validated['roles'] ?? []);
-        return redirect('/users')->with('success', 'Rol actualizado correctamente.');
+        return redirect()->route('users.index', ['estado' => $user->estado])
+            ->with('success', 'Rol actualizado correctamente.');
     }
 
     // Validaci��n personalizada con mensajes en espa�0�9ol
@@ -198,8 +191,9 @@ public function update(Request $request, User $user)
     }
 
     $user->save();
-    
-    return redirect('/users')->with('success', 'Usuario actualizado correctamente.');
+
+    return redirect()->route('users.index', ['estado' => $user->estado])
+        ->with('success', 'Usuario actualizado correctamente.');
 }
 
     public function destroy($id)
@@ -230,11 +224,6 @@ public function update(Request $request, User $user)
             ->get();
         
         return response()->json($ugels);
-    }
-
-    public function buscarUser(Request $request)
-    {
-        return $this->buscar($request);
     }
 
 }
