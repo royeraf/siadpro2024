@@ -88,5 +88,11 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'sectores.ugel'])->syncRoles([$role1,$role5, $role6]);
         Permission::create(['name' => 'sectores.director'])->syncRoles([$role1,$role4, $role5, $role6]);
 
+        // USUARIOS INHABILITADOS (usersi)
+        Permission::create(['name' => 'usersi.index'])->syncRoles([$role1]);
+        Permission::create(['name' => 'usersi.create'])->syncRoles([$role1]);
+        Permission::create(['name' => 'usersi.edit'])->syncRoles([$role1]);
+        Permission::create(['name' => 'usersi.destroy'])->syncRoles([$role1]);
+
     }
 }

@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 
-class UserController extends Controller
+class UsersiController extends Controller
 {
     public function __construct(){
         $this->middleware('auth');
-        $this->middleware('can:users.index')->only('index');
-        $this->middleware('can:users.create')->only('create', 'store');
-        $this->middleware('can:users.edit')->only('edit', 'update');
-        $this->middleware('can:users.destroy')->only('destroy');
+        $this->middleware('can:usersi.index')->only('index');
+        $this->middleware('can:usersi.create')->only('create', 'store');
+        $this->middleware('can:usersi.edit')->only('edit', 'update');
+        $this->middleware('can:usersi.destroy')->only('destroy');
     }
 
     public function index(Request $request)
@@ -35,18 +35,18 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
         }
 
-        // Obtener todos los usuarios filtrados para la exportación
+        // Obtener todos los usuarios filtrados para la exportaci贸n
         $allUsersQuery = clone $usersQuery;
-        $allUsers = $allUsersQuery->where('estado', '1')
+        $allUsers = $allUsersQuery->where('estado', '0')
                          ->orderBy('id', 'desc')
                          ->get();
 
         // Para la vista normal, paginar los resultados
-        $users = $usersQuery->where('estado', '1')
+        $users = $usersQuery->where('estado', '0')
                             ->orderBy('id', 'desc')
                             ->paginate(10);
 
-        // Asegurarnos de incluir el parámetro ugel en la paginación
+        // Asegurarnos de incluir el par谩metro ugel en la paginaci贸n
         if ($request->has('page')) {
             $users->appends(request()->only(['texto', 'cargos', 'ugel']));
         }
@@ -78,13 +78,13 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$ugel}%");
         }
         
-        // Obtener todos los usuarios para la exportación
-        $allUsers = $usersQuery->where('estado', '1')
+        // Obtener todos los usuarios para la exportaci贸n
+        $allUsers = $usersQuery->where('estado', '0')
                             ->orderBy('id', 'desc')
                             ->get();
         
         // Para la vista normal, paginar los resultados
-        $users = $usersQuery->where('estado', '1')
+        $users = $usersQuery->where('estado', '0')
                             ->orderBy('id', 'desc')
                             ->paginate(10);
                             
@@ -113,9 +113,9 @@ class UserController extends Controller
         try {
             // Crear usuario
             User::create($request->all());
-            return response()->json(['message' => 'Usuario creado con éxito'], 200);
+            return response()->json(['message' => 'Usuario creado con 茅xito'], 200);
         } catch (ValidationException $e) {
-            return response()->json(['error' => 'El DNI o correo ya está en uso.'], 400);
+            return response()->json(['error' => 'El DNI o correo ya est谩 en uso.'], 400);
         }
         $users->save();
         return redirect('/users');
@@ -129,68 +129,14 @@ class UserController extends Controller
         return view('user.edit',compact('user','roles'));
     }
 
-    
-public function update(Request $request, User $user)
-{
-    // Validación personalizada con mensajes en español
-    $validator = Validator::make($request->all(), [
-        'dni' => 'required|unique:users,dni,' . $user->id,
-        'email' => 'required|email|unique:users,email,' . $user->id,
-        'name' => 'required|string|max:255',
-        'ugel' => 'required',
-        'institucion' => 'required|string|max:30',
-        'nivelinstitucion' => 'required',
-        'provincia' => 'required|string|max:30',
-        'distrito' => 'required|string|max:30',
-        'cargo' => 'required',
-        'estado' => 'required',
-    ], [
-        'dni.unique' => 'Este DNI ya está registrado en otro usuario.',
-        'email.unique' => 'Este correo electrónico ya está registrado en otro usuario.',
-        'email.email' => 'El formato del correo electrónico no es válido.',
-        'name.required' => 'El nombre es obligatorio.',
-        'ugel.required' => 'La UGEL es obligatoria.',
-        'institucion.required' => 'La institución es obligatoria.',
-        'nivelinstitucion.required' => 'El tipo de II.EE. es obligatorio.',
-        'provincia.required' => 'La provincia es obligatoria.',
-        'distrito.required' => 'El distrito es obligatorio.',
-        'cargo.required' => 'El cargo es obligatorio.',
-        'estado.required' => 'El estado es obligatorio.',
-    ]);
-
-    // Si la validación falla, redirigir con errores
-    if ($validator->fails()) {
-        return redirect()->back()
-                         ->withErrors($validator)
-                         ->withInput();
-    }
-
-    // Actualizar los datos del usuario
-    $user->dni = $request->get('dni');
-    $user->name = Str::upper($request->get('name'));
-    $user->email = $request->get('email');
-    $user->ugel = $request->get('ugel');
-    $user->institucion = Str::upper($request->get('institucion'));
-    $user->nivelinstitucion = $request->get('nivelinstitucion');
-    $user->cargo = $request->get('cargo');
-    $user->distrito = Str::upper($request->get('distrito'));
-    $user->provincia = Str::upper($request->get('provincia'));
-    $user->estado = $request->get('estado');
-    
-    // Solo actualizar la contraseña si se proporciona una nueva
-    if ($request->filled('password')) {
-        $user->password = bcrypt($request->get('password'));
-    }
-
-    // Sincronizar roles (mantienes tu lógica original)
-    if ($request->has('roles')) {
+    public function update(Request $request, User $user)
+    {
+       
         $user->roles()->sync($request->roles);
-    }
+        
 
-    $user->save();
-    
-    return redirect('/users')->with('success', 'Usuario actualizado correctamente.');
-}
+        return redirect('/users');
+    }
 
     public function destroy($id)
     {

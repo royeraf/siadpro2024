@@ -688,6 +688,67 @@ class DifusionController extends Controller
 
         return $cantidadRegistros;
     }
+    
+    public function exportarTodos(Request $request)
+{
+    $dni = trim($request->get('texto', ''));
+    $name = trim($request->get('docentes', ''));
+    $ugel = trim($request->get('ugels', ''));
+    $nominstitucion = trim($request->get('instituciones', ''));
+    $anio = $request->get('anio', 2025);
+
+    $query = Accion::select(
+        "pro_accions.nombreAccion", "pro_accions.descripcion", 
+        "pro_accions.fecha", "users.name", "users.cargo", 
+        "users.nivelinstitucion", "users.institucion", 
+        "users.provincia", "users.distrito", "users.ugel"
+    )
+    ->join("users", "users.id", "=", "pro_accions.idUser")
+    ->where('pro_accions.estado', '1')
+    ->where('pro_accions.tipo', 'difusion')
+    ->whereYear('pro_accions.fecha', $anio);
+
+    if (!empty($ugel)) {
+        $query->where("users.ugel", "LIKE", "%$ugel%");
+    }
+    if (!empty($dni)) {
+        $query->where("users.dni", "LIKE", "%$dni%");
+    }
+    if (!empty($name)) {
+        $query->where("users.name", "LIKE", "%$name%");
+    }
+    if (!empty($nominstitucion)) {
+        $query->where("users.institucion", "LIKE", "%$nominstitucion%");
+    }
+
+    $accions = $query->orderBy('pro_accions.fecha', 'desc')->get();
+
+    // Exportar como Excel (HTML interpretado por Excel)
+    $headers = [
+        'Content-Type' => 'application/vnd.ms-excel',
+        'Content-Disposition' => 'attachment; filename=difusion.xls',
+    ];
+
+    $content = '<table border="1">';
+    $content .= '<tr><th>Nombre de la Acción</th><th>Descripción</th><th>Fecha</th><th>Usuario</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE.</th><th>Provincia</th><th>Distrito</th><th>UGEL</th></tr>';
+    foreach ($accions as $item) {
+        $content .= '<tr>';
+        $content .= '<td>' . $item->nombreAccion . '</td>';
+        $content .= '<td>' . $item->descripcion . '</td>';
+        $content .= '<td>' . date('d-m-Y', strtotime($item->fecha)) . '</td>';
+        $content .= '<td>' . $item->name . '</td>';
+        $content .= '<td>' . $item->cargo . '</td>';
+        $content .= '<td>' . $item->institucion . '</td>';
+        $content .= '<td>' . $item->nivelinstitucion . '</td>';
+        $content .= '<td>' . $item->provincia . '</td>';
+        $content .= '<td>' . $item->distrito . '</td>';
+        $content .= '<td>' . $item->ugel . '</td>';
+        $content .= '</tr>';
+    }
+    $content .= '</table>';
+
+    return response($content, 200, $headers);
+}
 
 }
 

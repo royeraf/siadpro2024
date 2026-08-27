@@ -1,7 +1,7 @@
 @extends('adminlte::page')
 @section('css')
-<link rel="stylesheet" href="{{ asset("vendor/datatables/css/jquery.dataTables.css") }}" />
-<link href="{{ asset("vendor/datatables/css/dataTables.bootstrap5.min.css") }}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 @endsection
 
 @section('title', 'DifGeneralDRE')
@@ -161,15 +161,15 @@
 @stop
 
 @section('js')
-<script src="{{ asset("vendor/datatables/jquery.dataTables.min.js") }}"></script>
-<script src="{{ asset("vendor/datatables/dataTables.bootstrap5.min.js") }}"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
-<script src={{ asset("vendor/datatables/dataTables.buttons.min.js") }}></script>
-<script src={{ asset("vendor/jszip/jszip.min.js") }}></script>
-<script src={{ asset("vendor/pdfmake/pdfmake.min.js") }}></script>
-<script src={{ asset("vendor/pdfmake/vfs_fonts.js") }}></script>
-<script src={{ asset("vendor/datatables/buttons.html5.min.js") }}></script>
-<script src={{ asset("vendor/datatables/buttons.print.min.js") }}></script>
+<script src=https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js></script>
+<script src=https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js></script>
+<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js></script>
+<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js></script>
+<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js></script>
+<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js></script>
 <script>
 $(document).ready(function() {
     $('#accions').DataTable({
@@ -177,15 +177,17 @@ $(document).ready(function() {
         dom: 'Bfrtip', // Activa los botones
         buttons: [
             {
+                text: '<i class="fas fa-file-excel"> Excel (Todos)</i>',
+                className: 'btn btn-success',
+                action: function (e, dt, node, config) {
+                    // Redirecciona al backend con los filtros actuales de la URL
+                    window.location.href = "{{ route('exportar.difusion') }}?" + window.location.search.substring(1);
+                }
+            },
+            {
                 extend: 'print',
                 text: '<i class="fas fa-print"> Imprimir</i>',
                 className: 'btn btn-warning',
-                exportOptions: { modifier: { page: 'all' } }
-            },
-            {
-                extend: 'excelHtml5',
-                text: '<i class="fas fa-file-excel"> Excel</i>',
-                className: 'btn btn-success',
                 exportOptions: { modifier: { page: 'all' } }
             },
             {

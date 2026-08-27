@@ -252,22 +252,22 @@
 				});
 			},
 			events: [
-			<?php foreach($events as $event): 
-				$start = explode(" ", $event['start']);
-				$end = explode(" ", $event['end']);
-				$start = isset($start[1]) && $start[1] == '00:00:00' ? $start[0] : $event['start'];
-				$end = isset($end[1]) && $end[1] == '00:00:00' ? $end[0] : $event['end'];
-			?>
-				{
-					id: '<?php echo $event['id']; ?>',
-					title: '<?php echo $event['title']; ?>',
-					evento: '<?php echo $event['evento']; ?>',						
-					color: '<?php echo $event['color']; ?>',
-					start: '<?php echo $start; ?>',
-					end: '<?php echo $end; ?>',
-				},
-			<?php endforeach; ?>
-			]
+                <?php foreach($events as $event): 
+                    $start = explode(" ", $event['start']);
+                    $end = explode(" ", $event['end']);
+                    $start = isset($start[1]) && $start[1] == '00:00:00' ? $start[0] : $event['start'];
+                    $end = isset($end[1]) && $end[1] == '00:00:00' ? $end[0] : $event['end'];
+                ?>
+                    {
+                        id: <?php echo json_encode($event['id']); ?>,
+                        title: <?php echo json_encode($event['title']); ?>,
+                        evento: <?php echo json_encode($event['evento']); ?>,						
+                        color: <?php echo json_encode($event['color']); ?>,
+                        start: <?php echo json_encode($start); ?>,
+                        end: <?php echo json_encode($end); ?>,
+                    },
+                <?php endforeach; ?>
+            ]
 		});		
 	});
     </script>

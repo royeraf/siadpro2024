@@ -1,3 +1,4 @@
+
 @extends('adminlte::page')
 
 @section('title', 'Usuario')
@@ -14,15 +15,38 @@
                 <div class="card-header"><h1 align="center">Editar Usuario</h1></div>
 
                 <div class="card-body">
-                    <form method="POST" action="/usuarios/{{$user->id}}" >
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ session('success') }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    @endif
+
+                    @if($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>¡Hay errores en el formulario!</strong>
+                            <ul class="mb-0 mt-2">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    @endif
+
+                    <form method="POST" action="{{ route('users.update', $user->id) }}">
                         @csrf
                         @method('PUT')
+                        
                         <div class="form-group row">
                             <label for="dni" class="col-md-4 col-form-label text-md-right">{{ __('DNI') }}</label>
-
                             <div class="col-md-6">
-                                <input id="dni" type="text" class="form-control @error('dni') is-invalid @enderror" required name="dni" value="{{$user->dni}}" autofocus>
-
+                                <input id="dni" type="text" class="form-control @error('dni') is-invalid @enderror" 
+                                       required name="dni" value="{{ old('dni', $user->dni) }}" autofocus maxlength="8">
                                 @error('dni')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -34,9 +58,9 @@
                         <div class="form-group row">
                             <label for="estado" class="col-md-4 col-form-label text-md-right">{{ __('Estado') }}</label>
                             <div class="col-md-6">
-                                <select id="estado" name="estado" class="form-control">
-                                    <option value="0" @if($user->estado == 0) selected @endif>Inactivo</option>
-                                    <option value="1" @if($user->estado == 1) selected @endif>Activo</option>
+                                <select id="estado" name="estado" class="form-control @error('estado') is-invalid @enderror" required>
+                                    <option value="0" @if(old('estado', $user->estado) == 0) selected @endif>Inactivo</option>
+                                    <option value="1" @if(old('estado', $user->estado) == 1) selected @endif>Activo</option>
                                 </select>
                                 @error('estado')
                                     <span class="invalid-feedback" role="alert">
@@ -45,15 +69,12 @@
                                 @enderror
                             </div>
                         </div>
-                        
-                        
 
                         <div class="form-group row">
                             <label for="name" class="col-md-4 col-form-label text-md-right">{{ __('Apellidos y Nombres') }}</label>
-
                             <div class="col-md-6">
-                                <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" required name="name" value="{{$user->name}}" autofocus>
-
+                                <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" 
+                                       required name="name" value="{{ old('name', $user->name) }}">
                                 @error('name')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -64,10 +85,9 @@
 
                         <div class="form-group row">
                             <label for="ugel" class="col-md-4 col-form-label text-md-right">{{ __('UGEL') }}</label>
-
                             <div class="col-md-6">
-                            <select id="ugel" name="ugel" class="form-control" >
-                                <option value="{{$user->ugel}}">{{$user->ugel}}</option>
+                                <select id="ugel" name="ugel" class="form-control @error('ugel') is-invalid @enderror" required>
+                                    <option value="{{ old('ugel', $user->ugel) }}">{{ old('ugel', $user->ugel) }}</option>
                                     <option value="Ugel Huánuco">Ugel Huánuco</option>
                                     <option value="Ugel Ambo">Ugel Ambo</option>
                                     <option value="Ugel Dos de Mayo">Ugel Dos de Mayo</option>
@@ -80,7 +100,6 @@
                                     <option value="Ugel Puerto Inca">Ugel Puerto Inca</option>
                                     <option value="Ugel Yarowilca">Ugel Yarowilca</option>
                                 </select>
-
                                 @error('ugel')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -89,14 +108,13 @@
                             </div>
                         </div>
 
-
                         <div class="form-group row">
                             <label for="institucion" class="col-md-4 col-form-label text-md-right">{{ __('Institución Educativa') }}</label>
-
                             <div class="col-md-6">
-                            <input id="institucion" name="institucion" type="text" class="form-control" value="{{$user->institucion}}" tabindex="1" required size="30" maxlength="30">
-                            
-
+                                <input id="institucion" name="institucion" type="text" 
+                                       class="form-control @error('institucion') is-invalid @enderror" 
+                                       value="{{ old('institucion', $user->institucion) }}" 
+                                       tabindex="1" required size="30" maxlength="30">
                                 @error('institucion')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -107,13 +125,13 @@
 
                         <div class="form-group row">
                             <label for="nivelinstitucion" class="col-md-4 col-form-label text-md-right">{{ __('Tipo de II.EE.') }}</label>
-
                             <div class="col-md-6">
-                            <select id="nivelinstitucion" name="nivelinstitucion" class="form-control" >
-                            <option value="{{$user->nivelinstitucion}}">{{$user->nivelinstitucion}}</option>
-                                <option value="Escolarizado">Escolarizado</option>
-                                <option value="No escolarizado - PRONOEI" >No escolarizado - PRONOEI</option>
-                            </select>
+                                <select id="nivelinstitucion" name="nivelinstitucion" 
+                                        class="form-control @error('nivelinstitucion') is-invalid @enderror" required>
+                                    <option value="{{ old('nivelinstitucion', $user->nivelinstitucion) }}">{{ old('nivelinstitucion', $user->nivelinstitucion) }}</option>
+                                    <option value="Escolarizado">Escolarizado</option>
+                                    <option value="No escolarizado - PRONOEI">No escolarizado - PRONOEI</option>
+                                </select>
                                 @error('nivelinstitucion')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -124,10 +142,11 @@
 
                         <div class="form-group row">
                             <label for="provincia" class="col-md-4 col-form-label text-md-right">{{ __('Provincia') }}</label>
-
                             <div class="col-md-6">
-                          
-                            <input id="provincia" name="provincia" type="text" class="form-control" value="{{$user->provincia}}" tabindex="1" required size="30" maxlength="30">
+                                <input id="provincia" name="provincia" type="text" 
+                                       class="form-control @error('provincia') is-invalid @enderror" 
+                                       value="{{ old('provincia', $user->provincia) }}" 
+                                       tabindex="1" required size="30" maxlength="30">
                                 @error('provincia')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -138,10 +157,11 @@
 
                         <div class="form-group row">
                             <label for="distrito" class="col-md-4 col-form-label text-md-right">{{ __('Distrito') }}</label>
-
                             <div class="col-md-6">
-                          
-                            <input id="distrito" name="distrito" type="text" class="form-control" tabindex="1" value="{{$user->distrito}}" required size="30" maxlength="30">
+                                <input id="distrito" name="distrito" type="text" 
+                                       class="form-control @error('distrito') is-invalid @enderror" 
+                                       tabindex="1" value="{{ old('distrito', $user->distrito) }}" 
+                                       required size="30" maxlength="30">
                                 @error('distrito')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -152,18 +172,17 @@
 
                         <div class="form-group row">
                             <label for="cargo" class="col-md-4 col-form-label text-md-right">{{ __('Cargo') }}</label>
-
                             <div class="col-md-6">
-                            <select id="cargo" name="cargo" class="form-control" >
-                                <option value="{{$user->cargo}}">{{$user->cargo}}</option>
+                                <select id="cargo" name="cargo" class="form-control @error('cargo') is-invalid @enderror" required>
+                                    <option value="{{ old('cargo', $user->cargo) }}">{{ old('cargo', $user->cargo) }}</option>
                                     <option value="Especialista DRE">Especialista DRE</option>
                                     <option value="Especialista UGEL">Especialista UGEL</option>
                                     <option value="Director">Director</option>
                                     <option value="Profesor Coordinador">Profesor Coordinador</option>
                                     <option value="Docente">Docente</option>
-                                     <option value="Docente">Promotor(a) Educativa Comunitaria</option>
+                                    <option value="Promotor(a) Educativa Comunitaria">Promotor(a) Educativa Comunitaria</option>
                                 </select>
-                                @error('lugar')
+                                @error('cargo')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
                                     </span>
@@ -172,11 +191,12 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="email" class="col-md-4 col-form-label text-md-right">{{ __('Correo Electronico') }}</label>
-
+                            <label for="email" class="col-md-4 col-form-label text-md-right">{{ __('Correo Electrónico') }}</label>
                             <div class="col-md-6">
-                            <input id="email" name="email" type="text" class="form-control" tabindex="1" value="{{$user->email}}" required size="50" maxlength="50"> 
-
+                                <input id="email" name="email" type="email" 
+                                       class="form-control @error('email') is-invalid @enderror" 
+                                       tabindex="1" value="{{ old('email', $user->email) }}" 
+                                       required size="50" maxlength="50">
                                 @error('email')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -186,11 +206,12 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="password" class="col-md-4 col-form-label text-md-right">{{ __('Contraseña') }}</label>
-
+                            <label for="password" class="col-md-4 col-form-label text-md-right">{{ __('Nueva Contraseña (Opcional)') }}</label>
                             <div class="col-md-6">
-                            <input id="password" name="password" type="password" class="form-control" value="{{$user->password}}" tabindex="1" required size="50" maxlength="50"> 
-
+                                <input id="password" name="password" type="password" 
+                                       class="form-control @error('password') is-invalid @enderror" 
+                                       placeholder="Deja vacío para mantener la contraseña actual" 
+                                       tabindex="1" maxlength="50">
                                 @error('password')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -215,7 +236,6 @@
 </div>
 @stop
 
-
 @section('css')
 <style>
 #name{
@@ -230,113 +250,23 @@
 #institucion{
   text-transform: uppercase;
 }
-    </style>
+</style>
 @stop
 
 @section('js') 
 <script>
   function showInstituciones(id) {
-    if (!id) return;
-    let cleanId = id.toString().trim();
-    if (cleanId.length === 0) return;
-
-    let url = "{{ route('buscar.institucion', ['codModular' => '__COD__']) }}".replace('__COD__', encodeURIComponent(cleanId));
-
-    $.ajax({
-      url: url,
-      type: 'GET',
-      dataType: 'json',
-      success: function(instituciones) {
-        let selectInstituciones = document.querySelector("#institucion");
-        let selectProvincia = document.querySelector("#provincia");
-        let selectDistrito = document.querySelector("#distrito");
-        let selectUgel = document.querySelector("#ugel");
-        let selectNivel = document.querySelector("#nivelinstitucion");
-
-        if (selectInstituciones) selectInstituciones.innerHTML = "";
-        if (selectProvincia) selectProvincia.innerHTML = "";
-        if (selectDistrito) selectDistrito.innerHTML = "";
-
-        if (instituciones && instituciones.length > 0) {
-          instituciones.forEach(inst => {
-            let option = document.createElement("option");
-            option.value = inst.nomInstitucion;
-            option.textContent = inst.nomInstitucion;
-            if (selectInstituciones) selectInstituciones.appendChild(option);
-          });
-
-          if (selectProvincia) {
-            instituciones.forEach(prov => {
-              let option = document.createElement("option");
-              option.value = prov.provincia;
-              option.textContent = prov.provincia;
-              selectProvincia.appendChild(option);
-            });
-          }
-
-          if (selectDistrito) {
-            instituciones.forEach(dist => {
-              let option = document.createElement("option");
-              option.value = dist.distrito;
-              option.textContent = dist.distrito;
-              selectDistrito.appendChild(option);
-            });
-          }
-
-          if (selectUgel && instituciones[0].ugel) {
-            let ugelTarget = instituciones[0].ugel.toLowerCase().replace('ugel', '').trim();
-            for (let i = 0; i < selectUgel.options.length; i++) {
-              let optText = selectUgel.options[i].text.toLowerCase();
-              let optVal = selectUgel.options[i].value.toLowerCase();
-              if (optText.includes(ugelTarget) || optVal.includes(ugelTarget)) {
-                selectUgel.selectedIndex = i;
-                break;
-              }
-            }
-          }
-
-          if (selectNivel && instituciones[0].nivel) {
-            let nivel = instituciones[0].nivel.toLowerCase();
-            for (let i = 0; i < selectNivel.options.length; i++) {
-              let optText = selectNivel.options[i].text.toLowerCase();
-              if (nivel.includes("no escolariz") || nivel.includes("pronoei")) {
-                if (optText.includes("no escolarizado") || optText.includes("pronoei")) {
-                  selectNivel.selectedIndex = i;
-                  break;
-                }
-              } else if (nivel.includes("inicial") || nivel.includes("primaria") || nivel.includes("secundaria") || nivel.includes("jardin")) {
-                if (optText.includes("escolarizado") && !optText.includes("no escolarizado")) {
-                  selectNivel.selectedIndex = i;
-                  break;
-                }
-              }
-            }
-          }
-        } else {
-          if (selectInstituciones) {
-            let option = document.createElement("option");
-            option.value = "";
-            option.textContent = "-- No se encontró institución --";
-            selectInstituciones.appendChild(option);
-          }
-        }
-      },
-      error: function(xhr, status, error) {
-        console.error("Error al buscar institución:", error);
-      }
+    $.get("/api/instituciones/"+id, function(instituciones){
+      let selectInstituciones = document.querySelector("#institucion");
+      selectInstituciones.innerHTML = "";
+      instituciones.forEach(institucion => {
+        let option = document.createElement("option");
+        option.setAttribute("value", institucion.nomInstitucion);
+        option.innerHTML = institucion.nomInstitucion;
+        selectInstituciones.appendChild(option);
+      });
     });
   }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    const codInput = document.getElementById('codmodular');
-    if (codInput) {
-      ['input', 'change', 'keyup', 'paste'].forEach(evt => {
-        codInput.addEventListener(evt, function() {
-          showInstituciones(this.value);
-        });
-      });
-    }
-  });
 </script>  
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -344,10 +274,10 @@
 
         dniInput.addEventListener('input', function() {
             const inputValue = dniInput.value.trim();
-            const numericValue = inputValue.replace(/[^\d]/g, ''); // Elimina caracteres no numéricos
+            const numericValue = inputValue.replace(/[^\d]/g, '');
 
             if (numericValue.length > 8) {
-                dniInput.value = numericValue.slice(0, 8); // Limita a 8 caracteres
+                dniInput.value = numericValue.slice(0, 8);
             } else {
                 dniInput.value = numericValue;
             }
@@ -361,10 +291,10 @@
 
         emailInput.addEventListener('input', function() {
             const inputValue = emailInput.value.trim();
-            const domain = inputValue.split('@')[1]; // Obtener el dominio del correo electrónico
+            const domain = inputValue.split('@')[1];
 
             if (validDomains.includes(domain)) {
-                emailInput.setCustomValidity(''); // Dirección válida
+                emailInput.setCustomValidity('');
             } else {
                 emailInput.setCustomValidity('El correo electrónico debe ser de uno de los dominios válidos.');
             }

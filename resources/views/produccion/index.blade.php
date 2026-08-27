@@ -1,7 +1,7 @@
 @extends('adminlte::page')
 @section('css')
-<link rel="stylesheet" href="{{ asset("vendor/datatables/css/jquery.dataTables.css") }}" />
-<link href="{{ asset("vendor/datatables/css/dataTables.bootstrap5.min.css") }}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 @endsection
 
 @section('title', 'Produccion')
@@ -126,8 +126,8 @@
 @stop
 
 @section('js')
-<script src="{{ asset("vendor/datatables/jquery.dataTables.min.js") }}"></script>
-<script src="{{ asset("vendor/datatables/dataTables.bootstrap5.min.js") }}"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
