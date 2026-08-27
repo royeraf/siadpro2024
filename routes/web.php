@@ -40,13 +40,13 @@ Route::get("/sector", ['App\Http\Controllers\SectorController'::class, "index"]
 Route::get('/', function () {
     return view('auth.login');
      //return view('welcomenp');
-});
+})->middleware('guest');
 
 
 Route::get('/home', function () {
     return view('auth.login');
      //return view('welcomenp');        
-});
+})->middleware('guest');
 
 Route::middleware([
     'auth:sanctum',
@@ -108,7 +108,7 @@ Route::post('/interInstitucion/buscar_index', function (Illuminate\Http\Request 
                                 where users.name = '$usuario'");
 
         $authorizedRoles = ['Admin', 'EspecDRE', 'EspecUGEL', 'Director'];
-        $user_role = $dat_user[0]->rol; // Obt¨¦n el rol del primer registro (siempre deber¨ªa haber al menos uno)
+        $user_role = $dat_user[0]->rol; // Obtï¿½ï¿½n el rol del primer registro (siempre deberï¿½ï¿½a haber al menos uno)
 
         if (in_array($user_role, $authorizedRoles)) {
 
@@ -301,7 +301,7 @@ Route::get('/buscar-docentes-por-institucion-ag', [AgendaViewController::class, 
 Route::get('/exportar-agendas', [App\Http\Controllers\AgendaViewController::class, 'exportarTodos'])->name('exportar.agendas');
 Route::get('/buscar-docente-por-institucion-agenda', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-ag');
 
-// Rutas para la secci¨®n de agendas
+// Rutas para la secciï¿½ï¿½n de agendas
 Route::get('/agenda-general', [App\Http\Controllers\AgendaViewController::class, 'general'])->name('agenda.general');
 Route::get('/buscar-agenda-general', [App\Http\Controllers\AgendaViewController::class, 'buscarGeneral'])->name('buscarAgendaGeneral');
 Route::get('/get-ugels-ag', [App\Http\Controllers\AgendaViewController::class, 'obtenerUgels'])->name('get-ugels-ag');
@@ -338,7 +338,7 @@ Route::get('/buscar-instituciones-por-ugel-dif', [DifusionController::class, 'bu
 Route::get('/buscar-docentes-por-institucion-dif', [DifusionController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-dif');
 Route::get('/exportar-evidencias', [EvidenciaController::class, 'exportarTodos'])->name('exportar.evidencias');
 
-// Rutas para difusi¨®n
+// Rutas para difusiï¿½ï¿½n
 Route::get('/difusion-general', [DifusionController::class, 'general'])->name('difusion-general');
 Route::get('/buscar-difusion-general', [DifusionController::class, 'buscarGeneral'])->name('buscarDifusionGeneral');
 Route::get('/exportar-difusion', [DifusionController::class, 'exportarTodos'])->name('exportar.difusion');
