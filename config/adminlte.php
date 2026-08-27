@@ -300,53 +300,45 @@ return [
             'type'         => 'fullscreen-widget',
             'topnav_right' => true,
         ],
-
-        // Sidebar items:
+// Sidebar items:
         [
             'type' => 'sidebar-menu-search',
             'text' => 'search',
         ],
-        [
-            'text' => 'blog',
-            'url'  => 'admin/blog',
-            'can'  => 'manage-blog',
-        ],
+
+        // Panel de control
+        ['header' => 'Panel'],
         [
             'text' => 'DASHBOARD',
             'url'  => '/dashboard-index',
-            'icon' => 'fas fa-fw fa-school',
+            'icon' => 'fas fa-chart-line',
             'can' => 'dashboard.index',
-
         ],
         [
             'text' => 'DASHBOARD UGEL',
             'url'  => '/dashboard-ugel',
-            'icon' => 'fas fa-fw fa-school',
-            'can' => 'dashboard.ugel'
-        ],
-        [
-            'text' => 'DASHBOARD DIRECTOR',
-            'url'  => '/dashboard-director',
-            'icon' => 'fas fa-fw fa-school',
-            'can' => 'dashboard.director',
-
+            'icon' => 'fas fa-chart-line',
+            'can' => 'dashboard.ugel',
         ],
         [
             'text' => 'DASHBOARD PC',
             'url'  => '/dashboard-pc',
-            'icon' => 'fas fa-fw fa-school',
-            'can' => 'dashboard.pc'
+            'icon' => 'fas fa-chart-line',
+            'can' => 'dashboard.pc',
         ],
+
+        // Gestión
+        ['header' => 'Gestión'],
         [
             'text' => 'INSTITUCIONES',
             'url'  => 'institucions',
-            'icon' => 'fas fa-fw fa-school',
-            'can' => 'institucions.index'
+            'icon' => 'fas fa-school',
+            'can' => 'institucions.index',
         ],
         [
             'text' => 'Internet/Instituciones',
             'url'  => 'interInstitucion',
-            'icon' => 'fa fa-building',
+            'icon' => 'fas fa-building',
         ],
         [
             'text' => 'USUARIOS',
@@ -354,167 +346,145 @@ return [
             'icon' => 'fas fa-user-tie',
             'can' => 'users.index',
         ],
+
+        // Actividades de lectura
+        ['header' => 'Actividades'],
         [
             'text' => 'ACCIÓN DE SENSIBILIZACIÓN',
             'url'  => 'accions',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-bullhorn',
             'icon_color'  => 'yellow',
             'can' => 'accions.index',
         ],
         [
             'text' => 'ACCIÓN DE SENSIBILIZACIÓN (GENERAL)',
             'url'  => '/accion-general',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-bullhorn',
             'icon_color'  => 'yellow',
             'can' => 'accions.view',
-        ],/*
-        [
-            'text' => 'ACCIÓN (DRE)',
-            'url'  => '/accion-dre',
-            'icon' => 'fas fa-file',
-            'icon_color'  => 'yellow',
-            'can' => 'accions.dre',
-        ],*/
+        ],
         [
             'text' => 'ACCIÓN DE DIFUSIÓN',
             'url'  => 'difusions',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-share-alt',
             'icon_color'  => 'blue',
             'can' => 'accions.index',
         ],
         [
             'text' => 'ACCIÓN DE DIFUSIÓN (GENERAL)',
             'url'  => '/difusion-general',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-share-alt',
             'icon_color'  => 'blue',
             'can' => 'evidencias.view',
         ],
-        
-        
         [
             'text' => 'SECTORES DEL AULA',
             'url'  => 'sector',
-            'icon' => 'fa fa-database',
+            'icon' => 'fas fa-database',
             'icon_color'  => 'white',
-            'can:sectores.index'
-            
-           
+            'can' => 'sectores.index',
         ],
-      
-      
-       [
+        [
             'text' => 'SECTORES DEL AULA (UGEL)',
             'url'  => '/sector-ugel',
-            'icon' => 'fa fa-database',
+            'icon' => 'fas fa-database',
             'icon_color'  => 'white',
             'can' => 'evidencias.ugel',
-            
-            
-           
         ],
-      
-      
-      [
+        [
             'text' => 'SECTORES DEL AULA (GENERAL)',
             'url'  => '/sector-general',
-            'icon' => 'fa fa-database',
+            'icon' => 'fas fa-database',
             'icon_color'  => 'white',
             'can' => 'evidencias.view',
-           
         ],
-        
-        
-      
-      [
+        [
             'text' => 'ASISTENCIA TÉCNICA',
             'url'  => 'evidencias',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-tools',
             'icon_color'  => 'red',
-            
         ],
-      
-      
         [
             'text' => 'ASISTENCIA TÉCNICA (UGEL)',
             'url'  => '/evidencia-ugel',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-tools',
             'icon_color'  => 'red',
             'can' => 'evidencias.ugel',
         ],
         [
             'text' => 'ASISTENCIA TÉCNICA (GENERAL)',
             'url'  => '/evidencia-general',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-tools',
             'icon_color'  => 'red',
             'can' => 'evidencias.view',
         ],
         [
             'text' => 'BIBLIOTECA DEL AULA',
             'url'  => 'informes',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-open',
             'icon_color'  => 'orange',
             'can' => 'informes.index',
         ],
         [
             'text' => 'BIBLIOTECA DEL AULA (GENERAL)',
             'url'  => '/informe-general',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-open',
             'icon_color'  => 'orange',
             'can' => 'informes.view',
         ],
         [
             'text' => 'BIBLIOTECA DEL AULA (UGEL)',
             'url'  => '/informe-ugel',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-open',
             'icon_color'  => 'orange',
             'can' => 'informes.ugel',
         ],
         [
             'text' => 'BIBLIOTECA DEL AULA (DIRECTOR)',
             'url'  => '/informe-director',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-open',
             'icon_color'  => 'orange',
             'can' => 'informes.director',
         ],
         [
             'text' => 'ESPACIO DE LECTURA EN EL HOGAR',
             'url'  => 'plans',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-reader',
             'icon_color'  => 'cyan',
             'can' => 'plans.index',
         ],
         [
             'text' => 'ESPACIO DE LECTURA EN EL HOGAR (GENERAL)',
             'url'  => '/plan-general',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-reader',
             'icon_color'  => 'cyan',
             'can' => 'plans.view',
         ],
         [
             'text' => 'ESPACIO DE LECTURA EN EL HOGAR (UGEL)',
             'url'  => '/plan-ugel',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-reader',
             'icon_color'  => 'cyan',
             'can' => 'plans.ugel',
         ],
         [
             'text' => 'ESPACIO DE LECTURA EN EL HOGAR (DIRECTOR)',
             'url'  => '/plan-director',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-book-reader',
             'icon_color'  => 'cyan',
             'can' => 'plans.director',
         ],
         [
             'text' => 'PRODUCCIÓN DE TEXTOS INFANTILES',
             'url'  => 'produccions',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-pen-fancy',
             'icon_color'  => 'green',
             'can' => 'produccions.index',
-        ], 
+        ],
         [
             'text' => 'PRODUCCIÓN DE TEXTOS INFANTILES (GENERAL)',
             'url'  => '/produccion-general',
-            'icon' => 'fas fa-file',
+            'icon' => 'fas fa-pen-fancy',
             'icon_color'  => 'green',
             'can' => 'evidencias.view',
         ],
@@ -522,46 +492,30 @@ return [
             'text' => 'AGENDA DE LECTURA',
             'url'  => 'agendas',
             'icon' => 'fas fa-calendar-alt',
-            'can' => 'agendas.index',
-   
             'icon_color'  => 'pink',
+            'can' => 'agendas.index',
         ],
         [
             'text' => 'LISTA DE AGENDAS DE LECTURA',
             'url'  => 'agenda/view',
             'icon' => 'fas fa-calendar-alt',
-            'can' => 'agendas.view',
-        
             'icon_color'  => 'pink',
+            'can' => 'agendas.view',
         ],
         [
             'text' => 'LISTA DE AGENDAS DE LECTURA (GENERAL)',
             'url'  => '/agenda-general',
             'icon' => 'fas fa-calendar-alt',
-            'can' => 'evidencias.view',
             'icon_color'  => 'pink',
+            'can' => 'evidencias.view',
         ],
         [
             'text' => 'LISTA DE AGENDAS DE LECTURA (UGEL)',
             'url'  => '/agenda-ugel',
             'icon' => 'fas fa-calendar-alt',
-            'can' => 'plans.ugel',
             'icon_color'  => 'pink',
+            'can' => 'plans.ugel',
         ],
-        ['header' => 'account_settings'],
-        [
-            'text' => 'profile',
-            'url'  => 'admin/settings',
-            'icon' => 'fas fa-fw fa-user',
-        ],
-        
-        [
-            'text' => 'change_password',
-            'url'  => 'admin/settings',
-            'icon' => 'fas fa-fw fa-lock',
-        ],
-       
-        
     ],
 
     /*

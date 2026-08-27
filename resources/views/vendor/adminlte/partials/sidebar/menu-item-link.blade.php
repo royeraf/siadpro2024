@@ -15,12 +15,9 @@
                 <span class="badge badge-{{ $item['label_color'] ?? 'primary' }} right">
                     {{ $item['label'] }}
                 </span>
-            @endif{{--
-            @if ($item['text'] === 'USUARIOS')
-                <span class="badge badge-danger right"> Aqui esta para colocar sobre los datos de los labels al costado de los menus
-                    {{ $count }}
-                </span>
-            @endif --}}
+            @elseif(isset($count) && $count > 0 && $item['text'] === 'USUARIOS')
+                <span class="badge badge-danger right">{{ $count }}</span>
+            @endif
         </p>
 
     </a>
