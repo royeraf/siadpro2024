@@ -47,9 +47,14 @@ class InstitucionController extends Controller
 
         $total = $query->count();
 
-        $perPage = (int) $request->get('per_page', 15);
-        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
-            $perPage = 15;
+        $perPageRaw = $request->get('per_page', 15);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 15;
+            }
         }
 
         $institucions = $query->orderBy('id', 'asc')->paginate($perPage)->withQueryString();
