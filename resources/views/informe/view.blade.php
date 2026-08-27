@@ -30,7 +30,8 @@
                     <i class="fas fa-calendar-alt"></i>
                 </span>
                 <select class="form-control" id="year" name="year">
-                    <option value="2025" {{ request('year') == '2025' || !request('year') ? 'selected' : '' }}>2025</option>
+                    <option value="2026" {{ request('year') == '2026' || !request('year') ? 'selected' : '' }}>2026</option>
+                    <option value="2025" {{ request('year') == '2025' ? 'selected' : '' }}>2025</option>
                     <option value="2024" {{ request('year') == '2024' ? 'selected' : '' }}>2024</option>
                     <option value="2023" {{ request('year') == '2023' ? 'selected' : '' }}>2023</option>
                 </select>
@@ -159,7 +160,7 @@ $(document).ready(function() {
     // Función para obtener los parámetros actuales
     function getCurrentParams() {
         const params = new URLSearchParams(window.location.search);
-        const year = params.get('year') || '2025'; // Asegurar que el año siempre esté incluido
+        const year = params.get('year') || '2026'; // Asegurar que el año siempre esté incluido
         params.set('year', year);
         return params.toString();
     }
@@ -228,7 +229,7 @@ $(document).ready(function() {
         url: "{{ route('get-ugels-inf') }}",
         method: 'GET',
         data: {
-            year: $('#year').val() || '2025'
+            year: $('#year').val() || '2026'
         },
         dataType: 'json',
         success: function(data) {
@@ -265,7 +266,7 @@ $(document).ready(function() {
     // Manejar el cambio en la lista de UGEL
     $('#ugels').on('change', function() {
         var selectedUgel = $(this).val();
-        var selectedYear = $('#year').val() || '2025';
+        var selectedYear = $('#year').val() || '2026';
         
         /* Ajax para la busqueda de institucion por ugel seleccionada con la informacion de docentes que registraron agendas*/ 
         $.ajax({
@@ -318,7 +319,7 @@ $(document).ready(function() {
     $('#institucion').on('input', function() {
         var selectedUgel = $('#ugels').val();
         var searchTerm = $(this).val();
-        var selectedYear = $('#year').val() || '2025';
+        var selectedYear = $('#year').val() || '2026';
         
     /* Ajax para la busqueda en tiempo real de instituciones por ugel seleccionada con la informacion de docentes que registraron agendas*/
         $.ajax({
@@ -380,7 +381,7 @@ $(document).ready(function() {
     // Obtener el valor de UGEL seleccionado
     var selectedUgel = $('#ugels').val();
     console.log("UGEL seleccionada:", selectedUgel);
-    var selectedYear = $('#year').val() || '2025';
+    var selectedYear = $('#year').val() || '2026';
 
     /* Ajax para la busqueda de docente por institucion seleccionada */
     $.ajax({
@@ -438,7 +439,7 @@ $(document).ready(function() {
     $('#docente').on('input', function() {
         var selectedInstitucion = $('#instituciones').val();
         var searchTerm = $(this).val();
-        var selectedYear = $('#year').val() || '2025';
+        var selectedYear = $('#year').val() || '2026';
 
         /* Ajax para la busqueda en tiempo real de docentes con la informacion de docentes que registraron agendas*/
         $.ajax({

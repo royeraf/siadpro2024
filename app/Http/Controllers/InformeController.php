@@ -26,14 +26,14 @@ class InformeController extends Controller
         $usuario = Auth::user()->id;
         $informes = Informe::where('estado', '1')
         ->where('idUser',$usuario)
-        ->whereYear('fecha',2025)
+        ->whereYear('fecha',2026)
         ->orderby('id','desc')->paginate(10);
         return view('informe.index')->with('informes',$informes);
     }
     public function general()
     {
-        // Obtener el año del filtro, con 2025 como valor predeterminado
-        $year = request()->get('year', '2025');
+        // Obtener el año del filtro, con 2026 como valor predeterminado
+        $year = request()->get('year', '2026');
         
         $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.descripcion","pro_informes.documento","pro_informes.fecha","pro_informes.color","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
                     ->join("users","users.id","=","pro_informes.idUser")
@@ -96,7 +96,7 @@ class InformeController extends Controller
     public function buscar(Request $request){
         $usuario = Auth::user()->id;
         $texto = trim($request->get('texto'));
-        $year = trim($request->get('year', '2025')); // Valor predeterminado: 2025
+        $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
         
         $informes = Informe::where("nombreInforme","LIKE","%".$texto."%")
         ->where('estado', '1')
@@ -118,7 +118,7 @@ class InformeController extends Controller
             $name = trim($request->get('docentes', ''));
             $ugel = trim($request->get('ugels', ''));
             $nominstitucion = trim($request->get('instituciones', ''));
-            $year = trim($request->get('year', '2025')); // Valor predeterminado: 2025
+            $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
 
             $query = Informe::select(
                 "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.documento", 
@@ -160,7 +160,7 @@ class InformeController extends Controller
         $dni = trim($request->get('texto'));
         $nivel = trim($request->get('nivel'));
         $nominstitucion = trim($request->get('nominstitucion'));
-        $year = trim($request->get('year', '2025')); // Valor predeterminado: 2025
+        $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
         
         $informes = Informe::select("pro_informes.id","pro_informes.descripcion","pro_informes.nombreInforme","pro_informes.fecha","pro_informes.documento","pro_informes.color","pro_informes.updated_at","users.name","users.institucion","users.provincia","users.distrito","users.nivelinstitucion","users.cargo","users.ugel")
         ->join("users","users.id","=","pro_informes.idUser")
@@ -178,7 +178,7 @@ class InformeController extends Controller
     public function buscarDirector(Request $request){
         $institucion = Auth::user()->institucion;
         $texto = trim($request->get('texto'));
-        $year = trim($request->get('year', '2025')); // Valor predeterminado: 2025
+        $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
         
         $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.documento","pro_informes.color","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
         ->join("users","users.id","=","pro_informes.idUser")
@@ -396,7 +396,7 @@ class InformeController extends Controller
 
     public function obtenerUgels()
     {       
-        $year = request()->get('year', '2025'); // Valor predeterminado: 2025
+        $year = request()->get('year', '2026'); // Valor predeterminado: 2026
         
         $ugels = DB::table('pro_informes')
             ->select('users.ugel', DB::raw('count(distinct pro_informes.idUser) as docentes_count'))
@@ -567,7 +567,7 @@ class InformeController extends Controller
         $name = trim($request->get('docentes', ''));
         $ugel = trim($request->get('ugels', ''));
         $nominstitucion = trim($request->get('instituciones', ''));
-        $year = trim($request->get('year', '2025')); // Valor predeterminado: 2025
+        $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
 
         // Construir la misma consulta pero sin paginación
         $query = Informe::select(

@@ -35,7 +35,7 @@ class DifusionController extends Controller
     public function general()
     {
         $ugeluser = Auth::user()->ugel;
-        $anioActual = request()->get('anio', '2025'); // Por defecto muestra 2025
+        $anioActual = request()->get('anio', '2026'); // Por defecto muestra 2025
         $cargo = Auth::user()->cargo;
         
         // Primero verificar si es Especialista DRE y enviarlo directamente a dre.blade.php
@@ -113,7 +113,7 @@ class DifusionController extends Controller
     public function ugel()
     {
         $ugel = Auth::user()->ugel;
-        $anioActual = request()->get('anio', '2025'); // Por defecto 2025
+        $anioActual = request()->get('anio', '2026'); // Por defecto 2025
         
         $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.fecha","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.updated_at","pro_accions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_accions.idUser")
@@ -129,7 +129,7 @@ class DifusionController extends Controller
     public function director()
     {
         $institucion = Auth::user()->institucion;
-        $anioActual = request()->get('anio', '2025'); // Por defecto 2025
+        $anioActual = request()->get('anio', '2026'); // Por defecto 2025
         
         $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.updated_at","pro_accions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_accions.idUser")
@@ -144,7 +144,7 @@ class DifusionController extends Controller
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;
-        $anioActual = request()->get('anio', '2025'); // Por defecto 2025
+        $anioActual = request()->get('anio', '2026'); // Por defecto 2025
         
         $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.updated_at","pro_accions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_accions.idUser")
@@ -177,7 +177,7 @@ class DifusionController extends Controller
     public function buscarGeneral(Request $request)
     {
         $cargo = Auth::user()->cargo;
-        $anio = $request->get('anio', '2025'); // Por defecto 2025
+        $anio = $request->get('anio', '2026'); // Por defecto 2025
 
         if ($cargo == 'Especialista DRE') {
             if (empty($request->get('ugels')) && empty($request->get('instituciones')) && empty($request->get('docentes')) && empty($request->get('texto')) && empty($request->get('nivel')) && empty($request->get('anio'))) {
@@ -564,7 +564,7 @@ class DifusionController extends Controller
     public function buscadorinstitucion(Request $request)
     {   
         $cargo = Auth::user()->cargo;
-        $anio = $request->input('anio', '2025'); // Por defecto 2025
+        $anio = $request->input('anio', '2026'); // Por defecto 2025
         
         switch ($cargo) {
             case 'Especialista UGEL':
@@ -659,7 +659,7 @@ class DifusionController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
-        $anio = $request->input('anio', '2025'); // Por defecto 2025
+        $anio = $request->input('anio', '2026'); // Por defecto 2025
         
         $docentes = DB::table('users')
         ->leftJoin('pro_accions', function($join) use ($anio) {
@@ -679,7 +679,7 @@ class DifusionController extends Controller
     }
     public function obtenerCantidadRegistros(Request $request)
     {
-        $anio = $request->input('anio', '2025'); // Por defecto 2025
+        $anio = $request->input('anio', '2026'); // Por defecto 2025
         
         $cantidadRegistros = Accion::whereYear('fecha', '=', $anio)
                                 ->where('tipo', '=', 'difusion')
@@ -695,7 +695,7 @@ class DifusionController extends Controller
     $name = trim($request->get('docentes', ''));
     $ugel = trim($request->get('ugels', ''));
     $nominstitucion = trim($request->get('instituciones', ''));
-    $anio = $request->get('anio', 2025);
+    $anio = $request->get('anio', 2026);
 
     $query = Accion::select(
         "pro_accions.nombreAccion", "pro_accions.descripcion", 

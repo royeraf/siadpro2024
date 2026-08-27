@@ -32,8 +32,8 @@ class AccionController extends Controller
         {
             $ugeluser = Auth::user()->ugel;
             $cargo = Auth::user()->cargo;
-            // Obtiene el año del request, si no hay, usa 2025 como default
-            $anio = request()->get('anio', '2025');
+            // Obtiene el año del request, si no hay, usa 2026 como default
+            $anio = request()->get('anio', '2026');
             
             // Si es un Especialista DRE, mostrar todas las acciones sin filtros
             if ($cargo == 'Especialista DRE') {
@@ -183,7 +183,7 @@ class AccionController extends Controller
 
     public function buscarGeneral(Request $request){
         $cargo = Auth::user()->cargo;
-        $anio = trim($request->get('anio')) ?: '2025'; // Capturar el año para todos los roles
+        $anio = trim($request->get('anio')) ?: '2026'; // Capturar el año para todos los roles
         
         if ($cargo == 'Especialista DRE') {
             if (empty($request->get('ugels')) && empty($request->get('instituciones')) && 
@@ -539,7 +539,7 @@ class AccionController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ingreso = Auth::user()->cargo;
-        $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+        $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
         
         switch ($ingreso) {
             case 'Especialista DRE':
@@ -596,7 +596,7 @@ class AccionController extends Controller
     public function buscadorinstitucion(Request $request)
         {   
             $cargo = Auth::user()->cargo;
-            $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+            $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
             
             switch ($cargo) {
                 case 'Especialista UGEL':
@@ -651,7 +651,7 @@ class AccionController extends Controller
     public function buscarDocenteporInstitucion(Request $request)
         {
             $cargo = Auth::user()->cargo;
-            $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+            $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
             
             if ($cargo == "Especialista UGEL") {
                 $ugelSeleccionada = Auth::user()->ugel;
@@ -681,7 +681,7 @@ class AccionController extends Controller
             {
                 $institucion = $request->input('institucion'); 
                 $term = $request->input('term');
-                $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+                $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
                 
                 $docentes = DB::table('users')
                     ->leftJoin('pro_accions', function($join) use ($anio) {
@@ -708,7 +708,7 @@ class AccionController extends Controller
     public function exportarFiltradoTotal(Request $request)
     {
         $cargo = Auth::user()->cargo;
-        $anio = trim($request->get('anio')) ?: '2025';
+        $anio = trim($request->get('anio')) ?: '2026';
         $dni = trim($request->get('texto', ''));
         $docente = trim($request->get('docentes', ''));
         $ugel = trim($request->get('ugels', ''));

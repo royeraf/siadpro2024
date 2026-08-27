@@ -25,7 +25,7 @@ class EvidenciaController extends Controller
     public function index()
     {
         $usuario = Auth::user()->id;
-        $anio = request()->get('anio') ?: '2025'; // El valor predeterminado aquí es 2024 como está en el código original
+        $anio = request()->get('anio') ?: '2026'; // El valor predeterminado aquí es 2024 como está en el código original
         
         $evidencias = Evidencia::where('estado', '1')
             ->whereYear('pro_evidencias.fecha', $anio)
@@ -39,7 +39,7 @@ class EvidenciaController extends Controller
     public function general()
     {
         // Obtener el año del request si está disponible
-        $anio = request()->get('anio') ?: '2025';
+        $anio = request()->get('anio') ?: '2026';
 
         $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.descripcion","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
                     ->join("users","users.id","=","pro_evidencias.idUser")
@@ -53,7 +53,7 @@ class EvidenciaController extends Controller
     public function ugel()
     {
         $ugel = Auth::user()->ugel;
-        $anio = request()->get('anio') ?: '2025';
+        $anio = request()->get('anio') ?: '2026';
         
         $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.nivelinstitucion","users.ugel")
             ->join("users","users.id","=","pro_evidencias.idUser")
@@ -68,7 +68,7 @@ class EvidenciaController extends Controller
     public function director()
     {
         $institucion = Auth::user()->institucion;
-        $anio = request()->get('anio') ?: '2025';
+        $anio = request()->get('anio') ?: '2026';
         
         $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_evidencias.idUser")
@@ -83,7 +83,7 @@ class EvidenciaController extends Controller
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;
-        $anio = request()->get('anio') ?: '2025';
+        $anio = request()->get('anio') ?: '2026';
         
         $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_evidencias.idUser")
@@ -138,7 +138,7 @@ class EvidenciaController extends Controller
             $ugel = trim($request->get('ugels'));
             $nominstitucion = trim($request->get('instituciones'));
             $nivel = trim($request->get('nivel'));
-            $anio = trim($request->get('anio')) ?: '2025'; // Valor por defecto 2023 si no se proporciona
+            $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023 si no se proporciona
     
             $query = Evidencia::select(
                 "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", 
@@ -188,7 +188,7 @@ class EvidenciaController extends Controller
         $dni = trim($request->get('texto'));
         $nivel = trim($request->get('nivel'));
         $nominstitucion = trim($request->get('nombinstitucion'));
-        $anio = trim($request->get('anio')) ?: '2025'; // Valor por defecto 2023
+        $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023
         
         $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.descripcion", "pro_evidencias.fecha", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_evidencias.idUser")
@@ -209,7 +209,7 @@ class EvidenciaController extends Controller
         $institucion = Auth::user()->institucion;
         $texto = trim($request->get('texto'));
         $fecha = trim($request->get('fecha'));
-        $anio = trim($request->get('anio')) ?: '2025'; // Valor por defecto 2023
+        $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023
         
         $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.tipoevidencia", "pro_evidencias.updated_at", "pro_evidencias.lugar", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_evidencias.idUser")
@@ -454,7 +454,7 @@ class EvidenciaController extends Controller
 
     public function obtenerUgels(Request $request)
     {       
-        $anio = $request->input('anio') ?: '2025'; // Valor por defecto 2023 si no se proporciona
+        $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023 si no se proporciona
         
         $ugels = DB::table('pro_evidencias')
             ->select('users.ugel', DB::raw('count(distinct pro_evidencias.idUser) as docentes_count'))
@@ -471,7 +471,7 @@ class EvidenciaController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $anio = $request->input('anio') ?: '2025'; // Valor por defecto 2023 si no se proporciona
+        $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023 si no se proporciona
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -528,7 +528,7 @@ class EvidenciaController extends Controller
                 break;
         }
         
-        $anio = $request->input('anio') ?: '2025'; // Valor por defecto 2023
+        $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
 
         // Realiza una consulta para buscar instituciones que coincidan con $term y tengan información sobre docentes y agendas
@@ -581,7 +581,7 @@ class EvidenciaController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
-        $anio = $request->input('anio') ?: '2025'; // Valor por defecto 2023
+        $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023
         
         $docentes = DB::table('users')
             ->leftJoin('pro_evidencias', function($join) use ($anio) {
@@ -603,7 +603,7 @@ class EvidenciaController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
-        $anio = $request->input('anio') ?: '2025'; // Valor por defecto 2023
+        $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023
         
         $docentes = DB::table('users')
             ->leftJoin('pro_evidencias', function($join) use ($anio) {

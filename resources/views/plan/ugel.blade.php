@@ -42,9 +42,10 @@
                     <i class="fas fa-calendar-alt"></i>
                 </span>
                 <select class="form-control" id="year" name="year">
-                    <option value="2023" {{ isset($selectedYear) && $selectedYear == 2023 ? 'selected' : '' }}>2023</option>
+                    <option value="2026" {{ !isset($selectedYear) || $selectedYear == 2026 ? 'selected' : '' }}>2026</option>
+                    <option value="2025" {{ isset($selectedYear) && $selectedYear == 2025 ? 'selected' : '' }}>2025</option>
                     <option value="2024" {{ isset($selectedYear) && $selectedYear == 2024 ? 'selected' : '' }}>2024</option>
-                    <option value="2025" {{ !isset($selectedYear) || $selectedYear == 2025 ? 'selected' : '' }}>2025</option>
+                    <option value="2023" {{ isset($selectedYear) && $selectedYear == 2023 ? 'selected' : '' }}>2023</option>
                 </select>
             </div>
         </div>
@@ -101,12 +102,12 @@
     <thead class="bg-primary text-white">
     <tr>   
     <th scope="col">Nombre de Espacio de Lectura</th>
-    <th scope="col">Descripción</th>
+    <th scope="col">Descripci篓庐n</th>
     <th scope="col">Fecha</th>
     <th scope="col">Documento</th>
     <th scope="col">Usuario</th>
     <th scope="col">Cargo</th>
-    <th scope="col">Institución</th>
+    <th scope="col">Instituci篓庐n</th>
     <th scope="col">Tipo de II.EE.</th>
     <th scope="col">Provincia</th>
     <th scope="col">Distrito</th>
@@ -148,7 +149,7 @@
 <style>
     .fade {
         opacity: 0;
-        transition: opacity 0.5s ease-out; /* Duraci��n de la transici��n */
+        transition: opacity 0.5s ease-out; /* Duraci聞1陇7聞1陇7n de la transici聞1陇7聞1陇7n */
     }
 </style>
  
@@ -170,7 +171,7 @@
             let alert = document.querySelector('.alert');
             if (alert) {
                 alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transici��n y elimina
+                setTimeout(() => alert.remove(), 500); // Espera la transici聞1陇7聞1陇7n y elimina
             }
         }, 3000); // 3000ms = 3 segundos
     });
@@ -178,16 +179,16 @@
 
 <script>
 $(document).ready(function() {
-    // Función para obtener los parámetros actuales incluyendo el año
+    // Funci篓庐n para obtener los par篓垄metros actuales incluyendo el a聛0聤9o
     function getCurrentParams() {
         const params = new URLSearchParams(window.location.search);
         if (!params.has('year')) {
-            params.append('year', '2025'); // Asegurarse de que year=2025 esté siempre presente por defecto
+            params.append('year', '2026'); // Asegurarse de que year=2026 est茅 siempre presente por defecto
         }
         return params.toString();
     }
 
-    // Cuando cambia el año, recargar la página
+    // Cuando cambia el a聛0聤9o, recargar la p篓垄gina
     $('#year').on('change', function() {
         const currentUrl = new URL(window.location.href);
         const params = new URLSearchParams(currentUrl.search);
@@ -200,7 +201,7 @@ $(document).ready(function() {
     // Sobrescribir el mensaje de error de DataTables
     $.fn.dataTable.ext.errMode = 'none';
     
-    // IMPORTANTE: Solo una inicialización de DataTable
+    // IMPORTANTE: Solo una inicializaci篓庐n de DataTable
     $('#plans').DataTable({
         scrollX: true,
         dom: 'Bfrtip', // Activa los botones
@@ -243,8 +244,8 @@ $(document).ready(function() {
             }
         ],
         "language": {
-            "emptyTable": "No se encontró espacio de lectura en el hogar!",
-            "zeroRecords": "No se encontró espacio de lectura en el hogar!"
+            "emptyTable": "No se encontr篓庐 espacio de lectura en el hogar!",
+            "zeroRecords": "No se encontr篓庐 espacio de lectura en el hogar!"
         }
     });
     
@@ -265,13 +266,13 @@ function imprimir() {
     window.print();
 }
 
-// Limitar el DNI a 8 caracteres numéricos
+// Limitar el DNI a 8 caracteres num篓娄ricos
 document.addEventListener('DOMContentLoaded', function() {
     const dniInput = document.getElementById('dniInput');
 
     dniInput.addEventListener('input', function() {
         const inputValue = dniInput.value.trim();
-        const numericValue = inputValue.replace(/[^\d]/g, ''); // Elimina caracteres no numéricos
+        const numericValue = inputValue.replace(/[^\d]/g, ''); // Elimina caracteres no num篓娄ricos
 
         if (numericValue.length > 8) {
             dniInput.value = numericValue.slice(0, 8); // Limita a 8 caracteres

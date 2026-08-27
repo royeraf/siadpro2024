@@ -34,7 +34,7 @@ class AgendaViewController extends Controller
     public function ugel()
     {
         $ugel = Auth::user()->ugel;
-        $year = request()->get('year', '2025'); // Por defecto, año 2025
+        $year = request()->get('year', '2026'); // Por defecto, año 2025
         
         $agendas = Agenda::select("pro_agendas.id","pro_agendas.nomDocente","pro_agendas.title","pro_agendas.evento","pro_agendas.start","pro_agendas.end","pro_agendas.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_agendas.idUser")
@@ -58,7 +58,7 @@ class AgendaViewController extends Controller
             $ugel = Auth::user()->ugel;
             $instituciones = trim($request->get('instituciones'));
             $docentes = trim($request->get('docentes'));
-            $year = trim($request->get('year', '2025')); // Por defecto, año 2025
+            $year = trim($request->get('year', '2026')); // Por defecto, año 2025
 
             if (empty($request->get('docentes'))) {
                 $agendas = Agenda::select("pro_agendas.id","pro_agendas.nomDocente","pro_agendas.title","pro_agendas.evento","pro_agendas.start","pro_agendas.end","pro_agendas.institucion","users.provincia","users.distrito","users.ugel")
@@ -97,7 +97,7 @@ class AgendaViewController extends Controller
     public function general()
     {
         // Por defecto, mostrar datos del año 2025
-        $year = request()->get('year', '2025');
+        $year = request()->get('year', '2026');
         
         $agendas = Agenda::select("pro_agendas.id","pro_agendas.nomDocente","pro_agendas.title","pro_agendas.evento","pro_agendas.start","pro_agendas.end","pro_agendas.institucion","users.provincia","users.distrito","users.ugel")
         ->join("users","users.id","=","pro_agendas.idUser")
@@ -117,7 +117,7 @@ class AgendaViewController extends Controller
         $instituciones = trim($request->get('instituciones'));
         $docentes = trim($request->get('docentes'));
         $nivel = trim($request->get('nivel')); 
-        $year = trim($request->get('year', '2025')); // Año por defecto 2025
+        $year = trim($request->get('year', '2026')); // Año por defecto 2025
 
         // Si no se envía ningún filtro, redirige a la página principal
         if (empty($ugel) && empty($instituciones) && 
@@ -175,7 +175,7 @@ class AgendaViewController extends Controller
 
     public function obtenerUgels(Request $request)
     {        
-        $year = $request->get('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->get('year', '2026'); // Parámetro de año, defecto 2025
         
         $ugels = DB::table('institucions')
             ->select('institucions.ugel', DB::raw('count(distinct pro_agendas.idUser) as docentes_count'))
@@ -192,7 +192,7 @@ class AgendaViewController extends Controller
     public function obtenerInstitucions(Request $request)
     {        
         $ugel = Auth::user()->ugel;
-        $year = $request->get('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->get('year', '2026'); // Parámetro de año, defecto 2025
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
@@ -227,7 +227,7 @@ class AgendaViewController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $year = $request->input('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->input('year', '2026'); // Parámetro de año, defecto 2025
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
@@ -272,7 +272,7 @@ class AgendaViewController extends Controller
         }
         
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
-        $year = $request->input('year', '2025'); // Obtener año, defecto 2025
+        $year = $request->input('year', '2026'); // Obtener año, defecto 2025
 
         // Realiza una consulta para buscar instituciones que coincidan con $term y tengan información sobre docentes y agendas
         $resultados = DB::table('institucions')
@@ -318,7 +318,7 @@ class AgendaViewController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
-        $year = $request->input('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->input('year', '2026'); // Parámetro de año, defecto 2025
         
         \Log::info('Buscando docentes para institución y UGEL:', [
             'institucion' => $institucionSeleccionada, 
@@ -365,7 +365,7 @@ class AgendaViewController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
-        $year = $request->input('year', '2025'); // Obtener año, defecto 2025
+        $year = $request->input('year', '2026'); // Obtener año, defecto 2025
 
         $docentes = DB::table('users')
             ->leftJoin('pro_agendas', function($join) use ($year) {
@@ -396,7 +396,7 @@ class AgendaViewController extends Controller
         $instituciones = trim($request->get('instituciones', ''));
         $docentes = trim($request->get('docentes', ''));
         $nivel = trim($request->get('nivel', ''));
-        $year = trim($request->get('year', '2025')); // Añadir año, defecto 2025
+        $year = trim($request->get('year', '2026')); // Añadir año, defecto 2025
 
         // Construir la consulta
         $query = Agenda::select(

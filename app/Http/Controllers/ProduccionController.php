@@ -26,7 +26,7 @@ class ProduccionController extends Controller
     public function index()
     {
         $usuario = Auth::user()->id;
-        $selectedYear = request('year', '2025');
+        $selectedYear = request('year', '2026');
         
         $produccions = Produccion::where('estado', '1')
             ->where('idUser', $usuario)
@@ -51,8 +51,8 @@ class ProduccionController extends Controller
         
         $ugeluser = Auth::user()->ugel;
         $cargo = Auth::user()->cargo;
-        // Obtener el año seleccionado o usar 2025 por defecto
-        $selectedYear = request('year', '2025');
+        // Obtener el año seleccionado o usar 2026 por defecto
+        $selectedYear = request('year', '2026');
         
         \Log::info('Parámetros de filtro:', [
             'ugel_usuario' => $ugeluser,
@@ -189,7 +189,7 @@ class ProduccionController extends Controller
     {
         $usuario = Auth::user()->id;
         $texto = trim($request->get('texto'));
-        $selectedYear = $request->get('year', '2025');
+        $selectedYear = $request->get('year', '2026');
         
         $produccions = Produccion::where("nombreProduccion", "LIKE", "%" . $texto . "%")
             ->where('estado', '1')
@@ -208,8 +208,8 @@ class ProduccionController extends Controller
         \Log::info('Parámetros de búsqueda:', $request->all());
         
         $cargo = Auth::user()->cargo;
-        // Obtener el año seleccionado o usar 2025 por defecto
-        $selectedYear = $request->get('year', '2025');
+        // Obtener el año seleccionado o usar 2026 por defecto
+        $selectedYear = $request->get('year', '2026');
 
         if ($cargo == 'Especialista DRE') {
             if (empty($request->get('ugels')) && empty($request->get('instituciones')) && 
@@ -489,8 +489,8 @@ class ProduccionController extends Controller
 
     public function obtenerUgels(Request $request)
     {       
-        // Obtener el año seleccionado del request o usar 2025 como predeterminado
-        $selectedYear = $request->get('year', '2025');
+        // Obtener el año seleccionado del request o usar 2026 como predeterminado
+        $selectedYear = $request->get('year', '2026');
         
         $ugels = DB::table('pro_produccions')
             ->select('users.ugel', DB::raw('count(distinct pro_produccions.idUser) as docentes_count'))
@@ -507,7 +507,7 @@ class ProduccionController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -564,7 +564,7 @@ class ProduccionController extends Controller
         }
         
         $term = $request->input('term');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -615,7 +615,7 @@ class ProduccionController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         \Log::info('Buscando docentes para:', [
             'institucion' => $institucionSeleccionada, 
@@ -648,7 +648,7 @@ class ProduccionController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         $docentes = DB::table('users')
             ->leftJoin('pro_produccions', function($join) use ($selectedYear) {
@@ -674,7 +674,7 @@ class ProduccionController extends Controller
         $ugel = trim($request->get('ugels', ''));
         $nominstitucion = trim($request->get('instituciones', ''));
         $nivel = trim($request->get('nivel', ''));
-        $selectedYear = $request->get('year', '2025');  // Obtener el año seleccionado o usar 2025 por defecto
+        $selectedYear = $request->get('year', '2026');  // Obtener el año seleccionado o usar 2026 por defecto
     
         // Construir la misma consulta pero sin paginación
         $query = Produccion::select(

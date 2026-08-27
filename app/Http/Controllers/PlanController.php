@@ -30,8 +30,8 @@ class PlanController extends Controller
 
     public function general(Request $request)
     {
-        // Obtener el año del request, o usar 2025 como predeterminado
-        $year = $request->get('year', 2025);
+        // Obtener el año del request, o usar 2026 como predeterminado
+        $year = $request->get('year', 2026);
         
         $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.descripcion","pro_plans.fecha","pro_plans.documento","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
                     ->join("users","users.id","=","pro_plans.idUser")
@@ -46,7 +46,7 @@ class PlanController extends Controller
     public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.documento","pro_plans.fecha","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.nivelinstitucion","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_plans.idUser")
@@ -62,7 +62,7 @@ class PlanController extends Controller
     public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.documento","pro_plans.fecha","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_plans.idUser")
@@ -78,7 +78,7 @@ class PlanController extends Controller
     public function profesorcoordinador(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.documento","pro_plans.fecha","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_plans.idUser")
@@ -105,7 +105,7 @@ class PlanController extends Controller
     {
         $usuario = Auth::user()->id;
         $texto = trim($request->get('texto'));
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $plans = Plan::where("nombrePlan", "LIKE", "%" . $texto . "%")
             ->where('estado', '1')
@@ -121,7 +121,7 @@ class PlanController extends Controller
     {
         \Log::info('Params en buscarGeneral:', $request->all());
         
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         if (empty($request->get('ugels')) && empty($request->get('instituciones')) && empty($request->get('docentes')) && empty($request->get('texto'))) {
             return redirect('/plan-general?year=' . $year);
@@ -172,7 +172,7 @@ class PlanController extends Controller
         $dni = trim($request->get('texto'));
         $nivel = trim($request->get('nivel'));
         $nominstitucion = trim($request->get('nominstitucion'));
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $plans = Plan::select("pro_plans.id", "pro_plans.nombrePlan", "pro_plans.documento", "pro_plans.fecha", "pro_plans.color", "pro_plans.descripcion", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_plans.idUser")
@@ -192,7 +192,7 @@ class PlanController extends Controller
     {
         $institucion = Auth::user()->institucion;
         $texto = trim($request->get('texto'));
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $plans = Plan::select("pro_plans.id", "pro_plans.nombrePlan", "pro_plans.documento", "pro_plans.fecha", "pro_plans.color", "pro_plans.descripcion", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.ugel")
             ->join("users", "users.id", "=", "pro_plans.idUser")
@@ -414,7 +414,7 @@ class PlanController extends Controller
 
     public function obtenerUgels(Request $request)
     {
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $ugels = DB::table('pro_plans')
             ->select('users.ugel', DB::raw('count(distinct pro_plans.idUser) as docentes_count'))
@@ -431,7 +431,7 @@ class PlanController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -476,7 +476,7 @@ class PlanController extends Controller
         \Log::info('Params en buscarDocenteporInstitucion:', $request->all());
         
         $cargo = Auth::user()->cargo;
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         if ($cargo == "Especialista UGEL") {
             $ugelSeleccionada = Auth::user()->ugel;
@@ -515,7 +515,7 @@ class PlanController extends Controller
     public function buscadorinstitucion(Request $request)
     {   
         $cargo = Auth::user()->cargo;
-        $year = $request->get('year', 2025); // Año predeterminado 2025
+        $year = $request->get('year', 2026); // Año predeterminado 2026
         
         switch ($cargo) {
             case 'Especialista UGEL':
@@ -573,7 +573,7 @@ class PlanController extends Controller
         $name = trim($request->get('docentes', ''));
         $ugel = trim($request->get('ugels', ''));
         $nominstitucion = trim($request->get('instituciones', ''));
-        $year = $request->get('year', 2025); // Obtener el año del request, o usar 2025 como predeterminado
+        $year = $request->get('year', 2026); // Obtener el año del request, o usar 2026 como predeterminado
 
         // Construir la misma consulta pero sin paginación
         $query = Plan::select(

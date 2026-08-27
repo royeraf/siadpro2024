@@ -32,9 +32,10 @@
                 </span>
                 <select class="form-control" id="anio" name="anio">
                     <option value="" disabled>Seleccione Año</option>
-                    <option value="2023" {{ request('anio') == '2023' ? 'selected' : '' }}>2023</option>
+                    <option value="2026" {{ request('anio') == '2026' || !request('anio') ? 'selected' : '' }}>2026</option>
+                    <option value="2025" {{ request('anio') == '2025' ? 'selected' : '' }}>2025</option>
                     <option value="2024" {{ request('anio') == '2024' ? 'selected' : '' }}>2024</option>
-                    <option value="2025" {{ request('anio') == '2025' ? 'selected' : (request('anio') == '' ? 'selected' : '') }}>2025</option>
+                    <option value="2023" {{ request('anio') == '2023' ? 'selected' : '' }}>2023</option>
                 </select>     
             </div>
         </div>

@@ -52,7 +52,8 @@
                     <i class="fas fa-calendar-alt"></i>
                 </span>
                 <select class="form-control" id="year" name="year">
-                    <option value="2025" {{ request('year') == '2025' || !request('year') ? 'selected' : '' }}>2025</option>
+                    <option value="2026" {{ request('year') == '2026' || !request('year') ? 'selected' : '' }}>2026</option>
+                    <option value="2025" {{ request('year') == '2025' ? 'selected' : '' }}>2025</option>
                     <option value="2024" {{ request('year') == '2024' ? 'selected' : '' }}>2024</option>
                     <option value="2023" {{ request('year') == '2023' ? 'selected' : '' }}>2023</option>
                 </select>
@@ -101,12 +102,12 @@
                     <thead class="bg-primary text-white">
                     <tr>   
                     <th scope="col">Nombre Nombre de la Biblioteca</th>
-                    <th scope="col">Descripción</th>
+                    <th scope="col">Descripci篓庐n</th>
                     <th scope="col">Fecha</th>
                     <th scope="col">Documento</th>
                     <th scope="col">Usuario</th>
                     <th scope="col">Cargo</th>
-                    <th scope="col">Institución</th>
+                    <th scope="col">Instituci篓庐n</th>
                     <th scope="col">TIpo de II.EE.</th>
                     <th scope="col">Provincia</th>
                     <th scope="col">Distrito</th>
@@ -116,7 +117,7 @@
                     <tbody >
                     @if(count($informes)<=0)
                     <tr>
-                        <td colspan="11">No hay Biblioteca en el Aula para el año seleccionado</td>
+                        <td colspan="11">No hay Biblioteca en el Aula para el a聛0聤9o seleccionado</td>
                     </tr>
                     @else
                     @foreach ($informes as $informe)
@@ -162,10 +163,10 @@
 <script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js></script>
 <script>
 $(document).ready(function() {
-    // Función para obtener los parámetros actuales
+    // Funci篓庐n para obtener los par篓垄metros actuales
     function getCurrentParams() {
         const params = new URLSearchParams(window.location.search);
-        const year = params.get('year') || '2025'; // Asegurar que el año siempre esté incluido
+        const year = params.get('year') || '2026'; // Asegurar que el a 0艩9o siempre est篓娄 incluido
         params.set('year', year);
         return params.toString();
     }
@@ -180,7 +181,7 @@ $(document).ready(function() {
                 className: 'btn btn-warning',
                 exportOptions: { modifier: { page: 'all' } },
                 action: function (e, dt, node, config) {
-                    // Incluir el parámetro year en la URL
+                    // Incluir el par篓垄metro year en la URL
                     var url = dt.ajax.url() || window.location.href;
                     var params = getCurrentParams();
                     if (url.indexOf('?') > -1) {
@@ -225,13 +226,13 @@ $(document).ready(function() {
        
         }
 
-// Script para limitar la entrada del DNI a 8 dígitos
+// Script para limitar la entrada del DNI a 8 d篓陋gitos
 document.addEventListener('DOMContentLoaded', function() {
     const dniInput = document.getElementById('dniInput');
 
     dniInput.addEventListener('input', function() {
         const inputValue = dniInput.value.trim();
-        const numericValue = inputValue.replace(/[^\d]/g, ''); // Elimina caracteres no numéricos
+        const numericValue = inputValue.replace(/[^\d]/g, ''); // Elimina caracteres no num篓娄ricos
 
         if (numericValue.length > 8) {
             dniInput.value = numericValue.slice(0, 8); // Limita a 8 caracteres
@@ -249,8 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mostrar mensaje personalizado en caso de error
     $(document).on('error.dt', function(e, settings, techNote, message) {
         console.log('Se ha producido un error en DataTables: ', message);
-        // Si quieres mostrar un mensaje personalizado, puedes hacerlo así:
-        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontró acciones de sensibilización!</div>');
+        // Si quieres mostrar un mensaje personalizado, puedes hacerlo as篓陋:
+        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontr篓庐 acciones de sensibilizaci篓庐n!</div>');
     });
     
     $('#informes').DataTable({
@@ -260,14 +261,14 @@ document.addEventListener('DOMContentLoaded', function() {
         "bFilter": false,
         // Deshabilitar advertencias de consola
         "language": {
-            "emptyTable": "No se encontró acciones de difusion!"
+            "emptyTable": "No se encontr篓庐 acciones de difusion!"
         }
     });
     
     // Eliminar el modal de error de DataTables si existe
     $('.dt-error').remove();
     
-    // Cerrar automáticamente cualquier alerta de DataTables
+    // Cerrar autom篓垄ticamente cualquier alerta de DataTables
     setTimeout(function() {
         $('.dt-error').remove();
         $('[id^="DataTables_"]').remove();

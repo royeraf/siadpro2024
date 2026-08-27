@@ -33,8 +33,8 @@ class SectorController extends Controller
 
     public function general(Request $request)
     {
-        // Obtener el año seleccionado del request, con 2025 como valor predeterminado
-        $selectedYear = $request->get('year', 2025);
+        // Obtener el año seleccionado del request, con 2026 como valor predeterminado
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.descripcion","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
                     ->join("users","users.id","=","pro_sectores.idUser")
@@ -52,7 +52,7 @@ class SectorController extends Controller
     public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.nivelinstitucion","users.ugel")
             ->join("users","users.id","=","pro_sectores.idUser")
@@ -68,7 +68,7 @@ class SectorController extends Controller
     public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_sectores.idUser")
@@ -84,7 +84,7 @@ class SectorController extends Controller
     public function profesorcoordinador(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_sectores.idUser")
@@ -112,7 +112,7 @@ class SectorController extends Controller
         $usuario = Auth::user()->id;
         $texto = trim($request->get('texto'));
         $fecha = trim($request->get('fecha'));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::where("nombreSector", "LIKE", "%" . $texto . "%")
             ->where("fecha", "LIKE", "%" . $fecha . "%")
@@ -134,7 +134,7 @@ class SectorController extends Controller
             $name = trim($request->get('docentes'));
             $ugel = trim($request->get('ugels'));
             $nominstitucion = trim($request->get('instituciones'));
-            $selectedYear = $request->get('year', 2025);
+            $selectedYear = $request->get('year', 2026);
 
             $query = Sector::select(
                 "pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", 
@@ -175,7 +175,7 @@ class SectorController extends Controller
         $dni = trim($request->get('texto'));
         $nivel = trim($request->get('nivel'));
         $nominstitucion = trim($request->get('nombinstitucion'));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_sectores.idUser")
@@ -196,7 +196,7 @@ class SectorController extends Controller
         $institucion = Auth::user()->institucion;
         $texto = trim($request->get('texto'));
         $fecha = trim($request->get('fecha'));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.tiposector", "pro_sectores.updated_at", "pro_sectores.lugar", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_sectores.idUser")
@@ -454,7 +454,7 @@ class SectorController extends Controller
 
     public function obtenerUgels(Request $request)
     {   
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
             
         $ugels = DB::table('pro_sectores')
             ->select('users.ugel', DB::raw('count(distinct pro_sectores.idUser) as docentes_count'))
@@ -471,7 +471,7 @@ class SectorController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -515,7 +515,7 @@ class SectorController extends Controller
     public function buscadorinstitucion(Request $request)
     {   
         $cargo = Auth::user()->cargo;
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         switch ($cargo) {
             case 'Especialista UGEL':
@@ -574,7 +574,7 @@ class SectorController extends Controller
         // Agrega esto para depuración
         \Log::info('Parámetros recibidos en buscarDocenteporInstitucion:', $request->all());
         
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         $cargo = Auth::user()->cargo;
         
         // Corrige el operador de asignación a comparación
@@ -620,7 +620,7 @@ class SectorController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $docentes = DB::table('users')
             ->leftJoin('pro_sectores', function($join) use ($selectedYear) {
@@ -645,7 +645,7 @@ class SectorController extends Controller
         $name = trim($request->get('docentes', ''));
         $ugel = trim($request->get('ugels', ''));
         $nominstitucion = trim($request->get('instituciones', ''));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
 
         // Construir la misma consulta pero sin paginación
         $query = Sector::select(

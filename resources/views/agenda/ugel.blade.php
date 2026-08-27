@@ -22,9 +22,10 @@
                     <i class="fas fa-calendar-year"></i>
                 </span>
                 <select class="form-control" id="year" name="year">
-                    <option value="2023" {{ isset($selectedYear) && $selectedYear == '2023' ? 'selected' : '' }}>2023</option>
-                    <option value="2024" {{ isset($selectedYear) && $selectedYear == '2024' ? 'selected' : '' }}>2024</option>
+                    <option value="2026" {{ !isset($selectedYear) || $selectedYear == '2026' ? 'selected' : '' }}>2026</option>
                     <option value="2025" {{ isset($selectedYear) && $selectedYear == '2025' ? 'selected' : '' }}>2025</option>
+                    <option value="2024" {{ isset($selectedYear) && $selectedYear == '2024' ? 'selected' : '' }}>2024</option>
+                    <option value="2023" {{ isset($selectedYear) && $selectedYear == '2023' ? 'selected' : '' }}>2023</option>
                 </select>
             </div>
         </div>
@@ -133,9 +134,9 @@
 <script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js></script>
 <script>
 $(document).ready(function() {
-    // Si no hay año seleccionado, seleccionar 2025 por defecto
+    // Si no hay año seleccionado, seleccionar 2026 por defecto
     if (!$('#year').val()) {
-        $('#year').val('2025');
+        $('#year').val('2026');
     }
     
     $('#agendas').DataTable({
