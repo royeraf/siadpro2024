@@ -6,7 +6,10 @@
     'exportFilename' => 'reporte',
     'exportUrl' => null,
     'emptyMessage' => 'No se encontraron registros.',
-    'serverPaginated' => false
+    'serverPaginated' => false,
+    'totalServerRecords' => null,
+    'fromServer' => null,
+    'toServer' => null
 ])
 
 <div x-data="TableEngine('{{ $id }}', { perPage: {{ is_numeric($perPage) ? $perPage : "'$perPage'" }}, serverPaginated: {{ $serverPaginated ? 'true' : 'false' }} })" class="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden my-3">
@@ -85,16 +88,23 @@
             </div>
 
             <div class="text-gray-500 text-xs sm:text-sm">
-                Mostrando <span class="font-semibold text-gray-900" x-text="fromIndex"></span> a 
-                <span class="font-semibold text-gray-900" x-text="toIndex"></span> de 
-                <span class="font-semibold text-gray-900" x-text="filteredRowsCount"></span> registros
-                <template x-if="filteredRowsCount !== totalRows">
-                    <span class="text-xs text-gray-500">(filtrados de <span x-text="totalRows"></span>)</span>
-                </template>
+                @if($serverPaginated && $totalServerRecords !== null)
+                    Mostrando <span class="font-semibold text-gray-900">{{ $fromServer ?? 0 }}</span> a 
+                    <span class="font-semibold text-gray-900">{{ $toServer ?? 0 }}</span> de 
+                    <span class="font-semibold text-gray-900">{{ number_format($totalServerRecords) }}</span> registros
+                @else
+                    Mostrando <span class="font-semibold text-gray-900" x-text="fromIndex"></span> a 
+                    <span class="font-semibold text-gray-900" x-text="toIndex"></span> de 
+                    <span class="font-semibold text-gray-900" x-text="filteredRowsCount"></span> registros
+                    <template x-if="filteredRowsCount !== totalRows">
+                        <span class="text-xs text-gray-500">(filtrados de <span x-text="totalRows"></span>)</span>
+                    </template>
+                @endif
             </div>
         </div>
 
-        {{-- Derecha: Controles de Paginador --}}
+        {{-- Derecha: Controles de Paginador (Solo cuando es paginación cliente, en serverPaginated se usa el paginador de Laravel debajo) --}}
+        @if(!$serverPaginated)
         <div class="inline-flex items-center gap-1.5" x-show="totalPages > 1">
             <button type="button" @click="setPage(currentPage - 1)" :disabled="currentPage === 1"
                     :class="currentPage === 1 ? 'opacity-40 cursor-not-allowed text-gray-300 shadow-none' : 'text-gray-600 hover:bg-gray-100 hover:text-blue-700 hover:border-blue-300 shadow-sm'"
@@ -118,5 +128,6 @@
                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
             </button>
         </div>
+        @endif
     </div>
 </div>

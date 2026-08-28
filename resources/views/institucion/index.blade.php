@@ -142,7 +142,16 @@
 </div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
-<x-table-base id="tabla-instituciones" :perPage="request('per_page', 15)" :exportable="true" :searchable="true" exportFilename="instituciones" :exportUrl="route('exportInstituciones', request()->all())" :serverPaginated="true">
+<x-table-base id="tabla-instituciones" 
+              :perPage="request('per_page', 15)" 
+              :exportable="true" 
+              :searchable="true" 
+              exportFilename="instituciones" 
+              :exportUrl="route('exportInstituciones', request()->all())" 
+              :serverPaginated="true"
+              :totalServerRecords="$institucions->total()"
+              :fromServer="$institucions->firstItem() ?? 0"
+              :toServer="$institucions->lastItem() ?? 0">
     <x-slot name="header">
         <tr>
             <th @click="sortBy(0)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 70px;">

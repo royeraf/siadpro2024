@@ -173,7 +173,16 @@
 </div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
-<x-table-base id="tabla-usuarios" :perPage="request('per_page', 10)" :exportable="true" :searchable="true" :exportFilename="$estado === '1' ? 'usuarios_activos' : 'usuarios_inhabilitados'" :exportUrl="route('exportUsers', request()->all())" :serverPaginated="true">
+<x-table-base id="tabla-usuarios" 
+              :perPage="request('per_page', 10)" 
+              :exportable="true" 
+              :searchable="true" 
+              :exportFilename="$estado === '1' ? 'usuarios_activos' : 'usuarios_inhabilitados'" 
+              :exportUrl="route('exportUsers', request()->all())" 
+              :serverPaginated="true"
+              :totalServerRecords="$users->total()"
+              :fromServer="$users->firstItem() ?? 0"
+              :toServer="$users->lastItem() ?? 0">
     <x-slot name="header">
         <tr>
             <th @click="sortBy(0)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 90px;">
