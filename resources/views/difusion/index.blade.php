@@ -1,348 +1,212 @@
 @extends('adminlte::page')
-@section('css')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
-<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-@endsection
 
-@section('title', 'Accion')
-@extends('adminlte::page')
-@section('css')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
-<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-@endsection
+@section('title', 'Acción de Difusión')
 
-@section('title', 'Accion')
+@section('css')
+<link rel="stylesheet" href="/css/admin_custom.css">
+@vite(['resources/css/app.css'])
+<style>
+    .stats-card {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        border-radius: 8px;
+        padding: 12px 18px;
+        margin-bottom: 15px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .stats-icon {
+        font-size: 32px;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    .stats-number {
+        font-size: 24px;
+        font-weight: 700;
+        display: block;
+        color: #facc15;
+        line-height: 1.1;
+    }
+    .stats-title {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.95;
+    }
+    @media (max-width: 575px) {
+        .stats-card {
+            display: flex;
+            width: 100%;
+        }
+    }
+</style>
+@endsection
 
 @section('content_header')
-    @if(session('mensajeinternet'))
-        <div class="alert alert-danger">
-            {{ session('mensajeinternet') }}
-        </div>
-    @endif
-    <h1>Listado de Acciones de Difusion</h1>
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <h1 class="m-0 text-dark"><i data-lucide="radio" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Acciones de Difusión</h1>
+        <a href="{{ route('difusions.create') }}" class="btn btn-primary">
+            <i data-lucide="circle-plus" class="w-4 h-4 mr-1 inline-block align-text-bottom"></i> Nueva Difusión
+        </a>
+    </div>
 @stop
 
 @section('content')
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-    
-    @if ($errors->has('documento'))
+
+@if(session('mensajeinternet'))
+    <div class="alert alert-danger">
+        {{ session('mensajeinternet') }}
+    </div>
+@endif
+
+@if(session('success'))
+    <div id="alert-success" class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+@endif
+
+@if ($errors->has('documento'))
     <div class="alert alert-danger">
         {{ $errors->first('documento') }}
     </div>
-    @endif
-    
-    @if(count($accions)<=0)
-        <div class="alert alert-info">
-            No se encontró acciones de difusion!
+@endif
+
+<!-- Contador de acciones -->
+<div class="row">
+    <div class="col-12">
+        <div class="stats-card">
+            <div class="stats-icon">
+                <i data-lucide="radio" class="w-8 h-8"></i>
+            </div>
+            <div class="stats-info">
+                <span class="stats-number" id="tabla-difusiones-total">{{ number_format($accions->total()) }}</span>
+                <span class="stats-title">Total de Acciones de Difusión Subidas</span>
+            </div>
         </div>
+    </div>
+</div>
+
+<!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
+<x-table-base id="tabla-difusiones"
+              :perPage="10"
+              :exportable="true"
+              :searchable="true"
+              exportFilename="acciones_difusion"
+              :serverPaginated="true"
+              :totalServerRecords="$accions->total()"
+              :fromServer="$accions->firstItem() ?? 0"
+              :toServer="$accions->lastItem() ?? 0"
+              :filterAction="route('difusions.index')">
+    <x-slot name="filters">
+        <x-table-filter name="texto" label="Nombre de la Acción" icon="file-text" placeholder="Ej. Campaña radial" />
+        <x-table-filter name="fecha" label="Fecha" icon="calendar" type="date" />
+    </x-slot>
+    <x-slot name="header">
+        <tr>
+            <th @click="sortBy(0)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Nombre de la Acción</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 0 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 0 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(1)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Descripción</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 1 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 1 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(2)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 120px;">
+                <div class="flex items-center justify-between">
+                    <span>Fecha</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 2 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 2 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Documento
+            </th>
+            <th @click="sortBy(4)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Usuario</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 4 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 4 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(5)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Institución</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 5 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 5 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(6)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Provincia</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 6 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 6 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(7)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Distrito</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 7 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 7 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(8)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>UGEL</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 8 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 8 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Opciones
+            </th>
+        </tr>
+    </x-slot>
+
+    @include('difusion._rows')
+</x-table-base>
+
+<div id="tabla-difusiones-pagination" class="mt-3 flex justify-end">
+    @if ($accions->hasPages())
+        {{ $accions->appends(request()->except('page'))->links() }}
     @endif
+</div>
 
- <form action="{{route('buscarDifusion')}}" method="get" class="row g-3">
-                 <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-file"></i>
-                </span>
-                    <input type="text" class="form-control" name="texto" Placeholder="Nombre de la Acción">
-                    
-                </div>
-                </div>
-                </div>
-                <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-calendar"></i>
-                </span>
-                    <input type="date" class="form-control" name="fecha" Placeholder="fecha de publicacion">
-                </div>
-                </div>
-                </div>
-                <div class="form-group col-md-1">
-                    <input type="submit" class="btn btn-primary" value="Buscar">
-                </div>
-                
-        
-        </form>
-
-<a href="difusions/create" class="btn btn-primary mb-3">+ NUEVA ACCIÓN DE DISFUSIÓN</a>
-
-<table id="accions" class="table table-striped table-bordered shadow-lg mt-4 display nowrap" style="width:100%">
-                    <thead class="bg-primary text-white">
-                    <tr>   
-                    <th scope="col">Nombre de la Acción</th>
-                    <th scope="col">Descripción</th>
-                    <th scope="col">Fecha</th>
-                    <th scope="col">Documento</th>
-                    <th scope="col">Usuario</th>
-                    <th scope="col">Institución</th>
-                    <th scope="col">Provincia</th>
-                    <th scope="col">Distrito</th>
-                    <th scope="col">UGEL</th>
-                    <th scope="col">Opciones</th>
-                    </tr>
-                    </thead>
-                    <tbody >
-                    @if(count($accions)<=0)
-                        <tr>
-                            <td colspan="8">No hay Accion de  Difusion</td>
-                        </tr>
-                        @else
-                        @foreach ($accions as $accion)
-                    <tr>
-                        <td>{{$accion->nombreAccion}}</td>
-                        <td>{{$accion->descripcion}}</td>
-                        <td>{{date('d-m-Y', strtotime($accion->fecha))}}</td>
-                        <td align="center"><a href="{{ route('accions.download', $accion->id) }}" , target="_blank"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>
-                        <td>{{$accion->getUser->name}}</td>
-                        <td>{{$accion->getUser->institucion}}</td>
-                        <td>{{$accion->getUser->provincia}}</td>
-                        <td>{{$accion->getUser->distrito}}</td>
-                        <td>{{$accion->getUser->ugel}}</td>
-                        <td>
-                            <form action="{{  route ('difusions.destroy',$accion->id)}}" method="POST">
-                            <a href="/difusions/{{ $accion->id}}/edit" class="btn btn-warning"><i class="fas fa-edit"></i></a>
-                            @csrf
-                        
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                        @endforeach
-                        @endif
-                     </tbody>
-                     </table>
-                     <div class="form-inline">
-                        <p>Total de Acciones Subidos: {{$accions->total()}}</p> <br>
-                        {{$accions->links()}}
-                     </div>
-                     
-                          
-                    
-@stop
-
-@section('css')
-<style>
-    .fade {
-        opacity: 0;
-        transition: opacity 0.5s ease-out; /* Duración de la transición */
-    }
-</style>
- 
 @stop
 
 @section('js')
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+@vite(['resources/js/app.js'])
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            let alert = document.querySelector('.alert');
-            if (alert) {
-                alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transición y elimina
-            }
-        }, 3000); // 3000ms = 3 segundos
-    });
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            let alert = document.querySelector('.alert');
-            if (alert) {
-                alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transición y elimina
-            }
-        }, 3000); // 3000ms = 3 segundos
-    });
-</script>
-<script>
-    $(document).ready(function() {
-    // Sobrescribir el mensaje de error de DataTables
-    $.fn.dataTable.ext.errMode = 'none';
-    
-    // Mostrar mensaje personalizado en caso de error
-    $(document).on('error.dt', function(e, settings, techNote, message) {
-        console.log('Se ha producido un error en DataTables: ', message);
-        // Si quieres mostrar un mensaje personalizado, puedes hacerlo así:
-        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontró acciones de sensibilización!</div>');
-    });
-    
-    $('#accions').DataTable({
-        scrollX: true,
-        "bInfo": false,
-        "bPaginate": false, 
-        "bFilter": false,
-        // Deshabilitar advertencias de consola
-        "language": {
-            "emptyTable": "No se encontró acciones de difusion!"
-        }
-    });
-    
-    // Eliminar el modal de error de DataTables si existe
-    $('.dt-error').remove();
-    
-    // Cerrar automáticamente cualquier alerta de DataTables
     setTimeout(function() {
-        $('.dt-error').remove();
-        $('[id^="DataTables_"]').remove();
-    }, 100);
-});
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
-<script>
-    @if (session('success'))
-        Swal.fire({
-            icon: 'success',
-            title: '¡Registro guardado!',
-            text: @json(session('success')),
-            timer: 2500,
-            showConfirmButton: false
-        });
-    @endif
-</script>
-@stop
-@section('content_header')
-    <h1>Listado de Acciones de Difusión</h1>
-@stop
-
-@section('content')
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-
- <form action="{{route('buscarDifusion')}}" method="get" class="row g-3">
-                 <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-file"></i>
-                </span>
-                    <input type="text" class="form-control" name="texto" Placeholder="Nombre de la Acción">
-                    
-                </div>
-                </div>
-                </div>
-                <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-calendar"></i>
-                </span>
-                    <input type="date" class="form-control" name="fecha" Placeholder="fecha de publicacion">
-                </div>
-                </div>
-                </div>
-                <div class="form-group col-md-1">
-                    <input type="submit" class="btn btn-primary" value="Buscar">
-                </div>
-                
-        
-        </form>
-
-<a href="difusions/create" class="btn btn-primary mb-3">+ NUEVA ACCIÓN DE DISFUSIÓN</a>
-
-<table id="accions" class="table table-striped table-bordered shadow-lg mt-4 display nowrap" style="width:100%">
-                    <thead class="bg-primary text-white">
-                    <tr>   
-                    <th scope="col">Nombre de la Acción</th>
-                    <th scope="col">Descripción</th>
-                    <th scope="col">Fecha</th>
-                    <th scope="col">Documento</th>
-                    <th scope="col">Usuario</th>
-                    <th scope="col">Institución</th>
-                    <th scope="col">Provincia</th>
-                    <th scope="col">Distrito</th>
-                    <th scope="col">UGEL</th>
-                    <th scope="col">Opciones</th>
-                    </tr>
-                    </thead>
-                    <tbody >
-                    @if(count($accions)<=0)
-                        <tr>
-                            <td colspan="8">No hay Accion de  Difusion</td>
-                        </tr>
-                        @else
-                        @foreach ($accions as $accion)
-                    <tr>
-                        <td>{{$accion->nombreAccion}}</td>
-                        <td>{{$accion->descripcion}}</td>
-                        <td>{{date('d-m-Y', strtotime($accion->fecha))}}</td>
-                        <td align="center"><a href="{{ route('accions.download', $accion->id) }}" , target="_blank"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>
-                        <td>{{$accion->getUser->name}}</td>
-                        <td>{{$accion->getUser->institucion}}</td>
-                        <td>{{$accion->getUser->provincia}}</td>
-                        <td>{{$accion->getUser->distrito}}</td>
-                        <td>{{$accion->getUser->ugel}}</td>
-                        <td>
-                            <form action="{{  route ('difusions.destroy',$accion->id)}}" method="POST">
-                            <a href="/difusions/{{ $accion->id}}/edit" class="btn btn-warning"><i class="fas fa-edit"></i></a>
-                            @csrf
-                        
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                        @endforeach
-                        @endif
-                     </tbody>
-                     </table>
-                     <div class="form-inline">
-                        <p>Total de Acciones Subidos: {{$accions->total()}}</p> <br>
-                        {{$accions->links()}}
-                     </div>
-                     
-                          
-                    
-@stop
-
-@section('css')
-<style>
-    .fade {
-        opacity: 0;
-        transition: opacity 0.5s ease-out; /* Duración de la transición */
-    }
-</style>
- 
-@stop
-
-@section('js')
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            let alert = document.querySelector('.alert');
-            if (alert) {
-                alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transición y elimina
-            }
-        }, 3000); // 3000ms = 3 segundos
-    });
-</script>
-
-<script>
-    $(document).ready(function()
-{
-
-$('#accions').DataTable(
-{
-    scrollX: true,
-    "bInfo" : false,
-    "bPaginate": false,
-    "bFilter": false
-});
-});
+        var alertEl = document.getElementById('alert-success');
+        if (alertEl) {
+            alertEl.classList.remove('show');
+        }
+    }, 4000);
 </script>
 @stop

@@ -88,6 +88,15 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
         }
 
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $usersQuery->where(function ($q) use ($buscar) {
+                foreach (['dni', 'name', 'email', 'cargo', 'institucion', 'ugel', 'provincia', 'distrito'] as $col) {
+                    $q->orWhere($col, 'LIKE', "%{$buscar}%");
+                }
+            });
+        }
+
         $perPage = $this->resolvePerPage($request);
 
         $users = $usersQuery->orderBy('id', 'desc')
@@ -95,6 +104,17 @@ class UserController extends Controller
                             ->withQueryString();
 
         $listaUgels = $this->listaUgels($estado);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('user._rows', ['users' => $users])->render(),
+                'pagination' => (string) $users->appends($request->except('page'))->links(),
+                'total' => $users->total(),
+                'totalFormatted' => number_format($users->total()),
+                'from' => $users->firstItem() ?? 0,
+                'to' => $users->lastItem() ?? 0,
+            ]);
+        }
 
         // Conteos para los badges de ambos tabs en una sola consulta.
         $conteos = User::selectRaw('estado, COUNT(*) as total')

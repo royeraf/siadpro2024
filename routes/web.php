@@ -249,15 +249,18 @@ Route::get('/buscar-usuario', [App\Http\Controllers\UserController::class, 'inde
 
 Route::get("/produccion-general", ['App\Http\Controllers\ProduccionController'::class, "general"])->middleware('auth')->name('produccions.view');
 Route::get("/accion-general", ['App\Http\Controllers\AccionController'::class, "general"])->middleware('auth')->name('accions.view');
+Route::get('/export-acciones-general', [App\Http\Controllers\AccionController::class, 'exportAccionsGeneral'])->name('exportAccionsGeneral')->middleware('auth');
 Route::get("/accion-dre", ['App\Http\Controllers\AccionController'::class, "dre"])->middleware('auth')->name('accions.dre');
 Route::get("/plan-general", ['App\Http\Controllers\PlanController'::class, "general"])->middleware('auth')->name('plans.view');
 Route::get("/informe-general", ['App\Http\Controllers\InformeController'::class, "general"])->middleware('auth')->name('informes.view');
 Route::get("/evidencia-general", ['App\Http\Controllers\EvidenciaController'::class, "general"])->middleware('auth')->name('evidencias.view');
 # nuevo sector
 Route::get("/sector-general", ['App\Http\Controllers\SectorController'::class, "general"])->middleware('auth')->name('sectores.view');
+Route::get('/export-sectores-general', [App\Http\Controllers\SectorController::class, 'exportSectoresGeneral'])->name('exportSectoresGeneral')->middleware('auth');
 
 
 Route::get("/difusion-general", ['App\Http\Controllers\DifusionController'::class, "general"])->middleware('auth')->name('difusions.view');
+Route::get('/export-difusion-general', [App\Http\Controllers\DifusionController::class, 'exportDifusionGeneral'])->name('exportDifusionGeneral')->middleware('auth');
 
 
 
@@ -273,6 +276,7 @@ Route::get("/evidencia-director", ['App\Http\Controllers\EvidenciaController'::c
 
 #nuevo sector
 Route::get("/sector-ugel", ['App\Http\Controllers\SectorController'::class, "ugel"])->middleware('auth')->name('sectores.ugel');
+Route::get('/export-sectores-ugel', [App\Http\Controllers\SectorController::class, 'exportSectoresUgel'])->name('exportSectoresUgel')->middleware('auth');
 Route::get("/sector-director", ['App\Http\Controllers\SectorController'::class, "director"])->middleware('auth')->name('sectores.director');
 
 
@@ -328,8 +332,11 @@ Route::get('/buscar-instituciones-por-ugel-dif', [DifusionController::class, 'bu
 Route::get('/buscar-docentes-por-institucion-dif', [DifusionController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-dif');
 Route::get('/exportar-evidencias', [EvidenciaController::class, 'exportarTodos'])->name('exportar.evidencias');
 
-// Rutas para difusi��n
-Route::get('/difusion-general', [DifusionController::class, 'general'])->name('difusion-general');
+// Rutas para difusión
+// La ruta GET /difusion-general ya está registrada arriba como 'difusions.view';
+// este duplicado (mismo URI, otro nombre) hacía que route('difusions.view') dejara
+// de resolver, porque el segundo registro pisa al primero en la tabla de despacho
+// aunque ambos nombres queden en el name-list.
 Route::get('/exportar-difusion', [DifusionController::class, 'exportarTodos'])->name('exportar.difusion');
 
 
@@ -395,7 +402,6 @@ Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.
 Route::get('/usuarios/{id}/estado', 'App\Http\Controllers\UserController@cambiarEstado')->name('cambiarEstado');
 
 Route::get("/sector-dre", [App\Http\Controllers\SectorController::class, "dre"])->middleware('auth')->name('sectores.dre');
-Route::resource('sectores', App\Http\Controllers\SectorController::class);
 Route::get('/exportar-producciones', [ProduccionController::class, 'exportarTodos'])->name('exportar.producciones');
 
 /*BUSQUEDA DE INSTITUCION POR UGEL*/

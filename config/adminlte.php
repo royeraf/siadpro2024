@@ -387,7 +387,7 @@ return [
             'url'  => '/difusion-general',
             'icon' => 'fas fa-file',
             'icon_color'  => 'blue',
-            'can' => 'evidencias.view',
+            'can' => 'accions.view',
         ],
         
         
@@ -396,31 +396,21 @@ return [
             'url'  => 'sector',
             'icon' => 'fa fa-database',
             'icon_color'  => 'white',
-            'can:sectores.index'
-            
-           
+            'can' => 'sectores.index',
         ],
-      
-      
-       [
+        [
             'text' => 'SECTORES DEL AULA (UGEL)',
             'url'  => '/sector-ugel',
             'icon' => 'fa fa-database',
             'icon_color'  => 'white',
-            'can' => 'evidencias.ugel',
-            
-            
-           
+            'can' => 'sectores.ugel',
         ],
-      
-      
-      [
+        [
             'text' => 'SECTORES DEL AULA (GENERAL)',
             'url'  => '/sector-general',
             'icon' => 'fa fa-database',
             'icon_color'  => 'white',
-            'can' => 'evidencias.view',
-           
+            'can' => 'sectores.view',
         ],
         
         

@@ -59,6 +59,17 @@ class InstitucionController extends Controller
 
         $institucions = $query->orderBy('id', 'asc')->paginate($perPage)->withQueryString();
 
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('institucion._rows', ['institucions' => $institucions])->render(),
+                'pagination' => (string) $institucions->appends($request->except('page'))->links(),
+                'total' => $institucions->total(),
+                'totalFormatted' => number_format($institucions->total()),
+                'from' => $institucions->firstItem() ?? 0,
+                'to' => $institucions->lastItem() ?? 0,
+            ]);
+        }
+
         $listaUgels = Institucion::where('estado', '1')
             ->whereNotNull('ugel')
             ->where('ugel', '!=', '')

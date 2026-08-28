@@ -11,6 +11,10 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('en-US');
+}
+
 export function initTableEngine() {
     window.TableEngine = function(tableId, options = {}) {
         return {
@@ -24,6 +28,11 @@ export function initTableEngine() {
             totalRows: 0,
             filteredRowsCount: 0,
             rows: [],
+            srvFrom: options.fromServer ?? 0,
+            srvTo: options.toServer ?? 0,
+            srvTotalFormatted: formatNumber(options.totalServerRecords),
+            srvLoading: false,
+            searchAbortController: null,
 
             init() {
                 this.$nextTick(() => {
@@ -61,6 +70,70 @@ export function initTableEngine() {
                 this.applyFilterAndPagination();
             },
 
+            async liveSearch() {
+                const table = document.getElementById(this.tableId);
+                if (!table) return;
+
+                const root = table.closest('[x-data]');
+                const form = root ? root.querySelector('form') : null;
+                if (!form) return;
+
+                const params = new URLSearchParams(new FormData(form));
+
+                if (this.searchAbortController) {
+                    this.searchAbortController.abort();
+                }
+                const controller = new AbortController();
+                this.searchAbortController = controller;
+                this.srvLoading = true;
+
+                let data;
+                try {
+                    const res = await fetch(`${form.getAttribute('action')}?${params.toString()}`, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                        signal: controller.signal,
+                    });
+                    if (!res.ok) return;
+                    data = await res.json();
+                } catch (e) {
+                    if (e.name === 'AbortError') return;
+                    return;
+                } finally {
+                    if (this.searchAbortController === controller) {
+                        this.srvLoading = false;
+                    }
+                }
+
+                const tbody = table.querySelector('tbody');
+                const emptyRow = tbody ? tbody.querySelector('.table-empty-row') : null;
+                if (tbody && emptyRow) {
+                    tbody.querySelectorAll('tr[data-table-row]').forEach(tr => tr.remove());
+                    emptyRow.insertAdjacentHTML('beforebegin', data.rows);
+                }
+
+                this.srvFrom = data.from;
+                this.srvTo = data.to;
+                this.srvTotalFormatted = data.totalFormatted;
+
+                const paginationEl = document.getElementById(this.tableId + '-pagination');
+                if (paginationEl) paginationEl.innerHTML = data.pagination;
+
+                const totalEl = document.getElementById(this.tableId + '-total');
+                if (totalEl) totalEl.textContent = data.totalFormatted;
+
+                const exportLink = root.querySelector('.tb-export-link');
+                if (exportLink) {
+                    const url = new URL(exportLink.href, window.location.origin);
+                    params.forEach((value, key) => url.searchParams.set(key, value));
+                    exportLink.href = url.toString();
+                }
+
+                history.replaceState(null, '', `${form.getAttribute('action')}?${params.toString()}`);
+
+                this.currentPage = 1;
+                this.extractRows();
+            },
+
             extractRows() {
                 const table = document.getElementById(this.tableId);
                 if (!table) return;
@@ -68,7 +141,18 @@ export function initTableEngine() {
                 const tbody = table.querySelector('tbody');
                 if (!tbody) return;
 
+                const headers = Array.from(table.querySelectorAll('thead th'))
+                    .map(th => th.innerText.replace(/\s+/g, ' ').trim());
+
                 const trs = Array.from(tbody.querySelectorAll('tr[data-table-row]'));
+                trs.forEach(tr => {
+                    Array.from(tr.children).forEach((td, idx) => {
+                        if (!td.dataset.label && headers[idx]) {
+                            td.dataset.label = headers[idx];
+                        }
+                    });
+                });
+
                 this.rows = trs.map((tr, index) => {
                     const cells = Array.from(tr.children).map(td => ({
                         text: td.innerText.trim().toLowerCase(),
