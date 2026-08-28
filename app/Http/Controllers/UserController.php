@@ -13,7 +13,7 @@ class UserController extends Controller
 {
     public function __construct(){
         $this->middleware('auth');
-        $this->middleware('can:users.index')->only('index');
+        $this->middleware('can:users.index')->only('index', 'exportUsers');
         $this->middleware('can:users.create')->only('create', 'store');
         $this->middleware('can:users.edit')->only('edit', 'update');
         $this->middleware('can:users.destroy')->only('destroy');
@@ -224,6 +224,79 @@ public function update(Request $request, User $user)
             ->get();
         
         return response()->json($ugels);
+    }
+
+    public function exportUsers(Request $request)
+    {
+        $estado = $request->get('estado') === '0' ? '0' : '1';
+
+        $query = User::where('estado', $estado);
+
+        if ($request->filled('texto')) {
+            $query->where('dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+
+        if ($request->filled('cargos')) {
+            $query->where('cargo', 'LIKE', '%' . $request->input('cargos') . '%');
+        }
+
+        if ($request->filled('ugel')) {
+            $query->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
+        }
+
+        $users = $query->orderBy('id', 'desc')->get();
+
+        $filename = ($estado === '1' ? 'usuarios_activos_' : 'usuarios_inhabilitados_') . date('Y-m-d') . '.xls';
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function() use ($users, $estado) {
+            $file = fopen('php://output', 'w');
+            // Escribir BOM UTF-8 para visualización correcta de tildes y caracteres especiales en Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            $html .= '<head><meta charset="utf-8">';
+            $html .= '<style>
+                table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+                th { background-color: #1E40AF; color: #FFFFFF; font-weight: bold; border: 1px solid #D1D5DB; padding: 8px; text-align: left; }
+                td { border: 1px solid #E5E7EB; padding: 6px; }
+                tr:nth-child(even) td { background-color: #F9FAFB; }
+            </style></head><body>';
+            $html .= '<table><thead><tr>';
+            $html .= '<th>Estado</th><th>ID</th><th>DNI</th><th>Usuario</th><th>Correo</th><th>Cargo</th><th>Institución</th><th>UGEL</th><th>Tipo de II.EE</th><th>Provincia</th><th>Distrito</th>';
+            $html .= '</tr></thead><tbody>';
+
+            foreach ($users as $user) {
+                $estadoTexto = $user->estado == 1 ? 'Activo' : 'Inactivo';
+                $html .= '<tr>';
+                $html .= '<td>' . htmlspecialchars($estadoTexto, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->id, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->dni, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->name, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->email, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->cargo ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->institucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->ugel ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->nivelinstitucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->provincia ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->distrito ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table></body></html>';
+
+            fwrite($file, $html);
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
 }

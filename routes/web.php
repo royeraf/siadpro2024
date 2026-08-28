@@ -402,6 +402,7 @@ Route::get('/exportar-producciones', [ProduccionController::class, 'exportarTodo
 
 Route::get('/instituciones', [InstitucionController::class, 'index'])->name('institucion.index');
 Route::get('/buscar-instituciones-por-ugel-ins', [InstitucionController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgel-ins');
+Route::get('/export-instituciones', [InstitucionController::class, 'exportInstituciones'])->name('exportInstituciones')->middleware('auth');
 
 
 

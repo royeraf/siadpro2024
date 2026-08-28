@@ -4,6 +4,7 @@
     'exportable' => true,
     'searchable' => true,
     'exportFilename' => 'reporte',
+    'exportUrl' => null,
     'emptyMessage' => 'No se encontraron registros.',
     'serverPaginated' => false
 ])
@@ -32,9 +33,15 @@
         {{-- Botones de Exportación --}}
         @if($exportable)
         <div class="flex flex-wrap items-center gap-2">
-            <button type="button" @click="exportExcel('{{ $exportFilename }}')" class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 cursor-pointer">
-                <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-1.5"></i> Excel
-            </button>
+            @if($exportUrl)
+                <a href="{{ $exportUrl }}" class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 text-decoration-none cursor-pointer">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-1.5"></i> Excel
+                </a>
+            @else
+                <button type="button" @click="exportExcel('{{ $exportFilename }}')" class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 cursor-pointer">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-1.5"></i> Excel
+                </button>
+            @endif
         </div>
         @endif
     </div>
