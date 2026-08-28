@@ -61,37 +61,37 @@
     $filtrosActuales = request()->only(['texto', 'cargos', 'ugel']);
 @endphp
 
-<!-- Tabs Activos / Inhabilitados -->
-<div class="flex items-center gap-2 border-b border-gray-200 mb-4">
-    @foreach ([
-        '1' => [
-            'label' => 'Activos',
-            'icon' => 'user-check',
-            'count' => $conteos['1'] ?? 0,
-            'active' => 'border-emerald-600 text-emerald-700 bg-emerald-50 rounded-t-md',
-            'badgeActive' => 'bg-emerald-600 text-white',
-        ],
-        '0' => [
-            'label' => 'Inhabilitados',
-            'icon' => 'user-x',
-            'count' => $conteos['0'] ?? 0,
-            'active' => 'border-rose-600 text-rose-700 bg-rose-50 rounded-t-md',
-            'badgeActive' => 'bg-rose-600 text-white',
-        ],
-    ] as $valor => $tab)
-        <a href="{{ route('users.index', array_merge($filtrosActuales, ['estado' => $valor])) }}"
-           class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition
-               {{ $estado === (string) $valor
-                   ? $tab['active']
-                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
-            <i data-lucide="{{ $tab['icon'] }}" class="w-4 h-4"></i>
-            {{ $tab['label'] }}
-            <span class="inline-flex items-center justify-center min-w-[1.75rem] px-2 py-0.5 text-xs font-bold rounded-full
-                {{ $estado === (string) $valor ? $tab['badgeActive'] : 'bg-gray-100 text-gray-600' }}">
-                {{ number_format($tab['count']) }}
+<!-- Tabs Activos / Inhabilitados Destacadas -->
+<div class="mb-4">
+    <div class="inline-flex p-1.5 bg-gray-100 border border-gray-300 rounded-xl shadow-sm gap-2">
+        <!-- Tab Activos -->
+        <a href="{{ route('users.index', array_merge($filtrosActuales, ['estado' => '1'])) }}"
+           class="inline-flex items-center gap-2.5 px-4 py-2 rounded-lg text-sm font-bold transition-all
+               {{ $estado === '1'
+                   ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/20'
+                   : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' }}">
+            <i data-lucide="user-check" class="w-5 h-5"></i>
+            <span>Usuarios Activos</span>
+            <span class="inline-flex items-center justify-center min-w-[1.75rem] px-2 py-0.5 text-xs font-black rounded-full
+                {{ $estado === '1' ? 'bg-white text-emerald-800 shadow-sm' : 'bg-emerald-200 text-emerald-900' }}">
+                {{ number_format($conteos['1'] ?? 0) }}
             </span>
         </a>
-    @endforeach
+
+        <!-- Tab Inhabilitados -->
+        <a href="{{ route('users.index', array_merge($filtrosActuales, ['estado' => '0'])) }}"
+           class="inline-flex items-center gap-2.5 px-4 py-2 rounded-lg text-sm font-bold transition-all
+               {{ $estado === '0'
+                   ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-500/20'
+                   : 'bg-rose-100 text-rose-800 hover:bg-rose-200' }}">
+            <i data-lucide="user-x" class="w-5 h-5"></i>
+            <span>Usuarios Inhabilitados</span>
+            <span class="inline-flex items-center justify-center min-w-[1.75rem] px-2 py-0.5 text-xs font-black rounded-full
+                {{ $estado === '0' ? 'bg-white text-rose-800 shadow-sm' : 'bg-rose-200 text-rose-900' }}">
+                {{ number_format($conteos['0'] ?? 0) }}
+            </span>
+        </a>
+    </div>
 </div>
 
 <!-- Contador de usuarios -->
