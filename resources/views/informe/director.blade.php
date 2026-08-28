@@ -61,7 +61,7 @@
                     <th scope="col">Documento</th>
                     <th scope="col">Usuario</th>
                     <th scope="col">Cargo</th>
-                    <th scope="col">Instituci¨®n</th>
+                    <th scope="col">Instituciï¿½ï¿½n</th>
                     <th scope="col">Provincia</th>
                     <th scope="col">Distrito</th>
                     <th scope="col">UGEL</th>
@@ -74,11 +74,6 @@
                     </tr>
                     @else
                     @foreach ($informes as $informe)
-                
-                   @php
-                         $fecha = date('Y', strtotime($informe->fecha));
-                     @endphp
-                    @if ($fecha == 2024)
                     <tr>
                         <td>{{$informe->nombreInforme}}</td>
                         <td>{{$informe->descripcion}}</td>
@@ -91,7 +86,6 @@
                         <td>{{$informe->distrito}}</td>
                         <td>{{$informe->ugel}}</td>
                     </tr>
-                    @endif
                         @endforeach
                         @endif
                      </tbody>
@@ -121,8 +115,8 @@
     // Mostrar mensaje personalizado en caso de error
     $(document).on('error.dt', function(e, settings, techNote, message) {
         console.log('Se ha producido un error en DataTables: ', message);
-        // Si quieres mostrar un mensaje personalizado, puedes hacerlo as¨ª:
-        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontr¨® acciones de sensibilizaci¨®n!</div>');
+        // Si quieres mostrar un mensaje personalizado, puedes hacerlo asï¿½ï¿½:
+        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontrï¿½ï¿½ acciones de sensibilizaciï¿½ï¿½n!</div>');
     });
     
     $('#informes').DataTable({
@@ -132,14 +126,14 @@
         "bFilter": false,
         // Deshabilitar advertencias de consola
         "language": {
-            "emptyTable": "No se encontr¨® acciones de difusion!"
+            "emptyTable": "No se encontrï¿½ï¿½ acciones de difusion!"
         }
     });
     
     // Eliminar el modal de error de DataTables si existe
     $('.dt-error').remove();
     
-    // Cerrar autom¨¢ticamente cualquier alerta de DataTables
+    // Cerrar automï¿½ï¿½ticamente cualquier alerta de DataTables
     setTimeout(function() {
         $('.dt-error').remove();
         $('[id^="DataTables_"]').remove();

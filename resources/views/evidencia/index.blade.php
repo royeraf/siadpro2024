@@ -87,11 +87,6 @@
                         </tr>
                         @else
                         @foreach ($evidencias as $evidencia)
-                    
-                       @php
-                             $fecha = date('Y', strtotime($evidencia->fecha));
-                         @endphp
-                        @if ($fecha == 2025)
                     <tr>
                         <td>{{$evidencia->nombreEvidencia}}</td>
                         <td>{{$evidencia->descripcion}}</td>
@@ -112,7 +107,6 @@
                             </form>
                         </td>
                     </tr>
-                    @endif
                     @endforeach
                     @endif
                      </tbody>
@@ -194,5 +188,18 @@
         $('[id^="DataTables_"]').remove();
     }, 100);
 });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
+<script>
+    @if (session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: '¡Registro guardado!',
+            text: @json(session('success')),
+            timer: 2500,
+            showConfirmButton: false
+        });
+    @endif
 </script>
 @stop

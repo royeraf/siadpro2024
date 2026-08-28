@@ -26,7 +26,6 @@ class InformeController extends Controller
         $usuario = Auth::user()->id;
         $informes = Informe::where('estado', '1')
         ->where('idUser',$usuario)
-        ->whereYear('fecha',2026)
         ->orderby('id','desc')->paginate(10);
         return view('informe.index')->with('informes',$informes);
     }
@@ -47,11 +46,12 @@ class InformeController extends Controller
     public function ugel()
     {
         $ugel = Auth::user()->ugel;
+        $year = request()->get('year', '2026');
         $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.documento","pro_informes.color","pro_informes.fecha","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.nivelinstitucion","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_informes.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha',2024)
+            ->whereYear('pro_informes.fecha', $year)
             ->orderby('pro_informes.id','desc')
             ->paginate(10);
             return view("informe.ugel",compact('informes'));
@@ -60,12 +60,12 @@ class InformeController extends Controller
     public function director()
     {
         $institucion = Auth::user()->institucion;
+        $year = request()->get('year', '2026');
         $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.documento","pro_informes.fecha","pro_informes.color","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_informes.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha',2024)
-            
+            ->whereYear('pro_informes.fecha', $year)
             ->orderby('pro_informes.id','desc')
             ->paginate(10);
             return view("informe.director",compact('informes'));
@@ -74,11 +74,12 @@ class InformeController extends Controller
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;
+        $year = request()->get('year', '2026');
         $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.documento","pro_informes.fecha","pro_informes.color","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.nivelinstitucion","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_informes.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha',2024)
+            ->whereYear('pro_informes.fecha', $year)
             ->orderby('pro_informes.id','desc')
             ->paginate(10);
             return view("informe.coordinador",compact('informes'));
@@ -96,11 +97,9 @@ class InformeController extends Controller
     public function buscar(Request $request){
         $usuario = Auth::user()->id;
         $texto = trim($request->get('texto'));
-        $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
-        
+
         $informes = Informe::where("nombreInforme","LIKE","%".$texto."%")
         ->where('estado', '1')
-        ->whereYear('pro_informes.fecha', $year)
         ->where('idUser', $usuario)
         ->orderby('pro_informes.id','desc')
         ->paginate(10);

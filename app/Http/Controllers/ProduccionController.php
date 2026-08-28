@@ -26,17 +26,14 @@ class ProduccionController extends Controller
     public function index()
     {
         $usuario = Auth::user()->id;
-        $selectedYear = request('year', '2026');
-        
+
         $produccions = Produccion::where('estado', '1')
             ->where('idUser', $usuario)
-            ->whereYear('fecha', $selectedYear)
             ->orderby('id', 'desc')
             ->paginate(10);
-            
+
         return view('produccion.index')
-            ->with('produccions', $produccions)
-            ->with('selectedYear', $selectedYear);
+            ->with('produccions', $produccions);
     }
 
     public function create()
@@ -189,18 +186,15 @@ class ProduccionController extends Controller
     {
         $usuario = Auth::user()->id;
         $texto = trim($request->get('texto'));
-        $selectedYear = $request->get('year', '2026');
-        
+
         $produccions = Produccion::where("nombreProduccion", "LIKE", "%" . $texto . "%")
             ->where('estado', '1')
             ->where('idUser', $usuario)
-            ->whereYear('fecha', $selectedYear)
             ->orderBy('id', 'desc')
             ->paginate(10);
-            
+
         return view('produccion.index')
-            ->with('produccions', $produccions)
-            ->with('selectedYear', $selectedYear);
+            ->with('produccions', $produccions);
     }
 
     public function buscarGeneral(Request $request)

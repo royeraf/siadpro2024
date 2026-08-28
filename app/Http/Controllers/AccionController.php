@@ -129,12 +129,13 @@ class AccionController extends Controller
     public function ugel()
     {
         $ugel = Auth::user()->ugel;
+        $anio = request()->get('anio', '2026');
         $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.fecha","pro_accions.lugar","pro_users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
             ->join("users","users.id","=","pro_accions.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_accions.estado', '1')
             ->where('pro_accions.tipo', 'sensibilizacion')
-            ->whereYear('fecha', "2023")
+            ->whereYear('fecha', $anio)
             ->orderby('pro_accions.fecha','desc')
             ->paginate(10);
             return view("accion.view",compact('accions'));

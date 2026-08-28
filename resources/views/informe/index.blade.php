@@ -58,11 +58,11 @@
                     <thead class="bg-primary text-white">
                     <tr>   
                     <th scope="col">Nombre de la Biblioteca</th>
-                    <th scope="col">Descripci¨®n</th>
+                    <th scope="col">Descripciï¿½ï¿½n</th>
                     <th scope="col">Fecha</th>
                     <th scope="col">Documento</th>
                     <th scope="col">Usuario</th>
-                    <th scope="col">Instituci¨®n</th>
+                    <th scope="col">Instituciï¿½ï¿½n</th>
                     <th scope="col">Provincia</th>
                     <th scope="col">Distrito</th>
                     <th scope="col">UGEL</th>
@@ -77,11 +77,6 @@
 
                     @else
                     @foreach ($informes as $informe)
-                
-                   @php
-                         $fecha = date('Y', strtotime($informe->fecha));
-                     @endphp
-                    @if ($fecha == 2025)
                     <tr>
                         <td>{{$informe->nombreInforme}}</td>
                         <td>{{$informe->descripcion}}</td>
@@ -103,7 +98,6 @@
                             </form>
                         </td>
                     </tr>
-                    @endif
                         @endforeach
                         @endif
                      </tbody>
@@ -121,7 +115,7 @@
 <style>
     .fade {
         opacity: 0;
-        transition: opacity 0.5s ease-out; /* Duraci„1¤7„1¤7n de la transici„1¤7„1¤7n */
+        transition: opacity 0.5s ease-out; /* Duraciï¿½1ï¿½7ï¿½1ï¿½7n de la transiciï¿½1ï¿½7ï¿½1ï¿½7n */
     }
 </style>
  
@@ -136,7 +130,7 @@
             let alert = document.querySelector('.alert');
             if (alert) {
                 alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transici„1¤7„1¤7n y elimina
+                setTimeout(() => alert.remove(), 500); // Espera la transiciï¿½1ï¿½7ï¿½1ï¿½7n y elimina
             }
         }, 3000); // 3000ms = 3 segundos
     });
@@ -148,7 +142,7 @@
             let alert = document.querySelector('.alert');
             if (alert) {
                 alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transici¨®n y elimina
+                setTimeout(() => alert.remove(), 500); // Espera la transiciï¿½ï¿½n y elimina
             }
         }, 3000); // 3000ms = 3 segundos
     });
@@ -161,8 +155,8 @@
     // Mostrar mensaje personalizado en caso de error
     $(document).on('error.dt', function(e, settings, techNote, message) {
         console.log('Se ha producido un error en DataTables: ', message);
-        // Si quieres mostrar un mensaje personalizado, puedes hacerlo as¨ª:
-        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontr¨® acciones de sensibilizaci¨®n!</div>');
+        // Si quieres mostrar un mensaje personalizado, puedes hacerlo asï¿½ï¿½:
+        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontrï¿½ï¿½ acciones de sensibilizaciï¿½ï¿½n!</div>');
     });
     
     $('#informes').DataTable({
@@ -172,18 +166,31 @@
         "bFilter": false,
         // Deshabilitar advertencias de consola
         "language": {
-            "emptyTable": "No se encontr¨® bibliotecas en el aula!"
+            "emptyTable": "No se encontrï¿½ï¿½ bibliotecas en el aula!"
         }
     });
     
     // Eliminar el modal de error de DataTables si existe
     $('.dt-error').remove();
     
-    // Cerrar autom¨¢ticamente cualquier alerta de DataTables
+    // Cerrar automï¿½ï¿½ticamente cualquier alerta de DataTables
     setTimeout(function() {
         $('.dt-error').remove();
         $('[id^="DataTables_"]').remove();
     }, 100);
 });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
+<script>
+    @if (session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Â¡Registro guardado!',
+            text: @json(session('success')),
+            timer: 2500,
+            showConfirmButton: false
+        });
+    @endif
 </script>
 @stop

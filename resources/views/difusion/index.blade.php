@@ -94,11 +94,6 @@
                         </tr>
                         @else
                         @foreach ($accions as $accion)
-                    
-                       @php
-                             $fecha = date('Y', strtotime($accion->fecha));
-                         @endphp
-                        @if ($fecha == 2025)
                     <tr>
                         <td>{{$accion->nombreAccion}}</td>
                         <td>{{$accion->descripcion}}</td>
@@ -119,7 +114,6 @@
                             </form>
                         </td>
                     </tr>
-                      @endif
                         @endforeach
                         @endif
                      </tbody>
@@ -202,6 +196,19 @@
     }, 100);
 });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
+<script>
+    @if (session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: '¡Registro guardado!',
+            text: @json(session('success')),
+            timer: 2500,
+            showConfirmButton: false
+        });
+    @endif
+</script>
 @stop
 @section('content_header')
     <h1>Listado de Acciones de Difusión</h1>
@@ -267,11 +274,6 @@
                         </tr>
                         @else
                         @foreach ($accions as $accion)
-                    
-                       @php
-                             $fecha = date('Y', strtotime($accion->fecha));
-                         @endphp
-                        @if ($fecha == 2025)
                     <tr>
                         <td>{{$accion->nombreAccion}}</td>
                         <td>{{$accion->descripcion}}</td>
@@ -292,7 +294,6 @@
                             </form>
                         </td>
                     </tr>
-                      @endif
                         @endforeach
                         @endif
                      </tbody>
@@ -332,15 +333,15 @@
 </script>
 
 <script>
-    $(document).ready(function() 
+    $(document).ready(function()
 {
 
 $('#accions').DataTable(
 {
     scrollX: true,
     "bInfo" : false,
-    "bPaginate": false, 
-    "bFilter": false 
+    "bPaginate": false,
+    "bFilter": false
 });
 });
 </script>

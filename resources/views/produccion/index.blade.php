@@ -174,4 +174,17 @@
     }, 100);
 });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
+<script>
+    @if (session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: '¡Registro guardado!',
+            text: @json(session('success')),
+            timer: 2500,
+            showConfirmButton: false
+        });
+    @endif
+</script>
 @stop
