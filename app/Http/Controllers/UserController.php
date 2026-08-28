@@ -49,23 +49,32 @@ class UserController extends Controller
     ];
 
     /**
-     * Restringe los roles que el usuario autenticado puede asignar a otros,
-     * según la jerarquía escalonada: nunca puede otorgar un rol por encima
-     * del suyo propio (evita escalada de privilegios).
+     * Roles que el usuario autenticado puede asignar a otros, según la
+     * jerarquía escalonada (nunca por encima de su propio nivel).
      */
-    private function filterAssignableRoles(array $roleIds): array
+    private function assignableRoles()
     {
         if ($this->isAdmin()) {
-            return $roleIds;
+            return Role::all();
         }
 
         $assignableNames = collect(Auth::user()->roles->pluck('name'))
             ->flatMap(fn ($roleName) => self::ROLE_HIERARCHY[$roleName] ?? [])
             ->unique();
 
-        $assignableIds = Role::whereIn('name', $assignableNames)->pluck('id');
+        return Role::whereIn('name', $assignableNames)->get();
+    }
 
-        return array_values(array_intersect($roleIds, $assignableIds->all()));
+    /**
+     * Restringe los roles que el usuario autenticado puede asignar a otros,
+     * según la jerarquía escalonada: nunca puede otorgar un rol por encima
+     * del suyo propio (evita escalada de privilegios).
+     */
+    private function filterAssignableRoles(array $roleIds): array
+    {
+        $assignableIds = $this->assignableRoles()->pluck('id')->all();
+
+        return array_values(array_intersect($roleIds, $assignableIds));
     }
 
     public function index(Request $request)
@@ -163,7 +172,7 @@ class UserController extends Controller
     {
         abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
 
-        $roles =  Role::all();
+        $roles = $this->assignableRoles();
 
         return view('user.edit',compact('user','roles'));
     }
