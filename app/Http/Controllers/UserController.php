@@ -101,16 +101,10 @@ class UserController extends Controller
         $users->provincia = Str::upper($request->get('provincia'));
         $users->estado = $request->get('estado');
         $users->password = bcrypt($request->get('password'));
-
-        try {
-            // Crear usuario
-            User::create($request->all());
-            return response()->json(['message' => 'Usuario creado con ��xito'], 200);
-        } catch (ValidationException $e) {
-            return response()->json(['error' => 'El DNI o correo ya est�� en uso.'], 400);
-        }
         $users->save();
-        return redirect('/users');
+
+        return redirect()->route('users.index')
+            ->with('success', 'Usuario creado con éxito');
     }
 
 
