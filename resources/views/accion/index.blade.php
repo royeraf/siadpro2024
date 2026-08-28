@@ -131,6 +131,8 @@
 @stop
 
 @section('js')
+@vite(['resources/js/app.js'])
+<x-sweet-alert />
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 <script>
@@ -176,18 +178,5 @@
         $('[id^="DataTables_"]').remove();
     }, 100);
 });
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
-<script>
-    @if (session('success'))
-        Swal.fire({
-            icon: 'success',
-            title: '¡Registro guardado!',
-            text: @json(session('success')),
-            timer: 2500,
-            showConfirmButton: false
-        });
-    @endif
 </script>
 @stop

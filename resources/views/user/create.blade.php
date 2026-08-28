@@ -243,6 +243,8 @@
 @stop
 
 @section('js') 
+@vite(['resources/js/app.js'])
+<x-sweet-alert />
 <script>
   function showInstituciones(id) {
     $.get("/api/instituciones/"+id, function(instituciones){
@@ -328,36 +330,36 @@
     });
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <script>
-    // Modal en base a errores
-    @if ($errors->any())
-        @if ($errors->has('dni') && $errors->has('email'))
-            Swal.fire({
-                icon: 'error',
-                title: '¡Error!',
-                text: 'El correo electrónico y el DNI ya están registrados. Por favor, ingrese un correo y un DNI diferentes.'
-            });
-        @elseif ($errors->has('dni'))
-            Swal.fire({
-                icon: 'error',
-                title: '¡Error!',
-                text: 'El DNI ya está registrado. Por favor, ingrese un DNI diferente.'
-            });
-        @elseif ($errors->has('email'))
-            Swal.fire({
-                icon: 'error',
-                title: '¡Error!',
-                text: 'El correo electrónico ya está registrado. Por favor, ingrese un correo diferente. '
-            });
-        @else
-            Swal.fire({
-                icon: 'error',
-                title: '¡Error!',
-                text: 'Hubo un problema al guardar los datos. Por favor, verifique los campos.'
-            });
+    document.addEventListener('DOMContentLoaded', function () {
+        // Modal en base a errores
+        @if ($errors->any())
+            @if ($errors->has('dni') && $errors->has('email'))
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡Error!',
+                    text: 'El correo electrónico y el DNI ya están registrados. Por favor, ingrese un correo y un DNI diferentes.'
+                });
+            @elseif ($errors->has('dni'))
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡Error!',
+                    text: 'El DNI ya está registrado. Por favor, ingrese un DNI diferente.'
+                });
+            @elseif ($errors->has('email'))
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡Error!',
+                    text: 'El correo electrónico ya está registrado. Por favor, ingrese un correo diferente.'
+                });
+            @else
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡Error!',
+                    text: 'Hubo un problema al guardar los datos. Por favor, verifique los campos.'
+                });
+            @endif
         @endif
-    @endif
+    });
 </script>
 @stop

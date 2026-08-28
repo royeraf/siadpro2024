@@ -116,12 +116,15 @@
     .fade {
         opacity: 0;
         transition: opacity 0.5s ease-out; /* Duraci�1�7�1�7n de la transici�1�7�1�7n */
+        transition: opacity 0.5s ease-out; /* Duraci1717n de la transici1717n */
     }
 </style>
  
 @stop
 
 @section('js')
+@vite(['resources/js/app.js'])
+<x-sweet-alert />
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 <script>
@@ -130,19 +133,7 @@
             let alert = document.querySelector('.alert');
             if (alert) {
                 alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transici�1�7�1�7n y elimina
-            }
-        }, 3000); // 3000ms = 3 segundos
-    });
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            let alert = document.querySelector('.alert');
-            if (alert) {
-                alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transici��n y elimina
+                setTimeout(() => alert.remove(), 500); // Espera la transición y elimina
             }
         }, 3000); // 3000ms = 3 segundos
     });
@@ -155,8 +146,8 @@
     // Mostrar mensaje personalizado en caso de error
     $(document).on('error.dt', function(e, settings, techNote, message) {
         console.log('Se ha producido un error en DataTables: ', message);
-        // Si quieres mostrar un mensaje personalizado, puedes hacerlo as��:
-        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontr�� acciones de sensibilizaci��n!</div>');
+        // Si quieres mostrar un mensaje personalizado, puedes hacerlo así:
+        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontró acciones de sensibilización!</div>');
     });
     
     $('#informes').DataTable({
@@ -166,31 +157,18 @@
         "bFilter": false,
         // Deshabilitar advertencias de consola
         "language": {
-            "emptyTable": "No se encontr�� bibliotecas en el aula!"
+            "emptyTable": "No se encontró bibliotecas en el aula!"
         }
     });
     
     // Eliminar el modal de error de DataTables si existe
     $('.dt-error').remove();
     
-    // Cerrar autom��ticamente cualquier alerta de DataTables
+    // Cerrar automáticamente cualquier alerta de DataTables
     setTimeout(function() {
         $('.dt-error').remove();
         $('[id^="DataTables_"]').remove();
     }, 100);
 });
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
-<script>
-    @if (session('success'))
-        Swal.fire({
-            icon: 'success',
-            title: '¡Registro guardado!',
-            text: @json(session('success')),
-            timer: 2500,
-            showConfirmButton: false
-        });
-    @endif
 </script>
 @stop
