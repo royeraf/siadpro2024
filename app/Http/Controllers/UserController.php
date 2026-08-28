@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
@@ -19,13 +20,61 @@ class UserController extends Controller
         $this->middleware('can:users.destroy')->only('destroy');
     }
 
+    private function isAdmin(): bool
+    {
+        return Auth::user()->hasRole('Admin');
+    }
+
+    private function scopeToOwner($query)
+    {
+        if (!$this->isAdmin()) {
+            $query->where('created_by', Auth::id());
+        }
+
+        return $query;
+    }
+
+    /**
+     * Jerarquía escalonada de asignación de roles: cada rol solo puede
+     * asignar su propio nivel o niveles inferiores, nunca superiores.
+     * Admin no aparece aquí porque isAdmin() ya deja pasar cualquier rol.
+     */
+    private const ROLE_HIERARCHY = [
+        'EspecDRE'  => ['EspecDRE', 'EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
+        'EspecUGEL' => ['EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
+        'Director'  => ['Director', 'Docente', 'PC', 'PEC'],
+        'Docente'   => ['Docente', 'PC', 'PEC'],
+        'PC'        => ['Docente', 'PC', 'PEC'],
+        'PEC'       => ['Docente', 'PC', 'PEC'],
+    ];
+
+    /**
+     * Restringe los roles que el usuario autenticado puede asignar a otros,
+     * según la jerarquía escalonada: nunca puede otorgar un rol por encima
+     * del suyo propio (evita escalada de privilegios).
+     */
+    private function filterAssignableRoles(array $roleIds): array
+    {
+        if ($this->isAdmin()) {
+            return $roleIds;
+        }
+
+        $assignableNames = collect(Auth::user()->roles->pluck('name'))
+            ->flatMap(fn ($roleName) => self::ROLE_HIERARCHY[$roleName] ?? [])
+            ->unique();
+
+        $assignableIds = Role::whereIn('name', $assignableNames)->pluck('id');
+
+        return array_values(array_intersect($roleIds, $assignableIds->all()));
+    }
+
     public function index(Request $request)
     {
         // Tab Activos/Inhabilitados. La columna es tinyint(1) NOT NULL y solo
         // contiene 0 y 1, así que cualquier valor que no sea '0' cae en activos.
         $estado = $request->get('estado') === '0' ? '0' : '1';
 
-        $usersQuery = User::where('estado', $estado);
+        $usersQuery = $this->scopeToOwner(User::where('estado', $estado));
 
         if ($request->filled('texto')) {
             $usersQuery->where('dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -48,7 +97,8 @@ class UserController extends Controller
         $listaUgels = $this->listaUgels($estado);
 
         // Conteos para los badges de ambos tabs en una sola consulta.
-        $conteos = User::selectRaw('estado, COUNT(*) as total')
+        $conteos = $this->scopeToOwner(User::query())
+            ->selectRaw('estado, COUNT(*) as total')
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
@@ -75,7 +125,7 @@ class UserController extends Controller
 
     private function listaUgels(string $estado)
     {
-        return User::where('estado', $estado)
+        return $this->scopeToOwner(User::where('estado', $estado))
             ->whereNotNull('ugel')
             ->where('ugel', '!=', '')
             ->distinct()
@@ -90,6 +140,7 @@ class UserController extends Controller
             'email' => 'required|unique:users,email',
         ]);
         $users = new User();
+        $users->created_by = Auth::id();
         $users->name = Str::upper($request->get('name'));
         $users->email = $request->get('email');
         $users->ugel = Str::upper($request->get('ugel'));
@@ -110,21 +161,25 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
         $roles =  Role::all();
-        
+
         return view('user.edit',compact('user','roles'));
     }
 
     
 public function update(Request $request, User $user)
 {
+    abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
     // El formulario de asignación de roles (user.edit) solo envía "roles[]"
     if ($request->has('roles') && !$request->has('name')) {
         $validated = $request->validate([
             'roles' => 'array',
             'roles.*' => 'integer|exists:roles,id',
         ]);
-        $user->roles()->sync($validated['roles'] ?? []);
+        $user->roles()->sync($this->filterAssignableRoles($validated['roles'] ?? []));
         return redirect()->route('users.index', ['estado' => $user->estado])
             ->with('success', 'Rol actualizado correctamente.');
     }
@@ -181,7 +236,7 @@ public function update(Request $request, User $user)
 
     // Sincronizar roles (mantienes tu l��gica original)
     if ($request->has('roles')) {
-        $user->roles()->sync($request->roles);
+        $user->roles()->sync($this->filterAssignableRoles($request->roles));
     }
 
     $user->save();
@@ -193,14 +248,17 @@ public function update(Request $request, User $user)
     public function destroy($id)
     {
         $user = User::findOrFail($id);
-        
+        abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
         $user->delete();
         return redirect('/users');
     }
-    
+
     public function cambiarEstado($id)
     {
         $user = User::findOrFail($id);
+        abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
         $user->estado = $user->estado == 1 ? 0 : 1;
         $user->save();
 
@@ -224,7 +282,7 @@ public function update(Request $request, User $user)
     {
         $estado = $request->get('estado') === '0' ? '0' : '1';
 
-        $query = User::where('estado', $estado);
+        $query = $this->scopeToOwner(User::where('estado', $estado));
 
         if ($request->filled('texto')) {
             $query->where('dni', 'LIKE', '%' . $request->input('texto') . '%');

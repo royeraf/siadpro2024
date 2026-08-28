@@ -36,6 +36,7 @@ class User extends Authenticatable
         'distrito',
         'institucion',
         'nivelinstitucion',
+        'created_by',
     ];
 
     /**
@@ -67,4 +68,9 @@ class User extends Authenticatable
     protected $appends = [
         'profile_photo_url',
     ];
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }
