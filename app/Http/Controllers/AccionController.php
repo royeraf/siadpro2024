@@ -173,7 +173,6 @@ class AccionController extends Controller
         $accions = Accion::where("nombreAccion","LIKE","%".$texto."%")
         ->where("fecha","LIKE","%".$fecha."%")
         ->where('estado', '1')
-        ->whereYear('fecha', "2023")
         ->where('idUser', $usuario)
         ->where("tipo", "sensibilizacion")
         ->orderby('fecha','desc')
