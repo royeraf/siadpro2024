@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class AgendaController extends Controller
 {
     public function __construct(){
-        //$this->middleware('auth');
+        $this->middleware('auth');
         //$this->middleware('can:agendas.index')->only('index');
     }
     public function index()
