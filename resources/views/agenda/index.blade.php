@@ -231,7 +231,7 @@
 				
 			},
 			eventRender: function(event, element) {
-				element.bind('dblclick', function() {
+				element.bind('click', function() {
 					$('#ModalEdit #id').val(event.id);
 					$('#ModalEdit #title').val(event.title);
 					$('#ModalEdit #evento').val(event.evento);
