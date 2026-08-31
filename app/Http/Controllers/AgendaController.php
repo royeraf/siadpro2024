@@ -54,6 +54,8 @@ class AgendaController extends Controller
                 $agenda->nomDocente = Auth::user()->name;
                 $agenda->evento = $request->get('evento');
                 $agenda->color = $request->get('color');
+                $agenda->start = $request->get('start');
+                $agenda->end = $request->get('end');
                 $agenda->institucion = Auth::user()->institucion;
                 $agenda->idUser = Auth::user()->id;
                 $agenda->save();
