@@ -55,7 +55,7 @@
                                 <div class="form-group">
                                     <label for="evento" class="col-sm-3 control-label">Evento</label>
                                     <div class="col-sm-8">
-                                        <textarea name="evento" id="evento" cols="40" rows="5" placeholder="Descripcion del evento" required></textarea>
+                                        <textarea name="evento" id="evento" class="form-control" rows="5" placeholder="Descripcion del evento" required></textarea>
                                         <p id="mensajeEnter" class="text-danger" style="display: none;">No es válido presionar Enter en este campo.</p>
                                         <p id="mensajeComilla" class="text-danger" style="display: none;">No es válido colocar ' en este campo.</p>
                                     </div>
@@ -125,7 +125,7 @@
                                 <div class="form-group">
                                     <label for="evento" class="col-sm-3 control-label">Evento</label>
                                     <div class="col-sm-8">
-                                        <textarea name="evento" id="evento" cols="40" rows="5" placeholder="Descripcion del evento" required></textarea>
+                                        <textarea name="evento" id="evento" class="form-control" rows="5" placeholder="Descripcion del evento" required></textarea>
                                         <p id="mensajeEnter" class="text-danger" style="display: none;">No es válido presionar Enter en este campo.</p>
                                         <p id="mensajeComilla" class="text-danger" style="display: none;">No es válido colocar ' en este campo.</p>
                                     </div>
@@ -230,17 +230,15 @@
 				document.getElementById('btnAccion').textContent = 'Registrar';
 				
 			},
-			eventRender: function(event, element) {
-				element.bind('click', function() {
-					$('#ModalEdit #id').val(event.id);
-					$('#ModalEdit #title').val(event.title);
-					$('#ModalEdit #evento').val(event.evento);
-					$('#ModalEdit #color').val(event.color);
-					$('#ModalEdit #start').val(moment(event.start).format('YYYY-MM-DDTHH:mm:ss'));
-					$('#ModalEdit #end').val(moment(event.end).format('YYYY-MM-DDTHH:mm:ss'));
-					$('#ModalEdit').modal('show');
-					document.getElementById('btnAccion').textContent = 'Modificar';
-				});
+			eventClick: function(event) {
+				$('#ModalEdit #id').val(event.id);
+				$('#ModalEdit #title').val(event.title);
+				$('#ModalEdit #evento').val(event.evento);
+				$('#ModalEdit #color').val(event.color);
+				$('#ModalEdit #start').val(moment(event.start).format('YYYY-MM-DDTHH:mm:ss'));
+				$('#ModalEdit #end').val(moment(event.end).format('YYYY-MM-DDTHH:mm:ss'));
+				$('#ModalEdit').modal('show');
+				document.getElementById('btnAccion').textContent = 'Modificar';
 			},
 			events: [
                 <?php foreach($events as $event): 
