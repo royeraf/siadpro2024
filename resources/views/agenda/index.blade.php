@@ -5,9 +5,6 @@
 
 @section('css')
 
-<!-- Bootstrap Core CSS -->
-<link href="vendor/css/bootstrap.min.css" rel="stylesheet">
-
 <!-- FullCalendar -->
 <link href="vendor/css/fullcalendar.css" rel="stylesheet">
 <style>
@@ -197,11 +194,6 @@
 @stop
 
 @section('js')
-
-<script src="vendor/js/jquery.js"></script>
-
-<!-- Bootstrap Core JavaScript -->
-<script src="vendor/js/bootstrap.min.js"></script>
 
 <!-- FullCalendar -->
 <script src="vendor/js/moment.min.js"></script>
