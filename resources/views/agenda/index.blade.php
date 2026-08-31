@@ -224,8 +224,8 @@
 			selectable: true,
 			selectHelper: true,
 			select: function(start, end) {
-				$('#ModalAdd #start').val(moment(start).format('YYYY-MM-DDTHH:mm:ss'));
-				$('#ModalAdd #end').val(moment(end).format('YYYY-MM-DDTHH:mm:ss'));
+				$('#ModalAdd #start').val(moment(start).format('YYYY-MM-DD[T]HH:mm:ss'));
+				$('#ModalAdd #end').val(moment(end).format('YYYY-MM-DD[T]HH:mm:ss'));
 				$('#ModalAdd').modal({show:true});
 				document.getElementById('btnAccion').textContent = 'Registrar';
 				
@@ -235,8 +235,8 @@
 				$('#ModalEdit #title').val(event.title);
 				$('#ModalEdit #evento').val(event.evento);
 				$('#ModalEdit #color').val(event.color);
-				$('#ModalEdit #start').val(moment(event.start).format('YYYY-MM-DDTHH:mm:ss'));
-				$('#ModalEdit #end').val(moment(event.end).format('YYYY-MM-DDTHH:mm:ss'));
+				$('#ModalEdit #start').val(moment(event.start).format('YYYY-MM-DD[T]HH:mm:ss'));
+				$('#ModalEdit #end').val(moment(event.end).format('YYYY-MM-DD[T]HH:mm:ss'));
 				$('#ModalEdit').modal('show');
 				document.getElementById('btnAccion').textContent = 'Modificar';
 			},
