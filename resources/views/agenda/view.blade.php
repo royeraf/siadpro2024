@@ -124,16 +124,8 @@
 			
 				$start = explode(" ", $event['start']);
 				$end = explode(" ", $event['end']);
-				if($start[1] == '00:00:00'){
-					$start = $start[0];
-				}else{
-					$start = $event['start'];
-				}
-				if($end[1] == '00:00:00'){
-					$end = $end[0];
-				}else{
-					$end = $event['end'];
-				}
+				$start = isset($start[1]) && $start[1] == '00:00:00' ? $start[0] : $event['start'];
+				$end = isset($end[1]) && $end[1] == '00:00:00' ? $end[0] : $event['end'];
 			?>
 				{
 					id: '<?php echo $event['id']; ?>',
