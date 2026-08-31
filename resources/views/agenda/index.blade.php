@@ -197,7 +197,6 @@
 
 <!-- FullCalendar -->
 <script src="vendor/js/moment.min.js"></script>
-<script src="vendor/js/fullcalendar/fullcalendar.min.js"></script>
 <script src="vendor/js/fullcalendar/fullcalendar.js"></script>
 <script src="vendor/js/fullcalendar/locale/es.js"></script>
 
