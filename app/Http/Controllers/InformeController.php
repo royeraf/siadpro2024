@@ -21,54 +21,231 @@ class InformeController extends Controller
         $this->middleware('can:informes.director')->only('director');
     }
     
-    public function index()
+    public function index(Request $request)
     {
         $usuario = Auth::user()->id;
-        $informes = Informe::where('estado', '1')
-        ->where('idUser',$usuario)
-        ->orderby('id','desc')->paginate(10);
-        return view('informe.index')->with('informes',$informes);
-    }
-    public function general()
-    {
-        // Obtener el año del filtro, con 2026 como valor predeterminado
-        $year = request()->get('year', '2026');
-        
-        $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.descripcion","pro_informes.documento","pro_informes.fecha","pro_informes.color","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_informes.idUser")
-                    ->where('pro_informes.estado', '1')
-                    ->whereYear('fecha', $year)
-                    ->orderby('pro_informes.id','desc')
-                    ->paginate(10);
-        return view('informe.view')->with('informes', $informes);
+
+        $query = Informe::where('estado', '1')->where('idUser', $usuario);
+
+        if ($request->filled('texto')) {
+            $query->where('nombreInforme', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('fecha')) {
+            $query->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+        if ($request->filled('year')) {
+            $query->whereYear('fecha', $request->input('year'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('nombreInforme', 'LIKE', "%{$buscar}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $informes = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('informe._rows', ['informes' => $informes])->render(),
+                'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $informes->total(),
+                'totalFormatted' => number_format($informes->total()),
+                'from' => $informes->firstItem() ?? 0,
+                'to' => $informes->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaAnios = $this->listaAniosInforme();
+
+        return view('informe.index', compact('informes', 'listaAnios'));
     }
 
-    public function ugel()
+    /**
+     * Años plausibles disponibles para el selector de filtro, descartando
+     * fechas corruptas (p. ej. años como 23, 203 o 1978 por datos mal
+     * digitados) — mismo criterio que EvidenciaController.
+     */
+    private function listaAniosInforme(string $anioActual = null)
+    {
+        $listaAnios = Informe::whereYear('fecha', '>=', 2010)
+            ->selectRaw('DISTINCT YEAR(fecha) as anio')
+            ->orderByDesc('anio')
+            ->pluck('anio');
+
+        $anioActual = $anioActual ?? date('Y');
+        if (!$listaAnios->contains($anioActual)) {
+            $listaAnios->prepend($anioActual);
+        }
+
+        return $listaAnios;
+    }
+
+    public function general(Request $request)
+    {
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Informe::select(
+                "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
+                "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_informes.idUser")
+            ->where('pro_informes.estado', '1')
+            ->whereYear('pro_informes.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('docentes')) {
+            $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
+        }
+        if ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_informes.nombreInforme', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_informes.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        $informes = $query->orderBy('pro_informes.fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('informe._rows_general', ['informes' => $informes])->render(),
+                'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $informes->total(),
+                'totalFormatted' => number_format($informes->total()),
+                'from' => $informes->firstItem() ?? 0,
+                'to' => $informes->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaAnios = $this->listaAniosInforme($anio);
+
+        return view('informe.view', compact('informes', 'anio', 'listaUgels', 'listaAnios'));
+    }
+
+    public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $year = request()->get('year', '2026');
-        $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.documento","pro_informes.color","pro_informes.fecha","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.nivelinstitucion","users.cargo","users.ugel")
-            ->join("users","users.id","=","pro_informes.idUser")
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Informe::select(
+                "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
+                "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_informes.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha', $year)
-            ->orderby('pro_informes.id','desc')
-            ->paginate(10);
-            return view("informe.ugel",compact('informes'));
+            ->whereYear('pro_informes.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_informes.nombreInforme', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_informes.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $informes = $query->orderBy('pro_informes.fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('informe._rows_general', ['informes' => $informes])->render(),
+                'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $informes->total(),
+                'totalFormatted' => number_format($informes->total()),
+                'from' => $informes->firstItem() ?? 0,
+                'to' => $informes->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
+        $listaAnios = $this->listaAniosInforme($anio);
+
+        return view('informe.ugel', compact('informes', 'anio', 'listaInstituciones', 'listaAnios'));
     }
 
-    public function director()
+    public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $year = request()->get('year', '2026');
-        $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.documento","pro_informes.fecha","pro_informes.color","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
-            ->join("users","users.id","=","pro_informes.idUser")
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Informe::select(
+                "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
+                "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_informes.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha', $year)
-            ->orderby('pro_informes.id','desc')
-            ->paginate(10);
-            return view("informe.director",compact('informes'));
+            ->whereYear('pro_informes.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('pro_informes.nombreInforme', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('fecha')) {
+            $query->where('pro_informes.fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_informes.nombreInforme', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_informes.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $informes = $query->orderBy('pro_informes.fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('informe._rows_general', ['informes' => $informes])->render(),
+                'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $informes->total(),
+                'totalFormatted' => number_format($informes->total()),
+                'from' => $informes->firstItem() ?? 0,
+                'to' => $informes->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaAnios = $this->listaAniosInforme($anio);
+
+        return view('informe.director', compact('informes', 'anio', 'listaAnios'));
     }
 
     public function profesorcoordinador()
@@ -94,99 +271,24 @@ class InformeController extends Controller
         
         return response()->download($pathToFile);
     }
-    public function buscar(Request $request){
-        $usuario = Auth::user()->id;
-        $texto = trim($request->get('texto'));
-
-        $informes = Informe::where("nombreInforme","LIKE","%".$texto."%")
-        ->where('estado', '1')
-        ->where('idUser', $usuario)
-        ->orderby('pro_informes.id','desc')
-        ->paginate(10);
-        return view('informe.index')->with('informes',$informes);
+    public function buscar(Request $request)
+    {
+        return $this->index($request);
     }
 
     public function buscarGeneral(Request $request)
     {
-        \Log::info('Parámetros de búsqueda:', $request->all());
-        
-        if (empty($request->get('ugels')) && empty($request->get('instituciones')) && empty($request->get('docentes')) && empty($request->get('texto')) && empty($request->get('year'))) {
-            return redirect('/informe-general');
-        } else {    
-            $dni = trim($request->get('texto', ''));
-            $name = trim($request->get('docentes', ''));
-            $ugel = trim($request->get('ugels', ''));
-            $nominstitucion = trim($request->get('instituciones', ''));
-            $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
-
-            $query = Informe::select(
-                "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.documento", 
-                "pro_informes.fecha", "pro_informes.color", "pro_informes.descripcion", 
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion", 
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_informes.idUser")
-            ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha', $year);
-
-            // Aplicar cada filtro independientemente si está presente
-            if (!empty($ugel)) {
-                $query->where("users.ugel", "LIKE", "%$ugel%");
-            }
-            
-            if (!empty($dni)) {
-                $query->where("users.dni", "LIKE", "%$dni%");
-            }
-            
-            if (!empty($name)) {
-                $query->where("users.name", "LIKE", "%$name%");
-            }
-            
-            if (!empty($nominstitucion)) {
-                $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-            }
-
-            $informes = $query->orderBy('pro_informes.id', 'desc')->paginate(1000);
-            
-            \Log::info('Total de registros encontrados: ' . $informes->total());
-
-            return view('informe.view')->with('informes', $informes);
-        }
+        return $this->general($request);
     }
 
-    public function buscarUgel(Request $request){
-        $ugel = Auth::user()->ugel;
-        $dni = trim($request->get('texto'));
-        $nivel = trim($request->get('nivel'));
-        $nominstitucion = trim($request->get('nominstitucion'));
-        $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
-        
-        $informes = Informe::select("pro_informes.id","pro_informes.descripcion","pro_informes.nombreInforme","pro_informes.fecha","pro_informes.documento","pro_informes.color","pro_informes.updated_at","users.name","users.institucion","users.provincia","users.distrito","users.nivelinstitucion","users.cargo","users.ugel")
-        ->join("users","users.id","=","pro_informes.idUser")
-        ->where("users.ugel", $ugel)
-        ->where('pro_informes.estado', '1')
-        ->where("users.dni","LIKE","%".$dni."%")
-        ->where('users.nivelinstitucion',"LIKE","%".$nivel."%")
-        ->whereYear('fecha', $year)
-        ->where("users.institucion","LIKE","%".$nominstitucion."%")
-        ->orderby('pro_informes.id','desc')
-        ->paginate(10);
-        return view('informe.ugel')->with('informes',$informes);
+    public function buscarUgel(Request $request)
+    {
+        return $this->ugel($request);
     }
 
-    public function buscarDirector(Request $request){
-        $institucion = Auth::user()->institucion;
-        $texto = trim($request->get('texto'));
-        $year = trim($request->get('year', '2026')); // Valor predeterminado: 2026
-        
-        $informes = Informe::select("pro_informes.id","pro_informes.nombreInforme","pro_informes.documento","pro_informes.color","pro_informes.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
-        ->join("users","users.id","=","pro_informes.idUser")
-        ->where("users.institucion", $institucion)
-        ->where('pro_informes.estado', '1')
-        ->whereYear('fecha', $year)
-        ->where("pro_informes.nombreInforme","LIKE","%".$texto."%")
-        ->paginate(10);
-        return view('informe.director')->with('informes',$informes);
+    public function buscarDirector(Request $request)
+    {
+        return $this->director($request);
     }
 
     
