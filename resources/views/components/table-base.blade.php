@@ -119,7 +119,7 @@
             {{-- Selector de Registros por Página --}}
             <div class="flex items-center space-x-2 text-sm text-gray-700">
                 <span>Mostrar</span>
-                <select x-model="perPage" @change="onPerPageChange($event)" class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1 px-2.5 bg-white">
+                <select x-model="perPage" @change="onPerPageChange($event)" class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1 px-2.5 pr-8 bg-white">
                     <option value="10">10</option>
                     <option value="15">15</option>
                     <option value="25">25</option>

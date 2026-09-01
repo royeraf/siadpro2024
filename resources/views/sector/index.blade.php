@@ -5,42 +5,6 @@
 @section('css')
 <link rel="stylesheet" href="/css/admin_custom.css">
 @vite(['resources/css/app.css'])
-<style>
-    .stats-card {
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        color: white;
-        border-radius: 8px;
-        padding: 12px 18px;
-        margin-bottom: 15px;
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 15px;
-    }
-    .stats-icon {
-        font-size: 32px;
-        color: rgba(255, 255, 255, 0.9);
-    }
-    .stats-number {
-        font-size: 24px;
-        font-weight: 700;
-        display: block;
-        color: #facc15;
-        line-height: 1.1;
-    }
-    .stats-title {
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.95;
-    }
-    @media (max-width: 575px) {
-        .stats-card {
-            display: flex;
-            width: 100%;
-        }
-    }
-</style>
 @endsection
 
 @section('content_header')
@@ -68,21 +32,6 @@
         {{ $errors->first('documento') }}
     </div>
 @endif
-
-<!-- Contador de sectores -->
-<div class="row">
-    <div class="col-12">
-        <div class="stats-card">
-            <div class="stats-icon">
-                <i data-lucide="layout-grid" class="w-8 h-8"></i>
-            </div>
-            <div class="stats-info">
-                <span class="stats-number" id="tabla-sectores-total">{{ number_format($sectores->total()) }}</span>
-                <span class="stats-title">Total de Sectores del Aula Subidos</span>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-sectores"
