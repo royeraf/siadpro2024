@@ -243,9 +243,9 @@
     @include('user._rows')
 </x-table-base>
 
-<div id="tabla-usuarios-pagination" class="mt-3 flex justify-end">
+<div id="tabla-usuarios-pagination" class="mt-3 flex justify-center sm:justify-end">
     @if ($users->hasPages())
-        {{ $users->appends(request()->except('page'))->links() }}
+        {{ $users->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
     @endif
 </div>
 

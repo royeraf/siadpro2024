@@ -186,9 +186,9 @@
     @include('difusion._rows_general')
 </x-table-base>
 
-<div id="tabla-difusiones-general-pagination" class="mt-3 flex justify-end">
+<div id="tabla-difusiones-general-pagination" class="mt-3 flex justify-center sm:justify-end">
     @if ($accions->hasPages())
-        {{ $accions->appends(request()->except('page'))->links() }}
+        {{ $accions->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
     @endif
 </div>
 

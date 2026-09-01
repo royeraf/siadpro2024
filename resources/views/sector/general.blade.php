@@ -187,9 +187,9 @@
     @include('sector._rows_general')
 </x-table-base>
 
-<div id="{{ $tableId }}-pagination" class="mt-3 flex justify-end">
+<div id="{{ $tableId }}-pagination" class="mt-3 flex justify-center sm:justify-end">
     @if ($sectores->hasPages())
-        {{ $sectores->appends(request()->except('page'))->links() }}
+        {{ $sectores->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
     @endif
 </div>
 

@@ -9,7 +9,7 @@ import focus from '@alpinejs/focus';
 import {
     createIcons,
     Search, X, FileSpreadsheet, FileText, Printer, Copy, Inbox,
-    ChevronLeft, ChevronRight, Landmark, CirclePlus, School, Filter,
+    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Landmark, CirclePlus, School, Filter,
     Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
     ArrowUpNarrowWide, ArrowDownWideNarrow,
     Users, UserPlus, IdCard, Briefcase, Shield, Check,
@@ -27,7 +27,7 @@ initTableEngine();
 window.lucideRefresh = () => createIcons({
     icons: {
         Search, X, FileSpreadsheet, FileText, Printer, Copy, Inbox,
-        ChevronLeft, ChevronRight, Landmark, CirclePlus, School, Filter,
+        ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Landmark, CirclePlus, School, Filter,
         Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
         ArrowUpNarrowWide, ArrowDownWideNarrow,
         Users, UserPlus, IdCard, Briefcase, Shield, Check,

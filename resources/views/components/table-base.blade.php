@@ -67,22 +67,22 @@
             @endif
 
             {{-- Acciones: Buscar / Limpiar / Exportar --}}
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
                 @if($filterAction)
-                    <button type="submit" class="inline-flex items-center px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 cursor-pointer">
+                    <button type="submit" class="flex-1 sm:flex-none inline-flex items-center justify-center px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 cursor-pointer">
                         <i data-lucide="search" class="w-4 h-4 mr-1.5"></i> Buscar
                     </button>
-                    <a href="{{ $filterAction }}{{ count($filterParams) ? '?' . http_build_query($filterParams) : '' }}" class="inline-flex items-center px-3.5 py-2 bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white text-xs font-semibold rounded-md shadow-sm transition text-decoration-none">
+                    <a href="{{ $filterAction }}{{ count($filterParams) ? '?' . http_build_query($filterParams) : '' }}" class="flex-1 sm:flex-none inline-flex items-center justify-center px-3.5 py-2 bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white text-xs font-semibold rounded-md shadow-sm transition text-decoration-none">
                         <i data-lucide="eraser" class="w-4 h-4 mr-1.5"></i> Limpiar
                     </a>
                 @endif
                 @if($exportable)
                     @if($exportUrl)
-                        <a href="{{ $exportUrl }}" class="tb-export-link inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 text-decoration-none cursor-pointer">
+                        <a href="{{ $exportUrl }}" class="tb-export-link flex-1 sm:flex-none inline-flex items-center justify-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 text-decoration-none cursor-pointer">
                             <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-1.5"></i> Excel
                         </a>
                     @else
-                        <button type="button" @click="exportExcel('{{ $exportFilename }}')" class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 cursor-pointer">
+                        <button type="button" @click="exportExcel('{{ $exportFilename }}')" class="flex-1 sm:flex-none inline-flex items-center justify-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-sm transition border-0 cursor-pointer">
                             <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-1.5"></i> Excel
                         </button>
                     @endif
