@@ -157,6 +157,31 @@
             margin: 0 auto !important;
             text-align: center !important;
         }
+
+        /* Scrollbar elegante y adaptativo a la altura de la pantalla para el sidebar */
+        .main-sidebar .sidebar {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        .main-sidebar .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .main-sidebar .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .main-sidebar .sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .main-sidebar .sidebar:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
     </style>
 
     {{-- Favicon --}}
