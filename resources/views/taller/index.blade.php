@@ -22,7 +22,7 @@
 @section('content')
 
 
-<a href="tallers/create" class="btn btn-primary mb-3">CREAR</a>
+<a href="{{ route('tallers.create') }}" class="btn btn-success mb-3">Nuevo Taller</a>
 
 <table id="tallers" class="table table-striped table-bordered shadow-lg mt-4 display nowrap" style="width:100%">
     <thead class="bg-primary text-white">

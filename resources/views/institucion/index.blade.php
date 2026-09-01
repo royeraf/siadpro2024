@@ -8,18 +8,17 @@
 @endsection
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <x-section-heading icon="landmark">Listado de Instituciones</x-section-heading>
-        <a href="{{ url('institucions/create') }}" class="btn btn-primary">
-            <i data-lucide="circle-plus" class="w-4 h-4 mr-1 inline-block align-text-bottom"></i> Nueva Institución
-        </a>
-    </div>
+    <x-page-header icon="landmark" title="Listado de Instituciones" />
 @stop
 
 @section('content')
 
 <x-stats-card icon="school" id="tabla-instituciones" :value="$total"
               title="Total de Instituciones Encontradas" />
+
+<div class="flex justify-start mb-3">
+    <x-create-button :href="route('institucions.create')">Nueva Institución</x-create-button>
+</div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-instituciones"

@@ -8,12 +8,7 @@
 @endsection
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <x-section-heading icon="book-open">Listado de Biblioteca en el Aula</x-section-heading>
-        <a href="{{ route('informes.create') }}" class="btn btn-primary">
-            <i data-lucide="circle-plus" class="w-4 h-4 mr-1 inline-block align-text-bottom"></i> Nueva Biblioteca
-        </a>
-    </div>
+    <x-page-header icon="book-open" title="Listado de Biblioteca en el Aula" />
 @stop
 
 @section('content')
@@ -38,6 +33,10 @@
         {{ $errors->first('documento') }}
     </div>
 @endif
+
+<div class="flex justify-start mb-3">
+    <x-create-button :href="route('informes.create')">Nueva Biblioteca</x-create-button>
+</div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-informes"

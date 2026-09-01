@@ -8,12 +8,7 @@
 @endsection
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <x-section-heading icon="users">Listado de Usuarios</x-section-heading>
-        <a href="{{ url('users/create') }}" class="btn btn-primary">
-            <i data-lucide="user-plus" class="w-4 h-4 mr-1 inline-block align-text-bottom"></i> Nuevo Usuario
-        </a>
-    </div>
+    <x-page-header icon="users" title="Listado de Usuarios" />
 @stop
 
 @section('content')
@@ -66,6 +61,10 @@
 
 <x-stats-card icon="users" id="tabla-usuarios" :value="$users->total()"
               :title="'Total de Usuarios ' . ($estado === '1' ? 'Activos' : 'Inhabilitados') . ' Encontrados'" />
+
+<div class="flex justify-start mb-3">
+    <x-create-button :href="route('users.create')" icon="user-plus">Nuevo Usuario</x-create-button>
+</div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-usuarios"
