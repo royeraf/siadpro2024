@@ -20,10 +20,10 @@ class RoleSeeder extends Seeder
        $role6 = Role::create(['name' => 'PC']);
 
        
-        Permission::create(['name' => 'users.index'])->assignRole($role1);
-        Permission::create(['name' => 'users.create'])->assignRole($role1);
-        Permission::create(['name' => 'users.edit'])->assignRole($role1);
-        Permission::create(['name' => 'users.destroy'])->assignRole($role1);
+        Permission::create(['name' => 'users.index'])->syncRoles([$role1, $role2, $role3, $role4, $role5, $role6]);
+        Permission::create(['name' => 'users.create'])->syncRoles([$role1, $role2, $role3, $role4, $role5, $role6]);
+        Permission::create(['name' => 'users.edit'])->syncRoles([$role1, $role2, $role3, $role4, $role5, $role6]);
+        Permission::create(['name' => 'users.destroy'])->syncRoles([$role1, $role2, $role3, $role4, $role5, $role6]);
 
         Permission::create(['name' => 'institucions.index'])->syncRoles([$role1]);
         Permission::create(['name' => 'institucions.create'])->syncRoles([$role1]);

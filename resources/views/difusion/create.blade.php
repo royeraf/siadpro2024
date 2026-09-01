@@ -69,7 +69,7 @@
 
                         <div class="form-group row mb-0">
                             <div class="col-md-6 offset-md-4">
-                                <a href="/accions" class="btn btn-danger" tabindex="4">Cancelar</a>
+                                <a href="/difusions" class="btn btn-danger" tabindex="4">Cancelar</a>
                                 <button type="submit" class="btn btn-primary" id="guardarBtn">
                                     {{ __('Guardar') }}
                                 </button>
@@ -111,6 +111,14 @@
             errorMessage.style.display = 'none';
             document.getElementById('documento').classList.remove('is-invalid');
         }
+    });
+
+    // Confirmación visual inmediata de que el guardado está en curso
+    // (el listener de 'submit' solo se dispara si el de 'click' no bloqueó el envío)
+    document.querySelector('form').addEventListener('submit', function() {
+        var boton = document.getElementById('guardarBtn');
+        boton.disabled = true;
+        boton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
     });
 </script>
     

@@ -31,7 +31,8 @@
                         <i class="fas fa-calendar-year"></i>
                     </span>
                     <select class="form-control" id="year" name="year">
-                        <option value="2025" {{ request('year') == '2025' || !request('year') ? 'selected' : '' }}>2025</option>
+                        <option value="2026" {{ request('year') == '2026' || !request('year') ? 'selected' : '' }}>2026</option>
+                        <option value="2025" {{ request('year') == '2025' ? 'selected' : '' }}>2025</option>
                         <option value="2024" {{ request('year') == '2024' ? 'selected' : '' }}>2024</option>
                         <option value="2023" {{ request('year') == '2023' ? 'selected' : '' }}>2023</option>
                     </select>

@@ -150,7 +150,7 @@ return [
 
     'layout_topnav' => null,
     'layout_boxed' => null,
-    'layout_fixed_sidebar' => null,
+    'layout_fixed_sidebar' => true,
     'layout_fixed_navbar' => null,
     'layout_fixed_footer' => null,
     'layout_dark_mode' => null,
@@ -375,7 +375,7 @@ return [
             'url'  => '/difusion-general',
             'icon' => 'fas fa-share-alt',
             'icon_color'  => 'blue',
-            'can' => 'evidencias.view',
+            'can' => 'accions.view',
         ],
         [
             'text' => 'SECTORES DEL AULA',
@@ -389,14 +389,14 @@ return [
             'url'  => '/sector-ugel',
             'icon' => 'fas fa-database',
             'icon_color'  => 'white',
-            'can' => 'evidencias.ugel',
+            'can' => 'sectores.ugel',
         ],
         [
             'text' => 'SECTORES DEL AULA (GENERAL)',
             'url'  => '/sector-general',
             'icon' => 'fas fa-database',
             'icon_color'  => 'white',
-            'can' => 'evidencias.view',
+            'can' => 'sectores.view',
         ],
         [
             'text' => 'ASISTENCIA TÉCNICA',

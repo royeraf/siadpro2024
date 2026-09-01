@@ -4,7 +4,17 @@
     <link rel="stylesheet" href="{{ asset('vendor/icheck-bootstrap/icheck-bootstrap.min.css') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/favicon.png') }}">
     <link rel="shortcut icon" type="image/icon" href="{{asset('favicons/favicon.png')}}">
-
+    <style>
+        .icheck-compact label {
+            font-size: 0.85rem;
+        }
+        .icheck-compact input[type="checkbox"] {
+            vertical-align: middle;
+            margin-right: 2px;
+            position: relative;
+            top: -1px;
+        }
+    </style>
 @stop
 
 @php( $login_url = View::getSection('login_url') ?? config('adminlte.login_url', 'login') )
@@ -62,11 +72,11 @@
         </div>
 
         {{-- Login field --}}
-        <div class="row">
+        <div class="row align-items-center">
             <div class="col-7">
-                <div class="icheck-primary">
+                <div class="icheck-primary icheck-compact">
                     <input type="checkbox" name="remember" id="remember">
-                    <label for="remember">{{ __('Recordar Contraseña') }}</label>
+                    <label for="remember">{{ __('Mantener sesión iniciada') }}</label>
                 </div>
             </div>
             <div class="col-5">

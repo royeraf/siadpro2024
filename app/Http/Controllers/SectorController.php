@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sector;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -12,63 +13,272 @@ use Illuminate\Support\Facades\DB;
 class SectorController extends Controller
 {
     public function __construct(){
-        //$this->middleware('auth');
-        //$this->middleware('can:sectores.index')->only('index');
-        //$this->middleware('can:sectores.create')->only('create', 'store');
-        ///$this->middleware('can:sectores.edit')->only('edit', 'update');
-        //$this->middleware('can:sectores.destroy')->only('destroy');
-       //$this->middleware('can:sectores.view')->only('general');
-        //$this->middleware('can:sectores.ugel')->only('ugel');
-        //$this->middleware('can:sectores.director')->only('director');
+        $this->middleware('auth');
+        $this->middleware('can:sectores.index')->only('index');
+        $this->middleware('can:sectores.create')->only('create', 'store');
+        $this->middleware('can:sectores.edit')->only('edit', 'update');
+        $this->middleware('can:sectores.destroy')->only('destroy');
+        $this->middleware('can:sectores.view')->only('general', 'exportSectoresGeneral', 'buscarGeneral');
+        $this->middleware('can:sectores.ugel')->only('ugel', 'exportSectoresUgel', 'buscarUgel');
+        $this->middleware('can:sectores.director')->only('director', 'buscarDirector');
+        // exportarTodos ya no lo usa la vista migrada, pero seguía alcanzable por URL
+        // directa sin exigir ningún permiso propio (igual que en Accion/Difusion).
+        $this->middleware('can:sectores.view')->only('exportarTodos');
     }
-    
-    public function index()
-    {
 
+    public function index(Request $request)
+    {
         $usuario = Auth::user()->id;
-        $sectores = Sector::where('estado', '1')->where('idUser',$usuario)->orderby('fecha','desc')->paginate(10);
-        
-        return view('sector.index')->with('sectores',$sectores);
+
+        $sectoresQuery = Sector::where('estado', '1')->where('idUser', $usuario);
+
+        if ($request->filled('texto')) {
+            $sectoresQuery->where('nombreSector', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+
+        if ($request->filled('fecha')) {
+            $sectoresQuery->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $sectoresQuery->where(function ($q) use ($buscar) {
+                $q->where('nombreSector', 'LIKE', "%{$buscar}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $sectores = $sectoresQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('sector._rows', ['sectores' => $sectores])->render(),
+                'pagination' => (string) $sectores->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $sectores->total(),
+                'totalFormatted' => number_format($sectores->total()),
+                'from' => $sectores->firstItem() ?? 0,
+                'to' => $sectores->lastItem() ?? 0,
+            ]);
+        }
+
+        return view('sector.index', compact('sectores'));
+    }
+
+    /**
+     * Consulta base compartida por la vista General (sin restricción, para
+     * Especialista DRE / administración) y la vista UGEL (siempre acotada a la
+     * UGEL del usuario autenticado, vía $forceUgel). Ambas comparten los mismos
+     * filtros de año/DNI/docente, y General añade UGEL/Institución libres.
+     */
+    private function sectoresGeneralQuery(Request $request, ?string $forceUgel = null): array
+    {
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Sector::select(
+                'pro_sectores.id', 'pro_sectores.nombreSector', 'pro_sectores.descripcion',
+                'pro_sectores.documento', 'pro_sectores.color', 'pro_sectores.fecha',
+                'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
+                'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
+            )
+            ->join('users', 'users.id', '=', 'pro_sectores.idUser')
+            ->where('pro_sectores.estado', '1')
+            ->whereYear('pro_sectores.fecha', $anio);
+
+        $showFullFilters = $forceUgel === null;
+
+        if ($forceUgel !== null) {
+            $query->where('users.ugel', $forceUgel);
+        } elseif ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+
+        if ($request->filled('docentes')) {
+            $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
+        }
+
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', 'LIKE', '%' . $request->input('nivel') . '%');
+        }
+
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_sectores.nombreSector', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_sectores.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        return [$query, $anio, $showFullFilters];
+    }
+
+    private function paginateSectores(Request $request, $query)
+    {
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        return $query->orderBy('pro_sectores.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
+
+    private function listaAniosSectores($anio)
+    {
+        // Se descarta cualquier año fuera de un rango plausible por la misma razón
+        // que en AccionController/DifusionController: fechas mal digitadas ensucian
+        // el selector (aquí además hay un año "2222", no solo años truncados).
+        $listaAnios = Sector::whereYear('fecha', '>=', 2010)
+            ->whereYear('fecha', '<=', (int) date('Y') + 1)
+            ->selectRaw('DISTINCT YEAR(fecha) as anio')
+            ->orderByDesc('anio')
+            ->pluck('anio');
+        if (!$listaAnios->contains($anio)) {
+            $listaAnios->prepend($anio);
+        }
+
+        return $listaAnios;
+    }
+
+    private function ajaxSectoresResponse(Request $request, $sectores)
+    {
+        return response()->json([
+            'rows' => view('sector._rows_general', ['sectores' => $sectores])->render(),
+            'pagination' => (string) $sectores->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+            'total' => $sectores->total(),
+            'totalFormatted' => number_format($sectores->total()),
+            'from' => $sectores->firstItem() ?? 0,
+            'to' => $sectores->lastItem() ?? 0,
+        ]);
     }
 
     public function general(Request $request)
     {
-        // Obtener el año seleccionado del request, con 2025 como valor predeterminado
-        $selectedYear = $request->get('year', 2025);
-        
-        $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.descripcion","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_sectores.idUser")
-                    ->where('pro_sectores.estado', '1')
-                    ->whereYear('pro_sectores.fecha', $selectedYear)
-                    ->orderby('pro_sectores.descripcion','desc')
-                    ->paginate(10);
-        
-        return view('sector.view')->with([
+        [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request);
+        $sectores = $this->paginateSectores($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxSectoresResponse($request, $sectores);
+        }
+
+        return view('sector.general', [
             'sectores' => $sectores,
-            'selectedYear' => $selectedYear // Pasar el año seleccionado a la vista
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaAnios' => $this->listaAniosSectores($anio),
+            'filterActionRoute' => 'sectores.view',
+            'exportRoute' => 'exportSectoresGeneral',
+            'pageTitle' => 'Sectores del Aula (General)',
+            'tableId' => 'tabla-sectores-general',
         ]);
     }
 
     public function ugel(Request $request)
     {
-        $ugel = Auth::user()->ugel;
-        $selectedYear = $request->get('year', 2025);
-        
-        $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.nivelinstitucion","users.ugel")
-            ->join("users","users.id","=","pro_sectores.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_sectores.estado', '1')
-            ->whereYear('pro_sectores.fecha', $selectedYear)
-            ->orderby('fecha','desc')
-            ->paginate(10);
-            
-        return view("sector.ugel", compact('sectores', 'selectedYear'));
+        [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request, Auth::user()->ugel);
+        $sectores = $this->paginateSectores($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxSectoresResponse($request, $sectores);
+        }
+
+        return view('sector.general', [
+            'sectores' => $sectores,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaInstituciones' => User::where('ugel', Auth::user()->ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion'),
+            'listaAnios' => $this->listaAniosSectores($anio),
+            'filterActionRoute' => 'sectores.ugel',
+            'exportRoute' => 'exportSectoresUgel',
+            'pageTitle' => 'Sectores del Aula (UGEL)',
+            'tableId' => 'tabla-sectores-ugel',
+        ]);
+    }
+
+    private function streamSectoresExport($query, string $filenamePrefix)
+    {
+        $sectores = $query->orderBy('pro_sectores.fecha', 'desc')->get();
+
+        $filename = $filenamePrefix . '_' . date('Y-m-d') . '.xls';
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($sectores) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            $html .= '<head><meta charset="utf-8">';
+            $html .= '<style>
+                table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+                th { background-color: #1E40AF; color: #FFFFFF; font-weight: bold; border: 1px solid #D1D5DB; padding: 8px; text-align: left; }
+                td { border: 1px solid #E5E7EB; padding: 6px; }
+                tr:nth-child(even) td { background-color: #F9FAFB; }
+            </style></head><body>';
+            $html .= '<table><thead><tr>';
+            $html .= '<th>Nombre del Sector</th><th>Descripción</th><th>Fecha</th><th>Docente</th><th>DNI</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE</th><th>Provincia</th><th>Distrito</th><th>UGEL</th>';
+            $html .= '</tr></thead><tbody>';
+
+            foreach ($sectores as $sector) {
+                $html .= '<tr>';
+                $html .= '<td>' . htmlspecialchars((string) $sector->nombreSector, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->descripcion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars(date('d-m-Y', strtotime($sector->fecha)), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->name ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->dni ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->cargo ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->institucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->nivelinstitucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->provincia ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->distrito ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($sector->ugel ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table></body></html>';
+
+            fwrite($file, $html);
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportSectoresGeneral(Request $request)
+    {
+        [$query] = $this->sectoresGeneralQuery($request);
+        return $this->streamSectoresExport($query, 'sectores_general');
+    }
+
+    public function exportSectoresUgel(Request $request)
+    {
+        [$query] = $this->sectoresGeneralQuery($request, Auth::user()->ugel);
+        return $this->streamSectoresExport($query, 'sectores_ugel');
     }
 
     public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_sectores.idUser")
@@ -84,7 +294,7 @@ class SectorController extends Controller
     public function profesorcoordinador(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_sectores.idUser")
@@ -112,7 +322,7 @@ class SectorController extends Controller
         $usuario = Auth::user()->id;
         $texto = trim($request->get('texto'));
         $fecha = trim($request->get('fecha'));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::where("nombreSector", "LIKE", "%" . $texto . "%")
             ->where("fecha", "LIKE", "%" . $fecha . "%")
@@ -134,7 +344,7 @@ class SectorController extends Controller
             $name = trim($request->get('docentes'));
             $ugel = trim($request->get('ugels'));
             $nominstitucion = trim($request->get('instituciones'));
-            $selectedYear = $request->get('year', 2025);
+            $selectedYear = $request->get('year', 2026);
 
             $query = Sector::select(
                 "pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", 
@@ -175,7 +385,7 @@ class SectorController extends Controller
         $dni = trim($request->get('texto'));
         $nivel = trim($request->get('nivel'));
         $nominstitucion = trim($request->get('nombinstitucion'));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_sectores.idUser")
@@ -196,7 +406,7 @@ class SectorController extends Controller
         $institucion = Auth::user()->institucion;
         $texto = trim($request->get('texto'));
         $fecha = trim($request->get('fecha'));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.tiposector", "pro_sectores.updated_at", "pro_sectores.lugar", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_sectores.idUser")
@@ -423,9 +633,10 @@ class SectorController extends Controller
     public function destroy($id)
     {
         $sector = Sector::findOrFail($id);
+        Storage::delete('public/' . $sector->enlace);
         $sector->estado = 0;
-        $sector->delete();
         $sector->idUser = Auth::user()->id;
+        $sector->save();
         session()->flash('success', '¡Registro eliminado!');
         return redirect('/sector');
     }
@@ -454,7 +665,7 @@ class SectorController extends Controller
 
     public function obtenerUgels(Request $request)
     {   
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
             
         $ugels = DB::table('pro_sectores')
             ->select('users.ugel', DB::raw('count(distinct pro_sectores.idUser) as docentes_count'))
@@ -471,7 +682,7 @@ class SectorController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -515,7 +726,7 @@ class SectorController extends Controller
     public function buscadorinstitucion(Request $request)
     {   
         $cargo = Auth::user()->cargo;
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         switch ($cargo) {
             case 'Especialista UGEL':
@@ -574,7 +785,7 @@ class SectorController extends Controller
         // Agrega esto para depuración
         \Log::info('Parámetros recibidos en buscarDocenteporInstitucion:', $request->all());
         
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         $cargo = Auth::user()->cargo;
         
         // Corrige el operador de asignación a comparación
@@ -620,7 +831,7 @@ class SectorController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
         
         $docentes = DB::table('users')
             ->leftJoin('pro_sectores', function($join) use ($selectedYear) {
@@ -645,7 +856,7 @@ class SectorController extends Controller
         $name = trim($request->get('docentes', ''));
         $ugel = trim($request->get('ugels', ''));
         $nominstitucion = trim($request->get('instituciones', ''));
-        $selectedYear = $request->get('year', 2025);
+        $selectedYear = $request->get('year', 2026);
 
         // Construir la misma consulta pero sin paginación
         $query = Sector::select(

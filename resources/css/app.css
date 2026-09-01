@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media (max-width: 767px) {
+    .table-stacked thead {
+        display: none;
+    }
+
+    .table-stacked,
+    .table-stacked tbody,
+    .table-stacked tr,
+    .table-stacked td {
+        display: block;
+        width: 100%;
+    }
+
+    .table-stacked tr[data-table-row] {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .table-stacked tr[data-table-row] td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        text-align: right;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .table-stacked tr[data-table-row] td::before {
+        content: attr(data-label);
+        flex: 0 0 40%;
+        text-align: left;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #6b7280;
+    }
+
+    .table-stacked tr[data-table-row] td:last-child {
+        border-bottom: 0;
+        background: #f9fafb;
+    }
+}

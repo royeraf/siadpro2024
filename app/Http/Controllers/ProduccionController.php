@@ -23,20 +23,45 @@ class ProduccionController extends Controller
         $this->middleware('can:produccions.dre')->only('dre');
     }
     
-    public function index()
+    public function index(Request $request)
     {
         $usuario = Auth::user()->id;
-        $selectedYear = request('year', '2025');
-        
-        $produccions = Produccion::where('estado', '1')
-            ->where('idUser', $usuario)
-            ->whereYear('fecha', $selectedYear)
-            ->orderby('id', 'desc')
-            ->paginate(10);
-            
-        return view('produccion.index')
-            ->with('produccions', $produccions)
-            ->with('selectedYear', $selectedYear);
+
+        $query = Produccion::where('estado', '1')->where('idUser', $usuario);
+
+        if ($request->filled('texto')) {
+            $query->where('nombreProduccion', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('fecha')) {
+            $query->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+        if ($request->filled('year')) {
+            $query->whereYear('fecha', $request->input('year'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('nombreProduccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $produccions = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('produccion._rows', ['produccions' => $produccions])->render(),
+                'pagination' => (string) $produccions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $produccions->total(),
+                'totalFormatted' => number_format($produccions->total()),
+                'from' => $produccions->firstItem() ?? 0,
+                'to' => $produccions->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaAnios = $this->listaAniosProduccion();
+
+        return view('produccion.index', compact('produccions', 'listaAnios'));
     }
 
     public function create()
@@ -44,133 +69,105 @@ class ProduccionController extends Controller
         return view('produccion.create');
     }
 
-    public function general()
+    /**
+     * Años plausibles disponibles para el selector de filtro, descartando
+     * fechas corruptas (p. ej. años como 23, 203 o 1978 por datos mal
+     * digitados) — mismo criterio que los demás módulos migrados.
+     */
+    private function listaAniosProduccion(string $anioActual = null)
     {
-        // Log inicio del método para depuración
-        \Log::info('Iniciando método general() en ProduccionController');
-        
-        $ugeluser = Auth::user()->ugel;
+        $listaAnios = Produccion::whereYear('fecha', '>=', 2010)
+            ->selectRaw('DISTINCT YEAR(fecha) as anio')
+            ->orderByDesc('anio')
+            ->pluck('anio');
+
+        $anioActual = $anioActual ?? date('Y');
+        if (!$listaAnios->contains($anioActual)) {
+            $listaAnios->prepend($anioActual);
+        }
+
+        return $listaAnios;
+    }
+
+    public function general(Request $request)
+    {
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
         $cargo = Auth::user()->cargo;
-        // Obtener el año seleccionado o usar 2025 por defecto
-        $selectedYear = request('year', '2025');
-        
-        \Log::info('Parámetros de filtro:', [
-            'ugel_usuario' => $ugeluser,
-            'cargo_usuario' => $cargo,
-            'año_seleccionado' => $selectedYear
-        ]);
-        
-        // Si el usuario es Especialista DRE, mostrar todas las producciones
+        $ugeluser = Auth::user()->ugel;
+
+        $query = Produccion::select(
+                "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.descripcion",
+                "pro_produccions.documento", "pro_produccions.color", "pro_produccions.fecha",
+                "pro_produccions.lugar", "users.name", "users.cargo", "users.nivelinstitucion",
+                "users.institucion", "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_produccions.idUser")
+            ->where('pro_produccions.estado', '1')
+            ->whereYear('pro_produccions.fecha', $anio);
+
+        // Alcance por rol (mismo criterio que la implementación original)
         if ($cargo == 'Especialista DRE') {
-            $produccions = Produccion::select(
-                "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.fecha", 
-                "pro_produccions.descripcion", "pro_produccions.documento", "pro_produccions.color", 
-                "pro_produccions.descripcion", "pro_produccions.lugar", "users.name", "users.institucion", 
-                "users.provincia", "users.cargo", "users.nivelinstitucion", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_produccions.idUser")
-            ->where('pro_produccions.estado', '1')
-            ->whereYear('pro_produccions.fecha', $selectedYear)
-            ->orderby('pro_produccions.id', 'desc')
-            ->paginate(10);
-            
-            $rols = [];
-            $buscars = ['1', '2'];  
-            
-            \Log::info('Total de registros encontrados para Especialista DRE: ' . $produccions->total());
-            
-            return view('produccion.dre')
-                ->with('produccions', $produccions)
-                ->with('rols', $rols)
-                ->with('buscars', $buscars)
-                ->with('selectedYear', $selectedYear);
+            // Especialista DRE: todas las producciones del año
+        } elseif ($cargo == 'Director' || $cargo == 'Docente' || $cargo == 'PC') {
+            $query->where("users.institucion", Auth::user()->institucion);
+        } elseif ($ugeluser != '') {
+            $query->where("users.ugel", $ugeluser);
+        } else {
+            // Sin cargo/UGEL asignada: solo sus propias producciones
+            $query->where('pro_produccions.idUser', Auth::user()->id);
         }
-        // Resto de la lógica original para otros roles
-        else if ($ugeluser != '') {
-            // Lógica actual para usuarios con UGEL asignada
-            // (Director, Docente, PC, Especialista UGEL)
-            // [Mantén el código original aquí]
-            
-            if ($cargo == 'Director') {
-                // Lógica para Director
-                $institucion = Auth::user()->institucion;
-                $produccions = Produccion::select(
-                    "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.fecha", 
-                    "pro_produccions.documento", "pro_produccions.color", "pro_produccions.descripcion", 
-                    "pro_produccions.lugar", "users.name", "users.institucion", "users.provincia", 
-                    "users.cargo", "users.nivelinstitucion", "users.distrito", "users.ugel"
-                )
-                ->join("users", "users.id", "=", "pro_produccions.idUser")
-                ->where("users.institucion", $institucion)
-                ->where('pro_produccions.estado', '1')
-                ->whereYear('pro_produccions.fecha', $selectedYear)
-                ->orderby('pro_produccions.id', 'desc')
-                ->paginate(10);
-                $buscars = [];
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('docentes')) {
+            $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
+        }
+        if ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_produccions.nombreProduccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_produccions.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
             }
-            else if ($cargo == 'Docente' || $cargo == 'PC') {
-                // Lógica para Docente o PC
-                $institucion = Auth::user()->institucion;
-                $produccions = Produccion::select(
-                    "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.fecha", 
-                    "pro_produccions.documento", "pro_produccions.color", "pro_produccions.descripcion", 
-                    "pro_produccions.lugar", "users.name", "users.institucion", "users.provincia", 
-                    "users.cargo", "users.nivelinstitucion", "users.distrito", "users.ugel"
-                )
-                ->join("users", "users.id", "=", "pro_produccions.idUser")
-                ->where("users.institucion", $institucion)
-                ->whereYear('pro_produccions.fecha', $selectedYear)
-                ->where('pro_produccions.estado', '1')
-                ->orderby('pro_produccions.id', 'desc')
-                ->paginate(10);
-                $buscars = [];
-            } else {
-                // Lógica para UGEL - especialistas u otros roles
-                $produccions = Produccion::select(
-                    "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.fecha", 
-                    "pro_produccions.documento", "pro_produccions.color", "pro_produccions.descripcion", 
-                    "pro_produccions.lugar", "users.name", "users.institucion", "users.provincia", 
-                    "users.cargo", "users.nivelinstitucion", "users.distrito", "users.ugel"
-                )
-                ->join("users", "users.id", "=", "pro_produccions.idUser")
-                ->where("users.ugel", $ugeluser)
-                ->whereYear('pro_produccions.fecha', $selectedYear)
-                ->where('pro_produccions.estado', '1')
-                ->orderby('pro_produccions.id', 'desc')
-                ->paginate(10);   
-                $buscars = ['1'];  
-            }
-            
-            $rols = ['1', '5'];
-            
-            \Log::info('Total de registros encontrados para usuario con UGEL: ' . $produccions->total());
-            
-            return view("produccion.view", compact('produccions', 'rols', 'buscars', 'selectedYear'));
         }
-        else {
-            // Lógica para otros casos (usuario sin cargo específico o sin UGEL)
-            // Mostrar solo sus propias producciones por seguridad
-            $usuario = Auth::user()->id;
-            $produccions = Produccion::select(
-                "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.fecha", 
-                "pro_produccions.documento", "pro_produccions.color", "pro_produccions.descripcion", 
-                "pro_produccions.lugar", "users.name", "users.institucion", "users.provincia", 
-                "users.cargo", "users.nivelinstitucion", "users.distrito", "users.ugel"
-            )
-            ->join("users", "users.id", "=", "pro_produccions.idUser")
-            ->where('pro_produccions.idUser', $usuario)
-            ->where('pro_produccions.estado', '1')
-            ->whereYear('pro_produccions.fecha', $selectedYear)
-            ->orderby('pro_produccions.id', 'desc')
-            ->paginate(10);
-            
-            $rols = [];
-            $buscars = [];
-            
-            \Log::info('Total de registros encontrados para usuario sin roles específicos: ' . $produccions->total());
-            
-            return view("produccion.view", compact('produccions', 'rols', 'buscars', 'selectedYear'));
+
+        $produccions = $query->orderBy('pro_produccions.fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('produccion._rows_general', ['produccions' => $produccions])->render(),
+                'pagination' => (string) $produccions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $produccions->total(),
+                'totalFormatted' => number_format($produccions->total()),
+                'from' => $produccions->firstItem() ?? 0,
+                'to' => $produccions->lastItem() ?? 0,
+            ]);
         }
+
+        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaAnios = $this->listaAniosProduccion($anio);
+
+        return view('produccion.view', compact('produccions', 'anio', 'listaUgels', 'listaAnios'));
     }
 
         
@@ -187,104 +184,12 @@ class ProduccionController extends Controller
 
     public function buscar(Request $request)
     {
-        $usuario = Auth::user()->id;
-        $texto = trim($request->get('texto'));
-        $selectedYear = $request->get('year', '2025');
-        
-        $produccions = Produccion::where("nombreProduccion", "LIKE", "%" . $texto . "%")
-            ->where('estado', '1')
-            ->where('idUser', $usuario)
-            ->whereYear('fecha', $selectedYear)
-            ->orderBy('id', 'desc')
-            ->paginate(10);
-            
-        return view('produccion.index')
-            ->with('produccions', $produccions)
-            ->with('selectedYear', $selectedYear);
+        return $this->index($request);
     }
 
     public function buscarGeneral(Request $request)
     {
-        \Log::info('Parámetros de búsqueda:', $request->all());
-        
-        $cargo = Auth::user()->cargo;
-        // Obtener el año seleccionado o usar 2025 por defecto
-        $selectedYear = $request->get('year', '2025');
-
-        if ($cargo == 'Especialista DRE') {
-            if (empty($request->get('ugels')) && empty($request->get('instituciones')) && 
-                empty($request->get('docentes')) && empty($request->get('texto')) && 
-                empty($request->get('nivel')) && $request->get('year', null) === null) {
-                return redirect('/produccion-general');
-            } else {
-                $dni = trim($request->get('texto', ''));
-                $name = trim($request->get('docentes', ''));
-                $ugel = trim($request->get('ugels', ''));
-                $nominstitucion = trim($request->get('instituciones', ''));
-                $nivel = trim($request->get('nivel', ''));
-
-                $query = Produccion::select(
-                    "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.fecha", 
-                    "pro_produccions.documento", "pro_produccions.color", "pro_produccions.descripcion", 
-                    "pro_produccions.lugar", "users.name", "users.cargo", "users.nivelinstitucion", 
-                    "users.institucion", "users.provincia", "users.distrito", "users.ugel", "users.dni"
-                )
-                ->join("users", "users.id", "=", "pro_produccions.idUser")
-                ->where('pro_produccions.estado', '1')
-                ->whereYear('pro_produccions.fecha', $selectedYear);  // Filtrar por el año seleccionado
-
-                // Aplicar cada filtro independientemente si está presente
-                if (!empty($ugel)) {
-                    $query->where("users.ugel", "LIKE", "%$ugel%");
-                }
-                
-                if (!empty($dni)) {
-                    $query->where("users.dni", "LIKE", "%$dni%");
-                }
-                
-                if (!empty($name)) {
-                    $query->where("users.name", "LIKE", "%$name%");
-                }
-                
-                if (!empty($nominstitucion)) {
-                    $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-                }
-                
-                if (!empty($nivel)) {
-                    $query->where("users.nivelinstitucion", "=", $nivel);
-                }
-
-                $produccions = $query->orderBy('pro_produccions.id', 'desc')->paginate(1000);
-                
-                \Log::info('Total de registros encontrados: ' . $produccions->total());
-                \Log::info('Año seleccionado: ' . $selectedYear);
-
-                return view('produccion.dre')
-                    ->with('produccions', $produccions)
-                    ->with('selectedYear', $selectedYear);  // Pasar el año seleccionado a la vista
-            }
-        }
-        // El resto del método para otros roles
-        else {
-            // Lógica para otros roles
-            $produccions = Produccion::select(
-                "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.fecha", 
-                "pro_produccions.documento", "pro_produccions.color", "pro_produccions.descripcion", 
-                "pro_produccions.lugar", "users.name", "users.cargo", "users.nivelinstitucion", 
-                "users.institucion", "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_produccions.idUser")
-            ->where('pro_produccions.estado', '1')
-            ->whereYear('pro_produccions.fecha', $selectedYear)  // Filtrar por el año seleccionado
-            ->orderBy('pro_produccions.id', 'desc')
-            ->paginate(1000);
-            
-            \Log::info('Total de registros encontrados (otros roles): ' . $produccions->total());
-            
-            return view('produccion.dre')
-                ->with('produccions', $produccions)
-                ->with('selectedYear', $selectedYear);  // Pasar el año seleccionado a la vista
-        }
+        return $this->general($request);
     }
 
     
@@ -489,8 +394,8 @@ class ProduccionController extends Controller
 
     public function obtenerUgels(Request $request)
     {       
-        // Obtener el año seleccionado del request o usar 2025 como predeterminado
-        $selectedYear = $request->get('year', '2025');
+        // Obtener el año seleccionado del request o usar 2026 como predeterminado
+        $selectedYear = $request->get('year', '2026');
         
         $ugels = DB::table('pro_produccions')
             ->select('users.ugel', DB::raw('count(distinct pro_produccions.idUser) as docentes_count'))
@@ -507,7 +412,7 @@ class ProduccionController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -564,7 +469,7 @@ class ProduccionController extends Controller
         }
         
         $term = $request->input('term');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
@@ -615,7 +520,7 @@ class ProduccionController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         \Log::info('Buscando docentes para:', [
             'institucion' => $institucionSeleccionada, 
@@ -648,7 +553,7 @@ class ProduccionController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
-        $selectedYear = $request->input('year', '2025');
+        $selectedYear = $request->input('year', '2026');
         
         $docentes = DB::table('users')
             ->leftJoin('pro_produccions', function($join) use ($selectedYear) {
@@ -674,45 +579,115 @@ class ProduccionController extends Controller
         $ugel = trim($request->get('ugels', ''));
         $nominstitucion = trim($request->get('instituciones', ''));
         $nivel = trim($request->get('nivel', ''));
-        $selectedYear = $request->get('year', '2025');  // Obtener el año seleccionado o usar 2025 por defecto
-    
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
         // Construir la misma consulta pero sin paginación
         $query = Produccion::select(
-            "pro_produccions.nombreProduccion", "pro_produccions.descripcion", 
-            "pro_produccions.fecha", "users.name", "users.cargo", 
-            "users.nivelinstitucion", "users.institucion", 
+            "pro_produccions.nombreProduccion", "pro_produccions.descripcion",
+            "pro_produccions.fecha", "users.name", "users.cargo",
+            "users.nivelinstitucion", "users.institucion",
             "users.provincia", "users.distrito", "users.ugel"
         )
         ->join("users", "users.id", "=", "pro_produccions.idUser")
         ->where('pro_produccions.estado', '1')
-        ->whereYear('pro_produccions.fecha', $selectedYear);  // Filtrar por el año seleccionado
-    
+        ->whereYear('pro_produccions.fecha', $anio);
+
         // Aplicar los mismos filtros
         if (!empty($ugel)) {
             $query->where("users.ugel", "LIKE", "%$ugel%");
         }
-        
         if (!empty($dni)) {
             $query->where("users.dni", "LIKE", "%$dni%");
         }
-        
         if (!empty($name)) {
             $query->where("users.name", "LIKE", "%$name%");
         }
-        
         if (!empty($nominstitucion)) {
             $query->where("users.institucion", "LIKE", "%$nominstitucion%");
         }
-        
         if (!empty($nivel)) {
             $query->where("users.nivelinstitucion", "=", $nivel);
         }
-    
+
         // Obtener TODOS los resultados (sin paginar)
         $produccions = $query->orderBy('pro_produccions.fecha', 'desc')->get();
-    
-        // El resto del método sigue igual...
-        // Aquí iría la lógica para exportar a Excel, CSV, etc.
+
+        // Determinar formato
+        $format = $request->get('format', 'excel');
+
+        switch ($format) {
+            case 'csv':
+                return $this->exportToCsv($produccions);
+            default:
+                return $this->exportToExcel($produccions);
+        }
+    }
+
+    private function exportToExcel($produccions)
+    {
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename=producciones.xls',
+        ];
+
+        $content = '<table border="1">';
+        $content .= '<tr><th>Tipo de Producción</th><th>Descripción</th><th>Fecha</th><th>Usuario</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE.</th><th>Provincia</th><th>Distrito</th><th>UGEL</th></tr>';
+
+        foreach ($produccions as $item) {
+            $content .= '<tr>';
+            $content .= '<td>' . $item->nombreProduccion . '</td>';
+            $content .= '<td>' . $item->descripcion . '</td>';
+            $content .= '<td>' . date('d-m-Y', strtotime($item->fecha)) . '</td>';
+            $content .= '<td>' . $item->name . '</td>';
+            $content .= '<td>' . $item->cargo . '</td>';
+            $content .= '<td>' . $item->institucion . '</td>';
+            $content .= '<td>' . $item->nivelinstitucion . '</td>';
+            $content .= '<td>' . $item->provincia . '</td>';
+            $content .= '<td>' . $item->distrito . '</td>';
+            $content .= '<td>' . $item->ugel . '</td>';
+            $content .= '</tr>';
+        }
+
+        $content .= '</table>';
+
+        return response($content, 200, $headers);
+    }
+
+    private function exportToCsv($produccions)
+    {
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename=producciones.csv',
+        ];
+
+        $callback = function () use ($produccions) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, [
+                'Tipo de Producción', 'Descripción', 'Fecha', 'Usuario', 'Cargo',
+                'Institución', 'Tipo de II.EE.', 'Provincia', 'Distrito', 'UGEL'
+            ]);
+
+            foreach ($produccions as $item) {
+                fputcsv($file, [
+                    $item->nombreProduccion,
+                    $item->descripcion,
+                    date('d-m-Y', strtotime($item->fecha)),
+                    $item->name,
+                    $item->cargo,
+                    $item->institucion,
+                    $item->nivelinstitucion,
+                    $item->provincia,
+                    $item->distrito,
+                    $item->ugel
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
 

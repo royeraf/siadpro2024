@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Accion;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -17,124 +18,226 @@ class AccionController extends Controller
         $this->middleware('can:accions.create')->only('create', 'store');
         $this->middleware('can:accions.edit')->only('edit', 'update');
         $this->middleware('can:accions.destroy')->only('destroy');
-        $this->middleware('can:accions.view')->only('general');
+        $this->middleware('can:accions.view')->only('general', 'exportAccionsGeneral');
         $this->middleware('can:accions.dre')->only('dre');
+        // Igual que en DifusionController: buscarGeneral/exportarFiltradoTotal ya no los usa
+        // la vista migrada, pero seguían alcanzables por URL directa sin control de acceso
+        // propio más allá del "auth" genérico.
+        $this->middleware('can:accions.view')->only('buscarGeneral', 'exportarFiltradoTotal');
     }
     
-    public function index()
+    public function index(Request $request)
     {
         $usuario = Auth::user()->id;
-        $accions = Accion::where('estado', '1')->where('idUser',$usuario)->where('tipo','sensibilizacion')->orderby('fecha','desc')->paginate(10);
-        return view('accion.index')->with('accions',$accions);
+
+        $accionsQuery = Accion::where('estado', '1')
+            ->where('idUser', $usuario)
+            ->where('tipo', 'sensibilizacion');
+
+        if ($request->filled('texto')) {
+            $accionsQuery->where('nombreAccion', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+
+        if ($request->filled('fecha')) {
+            $accionsQuery->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $accionsQuery->where(function ($q) use ($buscar) {
+                $q->where('nombreAccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('lugar', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('accion._rows', ['accions' => $accions])->render(),
+                'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $accions->total(),
+                'totalFormatted' => number_format($accions->total()),
+                'from' => $accions->firstItem() ?? 0,
+                'to' => $accions->lastItem() ?? 0,
+            ]);
+        }
+
+        return view('accion.index', compact('accions'));
     }
 
-    public function general()
-        {
-            $ugeluser = Auth::user()->ugel;
-            $cargo = Auth::user()->cargo;
-            // Obtiene el año del request, si no hay, usa 2025 como default
-            $anio = request()->get('anio', '2025');
-            
-            // Si es un Especialista DRE, mostrar todas las acciones sin filtros
-            if ($cargo == 'Especialista DRE') {
-                $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                        "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                        "users.name","users.institucion","users.provincia","users.cargo",
-                        "users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                ->join("users","users.id","=","pro_accions.idUser")
-                ->where('pro_accions.estado', '1')
-                ->where("pro_accions.tipo", "sensibilizacion")
-                ->whereYear('fecha', $anio)
-                ->orderby('pro_accions.fecha','desc')
-                ->paginate(10);
-                
-                $rols = [];
-                $buscars = ['1','2'];
-                
-                return view('accion.dre', compact('accions', 'rols', 'buscars', 'anio'));
+    /**
+     * Alcance de "Acción de Sensibilización (General)" según el cargo del usuario:
+     * Director/Docente/PC -> solo su institución; "Especialista UGEL" (cualquier
+     * cargo no listado con ugel asignada) -> solo su UGEL; Especialista DRE o
+     * administrador sin UGEL asignada -> sin restricción (ve todo).
+     */
+    private function accionsGeneralQuery(Request $request): array
+    {
+        $cargo = Auth::user()->cargo;
+        $ugelUser = Auth::user()->ugel;
+        $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
+
+        $query = Accion::select(
+                'pro_accions.id', 'pro_accions.nombreAccion', 'pro_accions.descripcion',
+                'pro_accions.documento', 'pro_accions.color', 'pro_accions.fecha', 'pro_accions.lugar',
+                'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
+                'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
+            )
+            ->join('users', 'users.id', '=', 'pro_accions.idUser')
+            ->where('pro_accions.estado', '1')
+            ->where('pro_accions.tipo', 'sensibilizacion')
+            ->whereYear('pro_accions.fecha', $anio);
+
+        $showFullFilters = true;
+
+        if ($cargo === 'Director' || $cargo === 'Docente' || $cargo === 'PC') {
+            $query->where('users.institucion', Auth::user()->institucion);
+            $showFullFilters = false;
+        } elseif ($cargo !== 'Especialista DRE' && $ugelUser != '') {
+            $query->where('users.ugel', $ugelUser);
+            $showFullFilters = false;
+        }
+
+        if ($showFullFilters) {
+            if ($request->filled('ugels')) {
+                $query->where('users.ugel', $request->input('ugels'));
             }
-            // Para usuarios con UGEL asignada (pero que no son Especialista DRE)
-            else if ($ugeluser != '') {
-                if ($cargo == 'Director') {
-                    $institucion = Auth::user()->institucion;
-                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                            "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                            "users.name","users.institucion","users.provincia","users.cargo",
-                            "users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_accions.idUser")
-                    ->where("users.institucion", $institucion)
-                    ->where('pro_accions.estado', '1')
-                    ->where("pro_accions.tipo", "sensibilizacion")
-                    ->whereYear('fecha', $anio)
-                    ->orderby('pro_accions.fecha','desc')
-                    ->paginate(10);
-                    $buscars = [];
-                }
-                else if ($cargo == 'Docente' || $cargo == 'PC') {
-                    $institucion = Auth::user()->institucion;
-                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                            "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                            "users.name","users.institucion","users.provincia","users.cargo",
-                            "users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_accions.idUser")
-                    ->where("users.institucion", $institucion)
-                    ->where('pro_accions.estado', '1')
-                    ->where("pro_accions.tipo", "sensibilizacion")
-                    ->whereYear('fecha', $anio)
-                    ->orderby('pro_accions.fecha','desc')
-                    ->paginate(10);
-                    $buscars = [];
-                } 
-                else {
-                    // Esto es Por Ugeles (Especialista UGEL)
-                    $ugeluser = Auth::user()->ugel;
-                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                            "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                            "users.name","users.institucion","users.provincia","users.cargo",
-                            "users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_accions.idUser")
-                    ->where("users.ugel", $ugeluser)
-                    ->where('pro_accions.estado', '1')
-                    ->where("pro_accions.tipo", "sensibilizacion")
-                    ->whereYear('fecha', $anio)
-                    ->orderby('pro_accions.fecha','desc')
-                    ->paginate(10);
-                    $buscars = ['1'];
-                }
-                
-                $rols = ['1','5'];
-                return view("accion.view", compact('accions', 'rols', 'buscars', 'anio'));
-            }
-            // Para otros casos (puede ser otro administrador o usuarios sin UGEL)
-            else {
-                // Esto es general por Dre o Admin sin UGEL asignada
-                $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                        "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                        "users.name","users.institucion","users.provincia","users.cargo",
-                        "users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                ->join("users","users.id","=","pro_accions.idUser")
-                ->where('pro_accions.estado', '1')
-                ->where("pro_accions.tipo", "sensibilizacion")
-                ->whereYear('fecha', $anio)
-                ->orderby('pro_accions.fecha','desc')
-                ->paginate(10);
-                
-                $rols = [];
-                $buscars = ['1','2'];
-                
-                return view('accion.view', compact('accions', 'rols', 'buscars', 'anio'));
+            if ($request->filled('instituciones')) {
+                $query->where('users.institucion', 'LIKE', '%' . $request->input('instituciones') . '%');
             }
         }
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+
+        if ($request->filled('docentes')) {
+            $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
+        }
+
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_accions.nombreAccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_accions.lugar', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        return [$query, $anio, $showFullFilters];
+    }
+
+    public function general(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request);
+
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        $accions = $query->orderBy('pro_accions.fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('accion._rows_general', ['accions' => $accions])->render(),
+                'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $accions->total(),
+                'totalFormatted' => number_format($accions->total()),
+                'from' => $accions->firstItem() ?? 0,
+                'to' => $accions->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        // Se descartan años fuera de un rango plausible: hay registros antiguos con
+        // la fecha mal digitada (p. ej. "0023-08-14" en vez de "2023-08-14") que
+        // ensuciarían el selector con años como 23, 203 o 1978.
+        $listaAnios = Accion::where('tipo', 'sensibilizacion')
+            ->whereYear('fecha', '>=', 2010)
+            ->selectRaw('DISTINCT YEAR(fecha) as anio')
+            ->orderByDesc('anio')
+            ->pluck('anio');
+        if (!$listaAnios->contains($anio)) {
+            $listaAnios->prepend($anio);
+        }
+
+        return view('accion.general', compact('accions', 'anio', 'showFullFilters', 'listaUgels', 'listaAnios'));
+    }
+
+    public function exportAccionsGeneral(Request $request)
+    {
+        [$query, $anio] = $this->accionsGeneralQuery($request);
+
+        $accions = $query->orderBy('pro_accions.fecha', 'desc')->get();
+
+        $filename = 'acciones_sensibilizacion_general_' . date('Y-m-d') . '.xls';
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($accions) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            $html .= '<head><meta charset="utf-8">';
+            $html .= '<style>
+                table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+                th { background-color: #1E40AF; color: #FFFFFF; font-weight: bold; border: 1px solid #D1D5DB; padding: 8px; text-align: left; }
+                td { border: 1px solid #E5E7EB; padding: 6px; }
+                tr:nth-child(even) td { background-color: #F9FAFB; }
+            </style></head><body>';
+            $html .= '<table><thead><tr>';
+            $html .= '<th>Nombre de la Acción</th><th>Descripción</th><th>Lugar</th><th>Fecha</th><th>Docente</th><th>DNI</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE</th><th>Provincia</th><th>Distrito</th><th>UGEL</th>';
+            $html .= '</tr></thead><tbody>';
+
+            foreach ($accions as $accion) {
+                $html .= '<tr>';
+                $html .= '<td>' . htmlspecialchars((string) $accion->nombreAccion, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->descripcion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) $accion->lugar, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars(date('d-m-Y', strtotime($accion->fecha)), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->name ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->dni ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->cargo ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->institucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->nivelinstitucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->provincia ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->distrito ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->ugel ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table></body></html>';
+
+            fwrite($file, $html);
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 
     public function ugel()
     {
         $ugel = Auth::user()->ugel;
+        $anio = request()->get('anio', '2026');
         $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.fecha","pro_accions.lugar","pro_users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
             ->join("users","users.id","=","pro_accions.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_accions.estado', '1')
             ->where('pro_accions.tipo', 'sensibilizacion')
-            ->whereYear('fecha', "2023")
+            ->whereYear('fecha', $anio)
             ->orderby('pro_accions.fecha','desc')
             ->paginate(10);
             return view("accion.view",compact('accions'));
@@ -173,7 +276,6 @@ class AccionController extends Controller
         $accions = Accion::where("nombreAccion","LIKE","%".$texto."%")
         ->where("fecha","LIKE","%".$fecha."%")
         ->where('estado', '1')
-        ->whereYear('fecha', "2023")
         ->where('idUser', $usuario)
         ->where("tipo", "sensibilizacion")
         ->orderby('fecha','desc')
@@ -183,7 +285,7 @@ class AccionController extends Controller
 
     public function buscarGeneral(Request $request){
         $cargo = Auth::user()->cargo;
-        $anio = trim($request->get('anio')) ?: '2025'; // Capturar el año para todos los roles
+        $anio = trim($request->get('anio')) ?: '2026'; // Capturar el año para todos los roles
         
         if ($cargo == 'Especialista DRE') {
             if (empty($request->get('ugels')) && empty($request->get('instituciones')) && 
@@ -539,7 +641,7 @@ class AccionController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ingreso = Auth::user()->cargo;
-        $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+        $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
         
         switch ($ingreso) {
             case 'Especialista DRE':
@@ -596,7 +698,7 @@ class AccionController extends Controller
     public function buscadorinstitucion(Request $request)
         {   
             $cargo = Auth::user()->cargo;
-            $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+            $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
             
             switch ($cargo) {
                 case 'Especialista UGEL':
@@ -651,7 +753,7 @@ class AccionController extends Controller
     public function buscarDocenteporInstitucion(Request $request)
         {
             $cargo = Auth::user()->cargo;
-            $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+            $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
             
             if ($cargo == "Especialista UGEL") {
                 $ugelSeleccionada = Auth::user()->ugel;
@@ -681,7 +783,7 @@ class AccionController extends Controller
             {
                 $institucion = $request->input('institucion'); 
                 $term = $request->input('term');
-                $anio = $request->input('anio', '2025'); // Obtener el año seleccionado
+                $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
                 
                 $docentes = DB::table('users')
                     ->leftJoin('pro_accions', function($join) use ($anio) {
@@ -708,7 +810,7 @@ class AccionController extends Controller
     public function exportarFiltradoTotal(Request $request)
     {
         $cargo = Auth::user()->cargo;
-        $anio = trim($request->get('anio')) ?: '2025';
+        $anio = trim($request->get('anio')) ?: '2026';
         $dni = trim($request->get('texto', ''));
         $docente = trim($request->get('docentes', ''));
         $ugel = trim($request->get('ugels', ''));

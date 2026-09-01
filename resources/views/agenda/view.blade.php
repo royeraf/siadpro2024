@@ -8,8 +8,6 @@
 @section('css')
 
 <!-- Bootstrap Core CSS -->
-<link href="/vendor/css/bootstrap.min.css" rel="stylesheet">
-
 <!-- FullCalendar -->
 <link href="/vendor/css/fullcalendar.css" rel="stylesheet">
 
@@ -52,7 +50,7 @@
 									</div>
 									<div class="form-group col-md-12">
 										<label for="evento" class="col-sm-3 control-label">Evento</label><br>
-										<br><textarea name="evento" id="evento" cols="59" rows="3" placeholder="Descripcion del evento" readonly></textarea>
+										<br><textarea name="evento" id="evento" class="form-control" rows="3" placeholder="Descripcion del evento" readonly></textarea>
 									</div>							
 									<div class="form-group col-md-12" >
 										<label for="nomDocente" class="col-sm-3 control-label">Docente</label>
@@ -83,14 +81,8 @@
 @endsection
 
 @section('js')
-<script src="/vendor/js/jquery.js"></script>
-
-<!-- Bootstrap Core JavaScript -->
-<script src="/vendor/js/bootstrap.min.js"></script>
-
 <!-- FullCalendar -->
 <script src="/vendor/js/moment.min.js"></script>
-<script src="/vendor/js/fullcalendar/fullcalendar.min.js"></script>
 <script src="/vendor/js/fullcalendar/fullcalendar.js"></script>
 <script src="/vendor/js/fullcalendar/locale/es.js"></script>
 
@@ -115,16 +107,15 @@
 			eventLimit: true, 
 			selectable: true,
 			selectHelper: true,
-			eventRender: function(event, element) {
-				element.bind('click', function() {
-					$('#ModalView #id').val(event.id);
-					$('#ModalView #title').val(event.title);	
-					$('#ModalView #nomDocente').val(event.nomDocente);
-					$('#ModalView #evento').val(event.evento);					
-					$('#ModalView #start').val(event.start);					
-					$('#ModalView #end').val(event.end);
-					$('#ModalView').modal('show');
-				});
+			eventClick: function(event) {
+				var formato = 'DD/MM/YYYY HH:mm';
+				$('#ModalView #id').val(event.id);
+				$('#ModalView #title').val(event.title);
+				$('#ModalView #nomDocente').val(event.nomDocente);
+				$('#ModalView #evento').val(event.evento);
+				$('#ModalView #start').val(event.start ? moment(event.start).format(formato) : '');
+				$('#ModalView #end').val(event.end ? moment(event.end).format(formato) : '');
+				$('#ModalView').modal('show');
 			},
 			events: [
 				
@@ -132,16 +123,8 @@
 			
 				$start = explode(" ", $event['start']);
 				$end = explode(" ", $event['end']);
-				if($start[1] == '00:00:00'){
-					$start = $start[0];
-				}else{
-					$start = $event['start'];
-				}
-				if($end[1] == '00:00:00'){
-					$end = $end[0];
-				}else{
-					$end = $event['end'];
-				}
+				$start = isset($start[1]) && $start[1] == '00:00:00' ? $start[0] : $event['start'];
+				$end = isset($end[1]) && $end[1] == '00:00:00' ? $end[0] : $event['end'];
 			?>
 				{
 					id: '<?php echo $event['id']; ?>',

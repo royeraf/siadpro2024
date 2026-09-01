@@ -72,7 +72,7 @@
 
                         <div class="form-group row mb-0">
                             <div class="col-md-6 offset-md-4">
-                                <a href="/accions" class="btn btn-danger" tabindex="4">Cancelar</a>
+                                <a href="/difusions" class="btn btn-danger" tabindex="4">Cancelar</a>
                                 <button type="submit" class="btn btn-primary">
                                     {{ __('Guardar cambios') }}
                                 </button>

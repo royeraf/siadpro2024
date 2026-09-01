@@ -1,188 +1,151 @@
 @extends('adminlte::page')
+
+@section('title', 'Sectores del Aula')
+
 @section('css')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
-<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/css/admin_custom.css">
+@vite(['resources/css/app.css'])
 @endsection
 
-@section('title', 'Asistencia')
-
 @section('content_header')
-    @if(session('mensajeinternet'))
-        <div class="alert alert-danger">
-            {{ session('mensajeinternet') }}
-        </div>
-    @endif
-    <h1>Listado de Sectores</h1>
+    <x-page-header icon="layout-grid" title="Listado de Sectores del Aula" />
 @stop
 
 @section('content')
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-    
-    @if ($errors->has('documento'))
+
+@if(session('success'))
+    <div id="alert-success" class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+@endif
+
+@if ($errors->has('documento'))
     <div class="alert alert-danger">
         {{ $errors->first('documento') }}
     </div>
-    @endif
-    
-    @if(count($sectores)<=0)
-        <div class="alert alert-info">
-            No se encontro Sectores!
-        </div>
-    @endif
+@endif
 
-<form action="{{route('buscarSector')}}" method="get" class="row g-3">
- <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-file"></i>
-                </span>
-                    <input type="text" class="form-control" name="texto" Placeholder="Nombre de la Sector">
-                    
-                </div>
-                </div>
-                </div>
-                <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-calendar"></i>
-                </span>
-                    <input type="date" class="form-control" name="fecha" Placeholder="fecha de publicacion">
-                </div>
-                </div>
-                </div>
-                <div class="form-group col-md-1">
-                    <input type="submit" class="btn btn-primary" value="Buscar">
-                </div>
-                
-        
-        </form>
+<div class="flex justify-start mb-3">
+    <x-create-button :href="route('sectores.create')">Nuevo Sector</x-create-button>
+</div>
 
-<a href="sectores/create" class="btn btn-primary mb-3">+ NUEVO REGISTRO</a>
+<!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
+<x-table-base id="tabla-sectores"
+              :perPage="10"
+              :exportable="true"
+              :searchable="true"
+              exportFilename="sectores_aula"
+              :serverPaginated="true"
+              :totalServerRecords="$sectores->total()"
+              :fromServer="$sectores->firstItem() ?? 0"
+              :toServer="$sectores->lastItem() ?? 0"
+              :filterAction="route('sector.index')">
+    <x-slot name="filters">
+        <x-table-filter name="texto" label="Nombre del Sector" icon="file-text" placeholder="Ej. Sector de Lectura" />
+        <x-table-filter name="fecha" label="Fecha" icon="calendar" type="date" />
+    </x-slot>
+    <x-slot name="header">
+        <tr>
+            <th @click="sortBy(0)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Nombre del Sector</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 0 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 0 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(1)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Descripci贸n</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 1 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 1 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(2)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 120px;">
+                <div class="flex items-center justify-between">
+                    <span>Fecha</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 2 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 2 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Documento
+            </th>
+            <th @click="sortBy(4)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Usuario</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 4 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 4 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(5)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Instituci贸n</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 5 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 5 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(6)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Provincia</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 6 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 6 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(7)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Distrito</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 7 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 7 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(8)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>UGEL</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 8 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 8 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Opciones
+            </th>
+        </tr>
+    </x-slot>
 
-<table id="sectores" class="table table-striped table-bordered shadow-lg mt-4 display nowrap" style="width:100%">
-                    <thead class="bg-primary text-white">
-                    <tr>   
-                    <th scope="col">Nombre de la Asistencia</th>
-                    <th scope="col">Descripci贸n</th>
-                    <th scope="col">Fecha</th>
-                    <th scope="col">Documento</th>
-                    <th scope="col">Usuario</th>
-                    <th scope="col">Instituci贸n</th>
-                    <th scope="col">Provincia</th>
-                    <th scope="col">Distrito</th>
-                    <th scope="col">UGEL</th>
-                    <th scope="col">Opciones</th>
-                    </tr>
-                    </thead>
-                    <tbody >
+    @include('sector._rows')
+</x-table-base>
 
-                    @if(count($sectores)<=0)
-                    <tr>
-                        <td colspan="8">NO HAY ASISTENCIA DE SCTORES</td>
-                    </tr>
-                    @else
-                    @foreach ($sectores as $sector)
-                
-                   @php
-                         $fecha = date('Y', strtotime($sector->fecha));
-                     @endphp
-                    @if ($fecha == 2025)
-                    <tr>
-                        <td>{{$sector->nombreSector}}</td>
-                        <td>{{$sector->descripcion}}</td>
-                        <td>{{date('d-m-Y', strtotime($sector->fecha))}}</td>
-                        <td align="center"><a href="{{ route('sectores.download', $sector->id) }}" , target="_blank"><i class='{{$sector->documento}}' style='font-size:24px;color:{{$sector->color}}' ></i></a></td>
-                        <td>{{$sector->getUser->name}}</td>
-                        <td>{{$sector->getUser->institucion}}</td>
-                        <td>{{$sector->getUser->provincia}}</td>
-                        <td>{{$sector->getUser->distrito}}</td>
-                        <td>{{$sector->getUser->ugel}}</td>
-                        <td>
-                            <form action="{{  route ('sectores.destroy',$sector->id)}}" method="POST">
-                            <a href="/sectores/{{ $sector->id}}/edit" class="btn btn-warning"><i class="fas fa-edit"></i></a>
-                            @csrf
-                        
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                    @endif
-                    @endforeach
-                    @endif
-                     </tbody>
-                     </table>
-                     <div class="form-inline">
-                        <p>Total de Sectores Subidos: {{$sectores->total()}}</p> <br>
-                        {{$sectores->links()}}
-                     </div>
-                     
-                          
-                    
-@stop
+<x-table-pagination id="tabla-sectores" :paginator="$sectores" />
 
-@section('css')
-<style>
-    .fade {
-        opacity: 0;
-        transition: opacity 0.5s ease-out; /* Duración de la transición */
-    }
-</style>
- 
 @stop
 
 @section('js')
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+@vite(['resources/js/app.js'])
+<x-sweet-alert />
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            let alert = document.querySelector('.alert');
-            if (alert) {
-                alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transición y elimina
-            }
-        }, 3000); // 3000ms = 3 segundos
-    });
-</script>
-
-<script>
-    $(document).ready(function() {
-    // Sobrescribir el mensaje de error de DataTables
-    $.fn.dataTable.ext.errMode = 'none';
-    
-    // Mostrar mensaje personalizado en caso de error
-    $(document).on('error.dt', function(e, settings, techNote, message) {
-        console.log('Se ha producido un error en DataTables: ', message);
-        // Si quieres mostrar un mensaje personalizado, puedes hacerlo así:
-        // $('.dataTables_wrapper').prepend('<div class="alert alert-info">No se encontró acciones de sensibilización!</div>');
-    });
-    
-    $('#sectores').DataTable({
-        scrollX: true,
-        "bInfo": false,
-        "bPaginate": false, 
-        "bFilter": false,
-        // Deshabilitar advertencias de consola
-        "language": {
-            "emptyTable": "No se encontró Sectores!"
-        }
-    });
-    
-    // Eliminar el modal de error de DataTables si existe
-    $('.dt-error').remove();
-    
-    // Cerrar automáticamente cualquier alerta de DataTables
     setTimeout(function() {
-        $('.dt-error').remove();
-        $('[id^="DataTables_"]').remove();
-    }, 100);
-});
+        var alertEl = document.getElementById('alert-success');
+        if (alertEl) {
+            alertEl.classList.remove('show');
+        }
+    }, 4000);
 </script>
 @stop

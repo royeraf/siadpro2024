@@ -50,6 +50,140 @@
     {{-- Custom Stylesheets (post AdminLTE) --}}
     @yield('adminlte_css')
 
+    <style>
+        /* Ajustes para Sidebar Contraído (sidebar-mini / sidebar-collapse) */
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover),
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover),
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) {
+            width: 4.6rem !important;
+            overflow-x: hidden !important;
+        }
+
+        /* 1. Centrado absoluto del logo en el encabezado del sidebar colapsado */
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .brand-link,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .brand-link,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .brand-link {
+            width: 4.6rem !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 0.8rem 0 !important;
+            margin: 0 !important;
+            text-align: center !important;
+            overflow: hidden !important;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .brand-link .brand-image,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .brand-link .brand-image,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .brand-link .brand-image {
+            float: none !important;
+            margin: 0 auto !important;
+            max-height: 33px !important;
+            max-width: 33px !important;
+            width: 33px !important;
+            height: 33px !important;
+            object-fit: contain;
+            display: block !important;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .brand-link .brand-text,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .brand-link .brand-text,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .brand-link .brand-text {
+            display: none !important;
+            width: 0 !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+
+        /* 2. Centrado de íconos en los ítems de navegación */
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item {
+            width: 100% !important;
+            text-align: center !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link {
+            width: 3.6rem !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 0.6rem 0 !important;
+            margin: 0 auto 0.25rem auto !important;
+            text-align: center !important;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .nav-icon,
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link i,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .nav-icon,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link i,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .nav-icon,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link i {
+            float: none !important;
+            margin: 0 auto !important;
+            text-align: center !important;
+            font-size: 1.15rem !important;
+            width: 100% !important;
+            display: block !important;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link p,
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .badge,
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .right,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link p,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .badge,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .right,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link p,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .badge,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .right {
+            display: none !important;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .form-control-sidebar,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .form-control-sidebar,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .form-control-sidebar {
+            display: none !important;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .input-group-append .btn-sidebar,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .input-group-append .btn-sidebar,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .input-group-append .btn-sidebar {
+            width: 100% !important;
+            margin: 0 auto !important;
+            text-align: center !important;
+        }
+
+        /* Scrollbar elegante y adaptativo a la altura de la pantalla para el sidebar */
+        .main-sidebar .sidebar {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        .main-sidebar .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .main-sidebar .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .main-sidebar .sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .main-sidebar .sidebar:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+
     {{-- Favicon --}}
     @if(config('adminlte.use_ico_only'))
         <link rel="shortcut icon" href="{{ asset('favicons/favicon.ico') }}" />

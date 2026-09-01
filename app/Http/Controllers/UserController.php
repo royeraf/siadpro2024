@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
@@ -13,10 +14,58 @@ class UserController extends Controller
 {
     public function __construct(){
         $this->middleware('auth');
-        $this->middleware('can:users.index')->only('index');
+        $this->middleware('can:users.index')->only('index', 'exportUsers');
         $this->middleware('can:users.create')->only('create', 'store');
         $this->middleware('can:users.edit')->only('edit', 'update');
         $this->middleware('can:users.destroy')->only('destroy');
+    }
+
+    private function isAdmin(): bool
+    {
+        return Auth::user()->hasRole('Admin');
+    }
+
+    /**
+     * Jerarquía escalonada de asignación de roles: cada rol solo puede
+     * asignar su propio nivel o niveles inferiores, nunca superiores.
+     * Admin no aparece aquí porque isAdmin() ya deja pasar cualquier rol.
+     */
+    private const ROLE_HIERARCHY = [
+        'EspecDRE'  => ['EspecDRE', 'EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
+        'EspecUGEL' => ['EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
+        'Director'  => ['Director', 'Docente', 'PC', 'PEC'],
+        'Docente'   => ['Docente', 'PC', 'PEC'],
+        'PC'        => ['Docente', 'PC', 'PEC'],
+        'PEC'       => ['Docente', 'PC', 'PEC'],
+    ];
+
+    /**
+     * Roles que el usuario autenticado puede asignar a otros, según la
+     * jerarquía escalonada (nunca por encima de su propio nivel).
+     */
+    private function assignableRoles()
+    {
+        if ($this->isAdmin()) {
+            return Role::all();
+        }
+
+        $assignableNames = collect(Auth::user()->roles->pluck('name'))
+            ->flatMap(fn ($roleName) => self::ROLE_HIERARCHY[$roleName] ?? [])
+            ->unique();
+
+        return Role::whereIn('name', $assignableNames)->get();
+    }
+
+    /**
+     * Restringe los roles que el usuario autenticado puede asignar a otros,
+     * según la jerarquía escalonada: nunca puede otorgar un rol por encima
+     * del suyo propio (evita escalada de privilegios).
+     */
+    private function filterAssignableRoles(array $roleIds): array
+    {
+        $assignableIds = $this->assignableRoles()->pluck('id')->all();
+
+        return array_values(array_intersect($roleIds, $assignableIds));
     }
 
     public function index(Request $request)
@@ -39,6 +88,15 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
         }
 
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $usersQuery->where(function ($q) use ($buscar) {
+                foreach (['dni', 'name', 'email', 'cargo', 'institucion', 'ugel', 'provincia', 'distrito'] as $col) {
+                    $q->orWhere($col, 'LIKE', "%{$buscar}%");
+                }
+            });
+        }
+
         $perPage = $this->resolvePerPage($request);
 
         $users = $usersQuery->orderBy('id', 'desc')
@@ -46,6 +104,17 @@ class UserController extends Controller
                             ->withQueryString();
 
         $listaUgels = $this->listaUgels($estado);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('user._rows', ['users' => $users])->render(),
+                'pagination' => (string) $users->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $users->total(),
+                'totalFormatted' => number_format($users->total()),
+                'from' => $users->firstItem() ?? 0,
+                'to' => $users->lastItem() ?? 0,
+            ]);
+        }
 
         // Conteos para los badges de ambos tabs en una sola consulta.
         $conteos = User::selectRaw('estado, COUNT(*) as total')
@@ -90,6 +159,7 @@ class UserController extends Controller
             'email' => 'required|unique:users,email',
         ]);
         $users = new User();
+        $users->created_by = Auth::id();
         $users->name = Str::upper($request->get('name'));
         $users->email = $request->get('email');
         $users->ugel = Str::upper($request->get('ugel'));
@@ -101,36 +171,34 @@ class UserController extends Controller
         $users->provincia = Str::upper($request->get('provincia'));
         $users->estado = $request->get('estado');
         $users->password = bcrypt($request->get('password'));
-
-        try {
-            // Crear usuario
-            User::create($request->all());
-            return response()->json(['message' => 'Usuario creado con ��xito'], 200);
-        } catch (ValidationException $e) {
-            return response()->json(['error' => 'El DNI o correo ya est�� en uso.'], 400);
-        }
         $users->save();
-        return redirect('/users');
+
+        return redirect()->route('users.index')
+            ->with('success', 'Usuario creado con éxito');
     }
 
 
     public function edit(User $user)
     {
-        $roles =  Role::all();
-        
+        // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
+        $roles = $this->assignableRoles();
+
         return view('user.edit',compact('user','roles'));
     }
 
     
 public function update(Request $request, User $user)
 {
+    // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
     // El formulario de asignación de roles (user.edit) solo envía "roles[]"
     if ($request->has('roles') && !$request->has('name')) {
         $validated = $request->validate([
             'roles' => 'array',
             'roles.*' => 'integer|exists:roles,id',
         ]);
-        $user->roles()->sync($validated['roles'] ?? []);
+        $user->roles()->sync($this->filterAssignableRoles($validated['roles'] ?? []));
         return redirect()->route('users.index', ['estado' => $user->estado])
             ->with('success', 'Rol actualizado correctamente.');
     }
@@ -187,7 +255,7 @@ public function update(Request $request, User $user)
 
     // Sincronizar roles (mantienes tu l��gica original)
     if ($request->has('roles')) {
-        $user->roles()->sync($request->roles);
+        $user->roles()->sync($this->filterAssignableRoles($request->roles));
     }
 
     $user->save();
@@ -199,14 +267,17 @@ public function update(Request $request, User $user)
     public function destroy($id)
     {
         $user = User::findOrFail($id);
-        
+        // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
         $user->delete();
         return redirect('/users');
     }
-    
+
     public function cambiarEstado($id)
     {
         $user = User::findOrFail($id);
+        // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+
         $user->estado = $user->estado == 1 ? 0 : 1;
         $user->save();
 
@@ -224,6 +295,79 @@ public function update(Request $request, User $user)
             ->get();
         
         return response()->json($ugels);
+    }
+
+    public function exportUsers(Request $request)
+    {
+        $estado = $request->get('estado') === '0' ? '0' : '1';
+
+        $query = User::where('estado', $estado);
+
+        if ($request->filled('texto')) {
+            $query->where('dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+
+        if ($request->filled('cargos')) {
+            $query->where('cargo', 'LIKE', '%' . $request->input('cargos') . '%');
+        }
+
+        if ($request->filled('ugel')) {
+            $query->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
+        }
+
+        $users = $query->orderBy('id', 'desc')->get();
+
+        $filename = ($estado === '1' ? 'usuarios_activos_' : 'usuarios_inhabilitados_') . date('Y-m-d') . '.xls';
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function() use ($users, $estado) {
+            $file = fopen('php://output', 'w');
+            // Escribir BOM UTF-8 para visualización correcta de tildes y caracteres especiales en Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            $html .= '<head><meta charset="utf-8">';
+            $html .= '<style>
+                table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+                th { background-color: #1E40AF; color: #FFFFFF; font-weight: bold; border: 1px solid #D1D5DB; padding: 8px; text-align: left; }
+                td { border: 1px solid #E5E7EB; padding: 6px; }
+                tr:nth-child(even) td { background-color: #F9FAFB; }
+            </style></head><body>';
+            $html .= '<table><thead><tr>';
+            $html .= '<th>Estado</th><th>ID</th><th>DNI</th><th>Usuario</th><th>Correo</th><th>Cargo</th><th>Institución</th><th>UGEL</th><th>Tipo de II.EE</th><th>Provincia</th><th>Distrito</th>';
+            $html .= '</tr></thead><tbody>';
+
+            foreach ($users as $user) {
+                $estadoTexto = $user->estado == 1 ? 'Activo' : 'Inactivo';
+                $html .= '<tr>';
+                $html .= '<td>' . htmlspecialchars($estadoTexto, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->id, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->dni, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->name, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)$user->email, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->cargo ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->institucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->ugel ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->nivelinstitucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->provincia ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string)($user->distrito ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table></body></html>';
+
+            fwrite($file, $html);
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
 }

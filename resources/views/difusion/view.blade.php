@@ -31,9 +31,10 @@
             </span>
                 <select id="anio" name="anio" class="form-control">
                     <option value="">----Año-----</option>
-                    <option value="2023" {{ request()->get('anio') == '2023' ? 'selected' : '' }}>2023</option>
-                    <option value="2024" {{ request()->get('anio') == '2024' ? 'selected' : '' }}>2024</option>
+                    <option value="2026" {{ request()->get('anio') == '2026' || !request()->get('anio') ? 'selected' : '' }}>2026</option>
                     <option value="2025" {{ request()->get('anio') == '2025' ? 'selected' : '' }}>2025</option>
+                    <option value="2024" {{ request()->get('anio') == '2024' ? 'selected' : '' }}>2024</option>
+                    <option value="2023" {{ request()->get('anio') == '2023' ? 'selected' : '' }}>2023</option>
                 </select>
             </div>
         </div>
@@ -193,7 +194,7 @@ $(document).ready(function() {
     const selectedUgel = urlParams.get('ugels') || '';
     const selectedInstitucion = urlParams.get('instituciones') || '';
     const selectedDocente = urlParams.get('docentes') || '';
-    const selectedYear = urlParams.get('anio') || $('#anio').val() || '2025';
+    const selectedYear = urlParams.get('anio') || $('#anio').val() || '2026';
     
     console.log("Valores iniciales:", {
         selectedYear,
@@ -228,7 +229,7 @@ $(document).ready(function() {
     
     // Manejar cambio de año
     $('#anio').on('change', function() {
-        var year = $(this).val() || '2025';
+        var year = $(this).val() || '2026';
         loadUgels(year);
         
         // Limpiar los otros selectores
@@ -448,7 +449,7 @@ $(document).ready(function() {
     // Eventos de cambio
     $('#ugels').on('change', function() {
         var selectedUgel = $(this).val();
-        var selectedYear = $('#anio').val() || '2025';
+        var selectedYear = $('#anio').val() || '2026';
         
         if (selectedUgel) {
             loadInstituciones(selectedUgel, selectedYear);
@@ -468,7 +469,7 @@ $(document).ready(function() {
     
     $('#instituciones').on('change', function() {
         var selectedInstitucion = $(this).val();
-        var selectedYear = $('#anio').val() || '2025';
+        var selectedYear = $('#anio').val() || '2026';
         
         if (selectedInstitucion) {
             loadDocentes(selectedInstitucion, selectedYear);
@@ -485,7 +486,7 @@ $(document).ready(function() {
     $('#institucion').on('input', function() {
         var selectedUgel = $('#ugels').val();
         var searchTerm = $(this).val();
-        var selectedYear = $('#anio').val() || '2025';
+        var selectedYear = $('#anio').val() || '2026';
         
         if (selectedUgel && searchTerm.length >= 2) {
             $.ajax({
@@ -544,7 +545,7 @@ $(document).ready(function() {
     $('#docente').on('input', function() {
         var selectedInstitucion = $('#instituciones').val();
         var searchTerm = $(this).val();
-        var selectedYear = $('#anio').val() || '2025';
+        var selectedYear = $('#anio').val() || '2026';
         
         if (selectedInstitucion && searchTerm.length >= 2) {
             $.ajax({

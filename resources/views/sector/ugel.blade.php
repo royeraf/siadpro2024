@@ -31,9 +31,10 @@
                     <i class="fas fa-calendar-alt"></i>
                 </span>
                 <select class="form-control" id="year" name="year">
-                    <option value="2025" {{ $selectedYear == 2025 ? 'selected' : '' }}>2025</option>
-                    <option value="2024" {{ $selectedYear == 2024 ? 'selected' : '' }}>2024</option>
-                    <option value="2023" {{ $selectedYear == 2023 ? 'selected' : '' }}>2023</option>
+                    <option value="2026" {{ !isset($selectedYear) || $selectedYear == 2026 ? 'selected' : '' }}>2026</option>
+                    <option value="2025" {{ isset($selectedYear) && $selectedYear == 2025 ? 'selected' : '' }}>2025</option>
+                    <option value="2024" {{ isset($selectedYear) && $selectedYear == 2024 ? 'selected' : '' }}>2024</option>
+                    <option value="2023" {{ isset($selectedYear) && $selectedYear == 2023 ? 'selected' : '' }}>2023</option>
                 </select>
             </div>
         </div>

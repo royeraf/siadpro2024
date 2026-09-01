@@ -20,162 +20,178 @@ class AgendaViewController extends Controller
         $institucion = Auth::user()->institucion;
         $events = Agenda::all()
         ->where("institucion", $institucion)
-       
         ->where('estado', '1')
         ;
-        
-        return $events;
-        
-        
+
         return view('agenda.view',compact('events'));
 
     }
 
-    public function ugel()
+    public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $year = request()->get('year', '2025'); // Por defecto, año 2025
-        
-        $agendas = Agenda::select("pro_agendas.id","pro_agendas.nomDocente","pro_agendas.title","pro_agendas.evento","pro_agendas.start","pro_agendas.end","pro_agendas.institucion","users.provincia","users.distrito","users.ugel")
-            ->join("users","users.id","=","pro_agendas.idUser")
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Agenda::select(
+                "pro_agendas.id", "pro_agendas.nomDocente", "pro_agendas.title",
+                "pro_agendas.evento", "pro_agendas.start", "pro_agendas.end",
+                "pro_agendas.institucion", "users.nivelinstitucion", "users.provincia",
+                "users.distrito", "users.ugel"
+            )
+            ->join("users", "users.id", "=", "pro_agendas.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_agendas.estado', '1')
-            ->whereYear('start', $year)
-            ->whereYear('end', $year)
-            ->orderby('pro_agendas.start','desc')
-            ->paginate(10);
-            
-        return view("agenda.ugel")
-            ->with('agendas', $agendas)
-            ->with('selectedYear', $year);
+            ->whereYear('start', $anio)
+            ->whereYear('end', $anio);
+
+        if ($request->filled('instituciones')) {
+            $query->where('pro_agendas.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('docentes')) {
+            $query->where('users.name', $request->input('docentes'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_agendas.title', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_agendas.evento', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_agendas.nomDocente', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('agenda._rows_general', ['agendas' => $agendas])->render(),
+                'pagination' => (string) $agendas->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $agendas->total(),
+                'totalFormatted' => number_format($agendas->total()),
+                'from' => $agendas->firstItem() ?? 0,
+                'to' => $agendas->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
+        $listaDocentes = \App\Models\User::where('ugel', $ugel)->whereNotNull('name')->where('name', '!=', '')->distinct()->orderBy('name')->pluck('name');
+        $listaAnios = $this->listaAniosAgenda($anio);
+
+        return view('agenda.ugel', compact('agendas', 'anio', 'listaInstituciones', 'listaDocentes', 'listaAnios'));
     }
 
     public function buscarUgel(Request $request)
     {
-        if (empty($request->get('instituciones')) && empty($request->get('docentes')) && empty($request->get('year'))) {
-            return redirect('/agenda-ugel');
-        } else {
-            $ugel = Auth::user()->ugel;
-            $instituciones = trim($request->get('instituciones'));
-            $docentes = trim($request->get('docentes'));
-            $year = trim($request->get('year', '2025')); // Por defecto, año 2025
-
-            if (empty($request->get('docentes'))) {
-                $agendas = Agenda::select("pro_agendas.id","pro_agendas.nomDocente","pro_agendas.title","pro_agendas.evento","pro_agendas.start","pro_agendas.end","pro_agendas.institucion","users.provincia","users.distrito","users.ugel")
-                ->join("users","users.id","=","pro_agendas.idUser")
-                ->where("pro_agendas.institucion", "=", $instituciones)
-                ->where("users.ugel", "=", $ugel)
-                ->whereYear('start', $year)
-                ->whereYear('end', $year)
-                ->where('pro_agendas.estado', '1')
-                ->orderBy('pro_agendas.id', 'desc')
-                ->paginate(10);
-            } else {
-                $agendas = Agenda::select("pro_agendas.id","pro_agendas.nomDocente","pro_agendas.title","pro_agendas.evento","pro_agendas.start","pro_agendas.end","pro_agendas.institucion","users.provincia","users.distrito","users.ugel")
-                ->join("users","users.id","=","pro_agendas.idUser")
-                ->where("pro_agendas.institucion", "=", $instituciones)
-                ->where("users.name", "=", $docentes)
-                ->whereYear('start', $year)
-                ->whereYear('end', $year)
-                ->where("users.ugel", "=", $ugel)
-                ->where('pro_agendas.estado', '1')
-                ->orderBy('pro_agendas.id', 'desc')
-                ->paginate(10);
-            }
-            
-            // Mantener los parámetros en la paginación
-            $agendas->appends($request->all());
-            
-            return view('agenda.ugel')
-                ->with('agendas', $agendas)
-                ->with('selectedYear', $year)
-                ->with('selectedInstitucion', $instituciones)
-                ->with('selectedDocente', $docentes);
-        }                
+        return $this->ugel($request);
     }
 
-    public function general()
+    public function general(Request $request)
     {
-        // Por defecto, mostrar datos del año 2025
-        $year = request()->get('year', '2025');
-        
-        $agendas = Agenda::select("pro_agendas.id","pro_agendas.nomDocente","pro_agendas.title","pro_agendas.evento","pro_agendas.start","pro_agendas.end","pro_agendas.institucion","users.provincia","users.distrito","users.ugel")
-        ->join("users","users.id","=","pro_agendas.idUser")
-        ->where('pro_agendas.estado', '1')
-        ->whereYear('start', $year)
-        ->whereYear('end', $year)
-        ->orderBy('pro_agendas.start','desc')
-        ->paginate(10);
-        
-        return view('agenda.general')->with('agendas', $agendas)->with('selectedYear', $year);
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Agenda::select(
+                "pro_agendas.id", "pro_agendas.nomDocente", "pro_agendas.title",
+                "pro_agendas.evento", "pro_agendas.start", "pro_agendas.end",
+                "pro_agendas.institucion", "users.nivelinstitucion", "users.provincia",
+                "users.distrito", "users.ugel"
+            )
+            ->join("users", "users.id", "=", "pro_agendas.idUser")
+            ->where('pro_agendas.estado', '1')
+            ->whereYear('pro_agendas.start', $anio)
+            ->whereYear('pro_agendas.end', $anio);
+
+        if ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('pro_agendas.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('docentes')) {
+            $query->where('users.name', $request->input('docentes'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_agendas.title', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_agendas.evento', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_agendas.nomDocente', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('agenda._rows_general', ['agendas' => $agendas])->render(),
+                'pagination' => (string) $agendas->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $agendas->total(),
+                'totalFormatted' => number_format($agendas->total()),
+                'from' => $agendas->firstItem() ?? 0,
+                'to' => $agendas->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaAnios = $this->listaAniosAgenda($anio);
+
+        return view('agenda.general', compact('agendas', 'anio', 'listaUgels', 'listaAnios'));
     }
 
     public function buscarGeneral(Request $request)
     {
-        // Variables de los filtros
-        $ugel = trim($request->get('ugels'));
-        $instituciones = trim($request->get('instituciones'));
-        $docentes = trim($request->get('docentes'));
-        $nivel = trim($request->get('nivel')); 
-        $year = trim($request->get('year', '2025')); // Año por defecto 2025
+        return $this->general($request);
+    }
 
-        // Si no se envía ningún filtro, redirige a la página principal
-        if (empty($ugel) && empty($instituciones) && 
-            empty($docentes) && empty($nivel) && 
-            empty($year)) {
-            return redirect('/agenda-general');
+    /**
+     * Años plausibles disponibles para el selector de filtro, descartando
+     * fechas corruptas (p. ej. años como 23, 203 o 1978 por datos mal
+     * digitados) — mismo criterio que los demás módulos migrados.
+     */
+    private function listaAniosAgenda(string $anioActual = null)
+    {
+        $listaAnios = Agenda::whereYear('start', '>=', 2010)
+            ->selectRaw('DISTINCT YEAR(start) as anio')
+            ->orderByDesc('anio')
+            ->pluck('anio');
+
+        $anioActual = $anioActual ?? date('Y');
+        if (!$listaAnios->contains($anioActual)) {
+            $listaAnios->prepend($anioActual);
         }
 
-        // Construcción dinámica de la consulta
-        $query = Agenda::select(
-            "pro_agendas.id", "pro_agendas.nomDocente", "pro_agendas.title", 
-            "pro_agendas.evento", "pro_agendas.start", "pro_agendas.end", 
-            "pro_agendas.institucion", "users.provincia", "users.distrito", 
-            "users.ugel", "users.nivelinstitucion"
-        )
-        ->join("users", "users.id", "=", "pro_agendas.idUser")
-        ->where('pro_agendas.estado', '1') // Solo agendas activas
-        ->whereYear('pro_agendas.start', $year) // Filtrar por año seleccionado
-        ->whereYear('pro_agendas.end', $year);  // Filtrar por año seleccionado
-
-        // Aplicar filtros según los valores recibidos
-        if (!empty($ugel)) {
-            $query->where("users.ugel", $ugel);
-        }
-
-        if (!empty($instituciones)) {
-            $query->where("pro_agendas.institucion", $instituciones);
-        }
-
-        if (!empty($docentes)) {
-            $query->where("users.name", $docentes);
-        }
-        
-        if (!empty($nivel)) {
-            $query->where("users.nivelinstitucion", $nivel);
-        }
-
-        // Obtener resultados paginados
-        $agendas = $query->orderBy('pro_agendas.id', 'desc')->paginate(1000);
-        
-        // Mantener los parámetros en la paginación
-        $agendas->appends($request->all());
-
-        // Retornar la vista con los resultados y todos los valores seleccionados
-        return view('agenda.general')
-            ->with('agendas', $agendas)
-            ->with('selectedYear', $year)
-            ->with('selectedUgel', $ugel)
-            ->with('selectedInstitucion', $instituciones)
-            ->with('selectedDocente', $docentes)
-            ->with('selectedNivel', $nivel);
+        return $listaAnios;
     }
 
 
 
     public function obtenerUgels(Request $request)
     {        
-        $year = $request->get('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->get('year', '2026'); // Parámetro de año, defecto 2025
         
         $ugels = DB::table('institucions')
             ->select('institucions.ugel', DB::raw('count(distinct pro_agendas.idUser) as docentes_count'))
@@ -192,7 +208,7 @@ class AgendaViewController extends Controller
     public function obtenerInstitucions(Request $request)
     {        
         $ugel = Auth::user()->ugel;
-        $year = $request->get('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->get('year', '2026'); // Parámetro de año, defecto 2025
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
@@ -227,7 +243,7 @@ class AgendaViewController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $year = $request->input('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->input('year', '2026'); // Parámetro de año, defecto 2025
         
         $resultados = DB::table('institucions')
             ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
@@ -272,7 +288,7 @@ class AgendaViewController extends Controller
         }
         
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
-        $year = $request->input('year', '2025'); // Obtener año, defecto 2025
+        $year = $request->input('year', '2026'); // Obtener año, defecto 2025
 
         // Realiza una consulta para buscar instituciones que coincidan con $term y tengan información sobre docentes y agendas
         $resultados = DB::table('institucions')
@@ -318,7 +334,7 @@ class AgendaViewController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
-        $year = $request->input('year', '2025'); // Parámetro de año, defecto 2025
+        $year = $request->input('year', '2026'); // Parámetro de año, defecto 2025
         
         \Log::info('Buscando docentes para institución y UGEL:', [
             'institucion' => $institucionSeleccionada, 
@@ -365,7 +381,7 @@ class AgendaViewController extends Controller
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
-        $year = $request->input('year', '2025'); // Obtener año, defecto 2025
+        $year = $request->input('year', '2026'); // Obtener año, defecto 2025
 
         $docentes = DB::table('users')
             ->leftJoin('pro_agendas', function($join) use ($year) {
@@ -396,7 +412,7 @@ class AgendaViewController extends Controller
         $instituciones = trim($request->get('instituciones', ''));
         $docentes = trim($request->get('docentes', ''));
         $nivel = trim($request->get('nivel', ''));
-        $year = trim($request->get('year', '2025')); // Añadir año, defecto 2025
+        $year = trim($request->get('year', '2026')); // Añadir año, defecto 2025
 
         // Construir la consulta
         $query = Agenda::select(

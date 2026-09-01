@@ -99,7 +99,7 @@
 @section('js')
 <script>
     
-    // A0Š9adir un evento 'click' al bot¨®n de guardar
+    // Aï¿½0ï¿½9adir un evento 'click' al botï¿½ï¿½n de guardar
     document.getElementById('guardarBtn').addEventListener('click', function(event) {
         var archivo = document.getElementById('documento').files[0];
         var maxSize = 2 * 1024 * 1024; // 2MB en bytes
@@ -107,19 +107,27 @@
 
         // Verificar si el archivo es mayor a 2MB
         if (archivo && archivo.size > maxSize) {
-            // Evitar que el formulario se env¨ªe
+            // Evitar que el formulario se envï¿½ï¿½e
             event.preventDefault();
 
             // Mostrar el mensaje de error
             errorMessage.style.display = 'block';
 
-            // A0Š9adir la clase 'is-invalid' al campo de entrada de archivo
+            // Aï¿½0ï¿½9adir la clase 'is-invalid' al campo de entrada de archivo
             document.getElementById('documento').classList.add('is-invalid');
         } else {
-            // Si el archivo es v¨¢lido, ocultar el mensaje de error
+            // Si el archivo es vï¿½ï¿½lido, ocultar el mensaje de error
             errorMessage.style.display = 'none';
             document.getElementById('documento').classList.remove('is-invalid');
         }
+    });
+
+    // ConfirmaciÃ³n visual inmediata de que el guardado estÃ¡ en curso
+    // (el listener de 'submit' solo se dispara si el de 'click' no bloqueÃ³ el envÃ­o)
+    document.querySelector('form').addEventListener('submit', function() {
+        var boton = document.getElementById('guardarBtn');
+        boton.disabled = true;
+        boton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
     });
 </script>
 <script>

@@ -1,114 +1,139 @@
 @extends('adminlte::page')
+
+@section('title', 'Asistencia Técnica (Director)')
+
 @section('css')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
-<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/css/admin_custom.css">
+@vite(['resources/css/app.css'])
 @endsection
 
-@section('title', 'Evidencia')
-
 @section('content_header')
-    <h1>Listado de Evidencias</h1>
+    <x-section-heading icon="file-text">Asistencia Técnica (Director)</x-section-heading>
 @stop
 
 @section('content')
 
-<form action="{{route('buscarEvidenciaDirector')}}" method="get" class="row g-3">
- <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-file"></i>
-                </span>
-                    <input type="text" class="form-control" name="texto" Placeholder="Nombre de la Evidencia">
-                    
+<!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
+<x-table-base id="tabla-evidencias-director"
+              :perPage="10"
+              :exportable="true"
+              :searchable="true"
+              exportFilename="asistencia_tecnica_director"
+              :serverPaginated="true"
+              :totalServerRecords="$evidencias->total()"
+              :fromServer="$evidencias->firstItem() ?? 0"
+              :toServer="$evidencias->lastItem() ?? 0"
+              :filterAction="route('evidencias.director')">
+    <x-slot name="filters">
+        <x-table-filter name="anio" label="Año" icon="calendar" :options="$listaAnios" :value="$anio" placeholder="Año actual" />
+        <x-table-filter name="texto" label="Nombre de la Asistencia" icon="file-text" placeholder="Ej. Taller de capacitación" />
+        <x-table-filter name="fecha" label="Fecha" icon="calendar" type="date" />
+    </x-slot>
+    <x-slot name="header">
+        <tr>
+            <th @click="sortBy(0)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Nombre de la Asistencia</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 0 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 0 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
                 </div>
+            </th>
+            <th @click="sortBy(1)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Descripción</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 1 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 1 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
                 </div>
+            </th>
+            <th @click="sortBy(2)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 120px;">
+                <div class="flex items-center justify-between">
+                    <span>Fecha</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 2 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 2 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
                 </div>
-                <div class="form-group col-md-3">
-                <div class="col align-self-center">
-                <div class="input-group-prepend">
-                <span class="input-group-text">
-                 <i class="fas fa-calendar"></i>
-                </span>
-                    <input type="date" class="form-control" name="fecha" Placeholder="fecha de publicacion">
+            </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Documento
+            </th>
+            <th @click="sortBy(4)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Docente</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 4 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 4 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
                 </div>
+            </th>
+            <th @click="sortBy(5)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Cargo</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 5 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 5 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
                 </div>
+            </th>
+            <th @click="sortBy(6)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Institución</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 6 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 6 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
                 </div>
-                <div class="form-group col-md-1">
-                    <input type="submit" class="btn btn-primary" value="Buscar">
+            </th>
+            <th @click="sortBy(7)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Tipo de II.EE</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 7 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 7 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
                 </div>
-                
-        
-        </form>
+            </th>
+            <th @click="sortBy(8)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Provincia</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 8 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 8 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(9)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Distrito</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 9 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 9 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(10)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>UGEL</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 10 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 10 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+        </tr>
+    </x-slot>
 
-<table id="evidencias" class="table table-striped table-bordered shadow-lg mt-4 display nowrap" style="width:100%">
-                    <thead class="bg-primary text-white">
-                    <tr>   
-                    <th scope="col">Nombre de Evidencia</th>
-                    <th scope="col">Tipo de Evidencia</th>
-                    <th scope="col">Fecha</th>
-                    <th scope="col">Documento</th>
-                    <th scope="col">Usuario</th>
-                    <th scope="col">Cargo</th>
-                    <th scope="col">Institución</th>
-                    <th scope="col">Provincia</th>
-                    <th scope="col">Distrito</th>
-                    <th scope="col">Ugel</th>
-                    <th scope="col">Lugar</th>
-                    </tr>
-                    </thead>
-                    <tbody >
-                    @if(count($evidencias)<=0)
-                    <tr>
-                        <td colspan="8">No hay Evidencia</td>
-                    </tr>
-                    @else
-                    @foreach ($evidencias as $evidencia)
-                    <tr>
-                        <td>{{$evidencia->nombreEvidencia}}</td>
-                        <td>{{$evidencia->tipoevidencia}}</td>
-                        <td>{{date('d-m-Y', strtotime($evidencia->updated_at))}}</td>
-                        <td align="center"><a href="{{ route('evidencias.download', $evidencia->id) }}" , target="_blank"><i class='{{$evidencia->documento}}' style='font-size:24px;color:{{$evidencia->color}}' ></i></a></td>
-                        <td>{{$evidencia->name}}</td>
-                        <td>{{$evidencia->cargo}}</td>
-                        <td>{{$evidencia->institucion}}</td>
-                        <td>{{$evidencia->provincia}}</td>
-                        <td>{{$evidencia->distrito}}</td>
-                        <td>{{$evidencia->ugel}}</td>
-                        <td>{{$evidencia->lugar}}</td>
-                    </tr>
-                    @endforeach
-                     @endif
-                     </tbody>
-                     </table>
-                     <div class="form-inline">
-                        <p>Total de Evidencias Subidos: {{$evidencias->total()}}</p> <br>
-                        {{$evidencias->links()}}
-                     </div>
-                     
-                          
-                    
-@stop
+    @include('evidencia._rows_general')
+</x-table-base>
 
-@section('css')
- 
+<x-table-pagination id="tabla-evidencias-director" :paginator="$evidencias" />
+
 @stop
 
 @section('js')
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-
-<script>
-    $(document).ready(function() 
-{
-
-$('#evidencias').DataTable(
-{
-    scrollX: true,
-    "bInfo" : false,
-    "bPaginate": false, 
-    "bFilter": false 
-});
-});
-</script>
+@vite(['resources/js/app.js'])
 @stop

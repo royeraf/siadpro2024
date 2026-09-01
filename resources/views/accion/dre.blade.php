@@ -81,7 +81,8 @@
                         <i class="fas fa-calendar-year"></i>
                     </span>
                     <select class="form-control" name="anio" id="anio">
-                        <option value="2025" {{ request('anio') == '2025' || !request('anio') ? 'selected' : '' }}>2025</option>
+                        <option value="2026" {{ request('anio') == '2026' || !request('anio') ? 'selected' : '' }}>2026</option>
+                        <option value="2025" {{ request('anio') == '2025' ? 'selected' : '' }}>2025</option>
                         <option value="2024" {{ request('anio') == '2024' ? 'selected' : '' }}>2024</option>
                         <option value="2023" {{ request('anio') == '2023' ? 'selected' : '' }}>2023</option>
                     </select>        
@@ -287,7 +288,7 @@
             
             var params = {
                 texto: urlParams.texto || $('#dniInput').val() || '',
-                anio: urlParams.anio || $('#anio').val() || '2025',
+                anio: urlParams.anio || $('#anio').val() || '2026',
                 ugels: urlParams.ugels || $('#ugels').val() || '',
                 instituciones: urlParams.instituciones || $('#instituciones').val() || '',
                 docentes: urlParams.docentes || $('#docentes').val() || ''
