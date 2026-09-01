@@ -66,7 +66,7 @@
             <div class="col-7">
                 <div class="icheck-primary">
                     <input type="checkbox" name="remember" id="remember">
-                    <label for="remember">{{ __('Recordar Contraseña') }}</label>
+                    <label for="remember">{{ __('Mantener sesión iniciada') }}</label>
                 </div>
             </div>
             <div class="col-5">
