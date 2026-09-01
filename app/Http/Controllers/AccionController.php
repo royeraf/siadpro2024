@@ -55,7 +55,7 @@ class AccionController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'rows' => view('accion._rows', ['accions' => $accions])->render(),
-                'pagination' => (string) $accions->appends($request->except('page'))->links(),
+                'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
                 'total' => $accions->total(),
                 'totalFormatted' => number_format($accions->total()),
                 'from' => $accions->firstItem() ?? 0,
@@ -146,7 +146,7 @@ class AccionController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'rows' => view('accion._rows_general', ['accions' => $accions])->render(),
-                'pagination' => (string) $accions->appends($request->except('page'))->links(),
+                'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
                 'total' => $accions->total(),
                 'totalFormatted' => number_format($accions->total()),
                 'from' => $accions->firstItem() ?? 0,

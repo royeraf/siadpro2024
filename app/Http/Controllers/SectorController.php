@@ -53,7 +53,7 @@ class SectorController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'rows' => view('sector._rows', ['sectores' => $sectores])->render(),
-                'pagination' => (string) $sectores->appends($request->except('page'))->links(),
+                'pagination' => (string) $sectores->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
                 'total' => $sectores->total(),
                 'totalFormatted' => number_format($sectores->total()),
                 'from' => $sectores->firstItem() ?? 0,
@@ -156,7 +156,7 @@ class SectorController extends Controller
     {
         return response()->json([
             'rows' => view('sector._rows_general', ['sectores' => $sectores])->render(),
-            'pagination' => (string) $sectores->appends($request->except('page'))->links(),
+            'pagination' => (string) $sectores->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
             'total' => $sectores->total(),
             'totalFormatted' => number_format($sectores->total()),
             'from' => $sectores->firstItem() ?? 0,

@@ -62,7 +62,7 @@ class InstitucionController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'rows' => view('institucion._rows', ['institucions' => $institucions])->render(),
-                'pagination' => (string) $institucions->appends($request->except('page'))->links(),
+                'pagination' => (string) $institucions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
                 'total' => $institucions->total(),
                 'totalFormatted' => number_format($institucions->total()),
                 'from' => $institucions->firstItem() ?? 0,

@@ -108,7 +108,7 @@ class UserController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'rows' => view('user._rows', ['users' => $users])->render(),
-                'pagination' => (string) $users->appends($request->except('page'))->links(),
+                'pagination' => (string) $users->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
                 'total' => $users->total(),
                 'totalFormatted' => number_format($users->total()),
                 'from' => $users->firstItem() ?? 0,

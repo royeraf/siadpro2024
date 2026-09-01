@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Evidencia;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -22,62 +23,225 @@ class EvidenciaController extends Controller
         $this->middleware('can:evidencias.director')->only('director');
     }
     
-    public function index()
+    public function index(Request $request)
     {
         $usuario = Auth::user()->id;
-        $anio = request()->get('anio') ?: '2026'; // El valor predeterminado aquí es 2024 como está en el código original
-        
-        $evidencias = Evidencia::where('estado', '1')
-            ->whereYear('pro_evidencias.fecha', $anio)
-            ->where('idUser', $usuario)
-            ->orderby('fecha', 'desc')
-            ->paginate(10);
-        
-        return view('evidencia.index')->with('evidencias', $evidencias);
+
+        $evidenciasQuery = Evidencia::where('estado', '1')->where('idUser', $usuario);
+
+        if ($request->filled('texto')) {
+            $evidenciasQuery->where('nombreEvidencia', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('fecha')) {
+            $evidenciasQuery->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $evidenciasQuery->where(function ($q) use ($buscar) {
+                $q->where('nombreEvidencia', 'LIKE', "%{$buscar}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $evidencias = $evidenciasQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('evidencia._rows', ['evidencias' => $evidencias])->render(),
+                'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $evidencias->total(),
+                'totalFormatted' => number_format($evidencias->total()),
+                'from' => $evidencias->firstItem() ?? 0,
+                'to' => $evidencias->lastItem() ?? 0,
+            ]);
+        }
+
+        return view('evidencia.index', compact('evidencias'));
     }
 
-    public function general()
+    /**
+     * Años plausibles disponibles para el selector de filtro, descartando
+     * fechas corruptas (p. ej. años como 23, 203 o 1978 por datos mal
+     * digitados) — mismo criterio que AccionController::general().
+     */
+    private function listaAniosEvidencia(string $anioActual)
     {
-        // Obtener el año del request si está disponible
-        $anio = request()->get('anio') ?: '2026';
+        $listaAnios = Evidencia::whereYear('fecha', '>=', 2010)
+            ->selectRaw('DISTINCT YEAR(fecha) as anio')
+            ->orderByDesc('anio')
+            ->pluck('anio');
 
-        $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.descripcion","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_evidencias.idUser")
-                    ->where('pro_evidencias.estado', '1')
-                    ->whereYear('fecha', $anio)
-                    ->orderby('pro_evidencias.fecha','desc')
-                    ->paginate(10);
-        return view('evidencia.view')->with('evidencias', $evidencias);
+        if (!$listaAnios->contains($anioActual)) {
+            $listaAnios->prepend($anioActual);
+        }
+
+        return $listaAnios;
     }
 
-    public function ugel()
+    public function general(Request $request)
+    {
+        $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
+
+        $query = Evidencia::select(
+                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
+                "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_evidencias.idUser")
+            ->where('pro_evidencias.estado', '1')
+            ->whereYear('pro_evidencias.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('docentes')) {
+            $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
+        }
+        if ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_evidencias.nombreEvidencia', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_evidencias.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('evidencia._rows_general', ['evidencias' => $evidencias])->render(),
+                'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $evidencias->total(),
+                'totalFormatted' => number_format($evidencias->total()),
+                'from' => $evidencias->firstItem() ?? 0,
+                'to' => $evidencias->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaAnios = $this->listaAniosEvidencia($anio);
+
+        return view('evidencia.view', compact('evidencias', 'anio', 'listaUgels', 'listaAnios'));
+    }
+
+    public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $anio = request()->get('anio') ?: '2026';
-        
-        $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.nivelinstitucion","users.ugel")
-            ->join("users","users.id","=","pro_evidencias.idUser")
+        $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
+
+        $query = Evidencia::select(
+                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
+                "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_evidencias.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_evidencias.estado', '1')
-            ->whereYear('fecha', $anio)
-            ->orderby('fecha','desc')
-            ->paginate(10);
-            return view("evidencia.ugel",compact('evidencias'));
+            ->whereYear('pro_evidencias.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_evidencias.nombreEvidencia', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_evidencias.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('evidencia._rows_general', ['evidencias' => $evidencias])->render(),
+                'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $evidencias->total(),
+                'totalFormatted' => number_format($evidencias->total()),
+                'from' => $evidencias->firstItem() ?? 0,
+                'to' => $evidencias->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaInstituciones = User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
+        $listaAnios = $this->listaAniosEvidencia($anio);
+
+        return view('evidencia.ugel', compact('evidencias', 'anio', 'listaInstituciones', 'listaAnios'));
     }
 
-    public function director()
+    public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $anio = request()->get('anio') ?: '2026';
-        
-        $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
-            ->join("users","users.id","=","pro_evidencias.idUser")
+        $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
+
+        $query = Evidencia::select(
+                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
+                "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_evidencias.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_evidencias.estado', '1')
-            ->whereYear('pro_evidencias.fecha', $anio)
-            ->orderby('fecha','desc')
-            ->paginate(10);
-            return view("evidencia.director",compact('evidencias'));
+            ->whereYear('pro_evidencias.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('pro_evidencias.nombreEvidencia', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('fecha')) {
+            $query->where('pro_evidencias.fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_evidencias.nombreEvidencia', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_evidencias.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('evidencia._rows_general', ['evidencias' => $evidencias])->render(),
+                'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $evidencias->total(),
+                'totalFormatted' => number_format($evidencias->total()),
+                'from' => $evidencias->firstItem() ?? 0,
+                'to' => $evidencias->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaAnios = $this->listaAniosEvidencia($anio);
+
+        return view('evidencia.director', compact('evidencias', 'anio', 'listaAnios'));
     }
 
     public function profesorcoordinador()
@@ -623,67 +787,38 @@ class EvidenciaController extends Controller
 
     public function exportarTodos(Request $request)
     {
-        // Replicamos la misma lógica de filtros que tenemos en buscarGeneral
-        $dni = trim($request->get('texto', ''));
-        $name = trim($request->get('docentes', ''));
-        $ugel = trim($request->get('ugels', ''));
-        $nominstitucion = trim($request->get('instituciones', ''));
-        $nivel = trim($request->get('nivel', ''));
-        $anio = trim($request->get('anio', '2023')); // Valor por defecto 2023
+        // Replicamos la misma lógica de filtros que general()
+        $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
-        // Construimos la misma consulta pero sin paginación
         $query = Evidencia::select(
-            "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion", 
-            "pro_evidencias.fecha", "users.name", "users.cargo", 
-            "users.nivelinstitucion", "users.institucion", 
+            "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
+            "pro_evidencias.fecha", "users.name", "users.cargo",
+            "users.nivelinstitucion", "users.institucion",
             "users.provincia", "users.distrito", "users.ugel"
         )
         ->join("users", "users.id", "=", "pro_evidencias.idUser")
-        ->where('pro_evidencias.estado', '1');
-        
-        // Aplicar filtro de año
-        if (!empty($anio)) {
-            $query->whereYear('pro_evidencias.fecha', $anio);
+        ->where('pro_evidencias.estado', '1')
+        ->whereYear('pro_evidencias.fecha', $anio);
+
+        if ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('docentes')) {
+            $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
         }
 
-        // Aplicamos los mismos filtros
-        if (!empty($ugel)) {
-            $query->where("users.ugel", "LIKE", "%$ugel%");
-        }
-        
-        if (!empty($dni)) {
-            $query->where("users.dni", "LIKE", "%$dni%");
-        }
-        
-        if (!empty($name)) {
-            $query->where("users.name", "LIKE", "%$name%");
-        }
-        
-        if (!empty($nominstitucion)) {
-            $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-        }
-        
-        if (!empty($nivel)) {
-            $query->where("users.nivelinstitucion", "LIKE", "%$nivel%");
-        }
-
-        // Obtenemos TODOS los resultados (sin paginar)
         $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->get();
 
-        // Determinamos el formato de exportación
-        $format = $request->get('format', 'excel');
-        
-        // Según el formato, generamos el archivo correspondiente
-        switch ($format) {
-            case 'excel':
-                return $this->exportToExcel($evidencias);
-            case 'csv':
-                return $this->exportToCsv($evidencias);
-            case 'pdf':
-                return $this->exportToPdf($evidencias);
-            default:
-                return $this->exportToExcel($evidencias);
-        }
+        return $this->exportToExcel($evidencias);
     }
 
     private function exportToExcel($evidencias)
@@ -718,58 +853,4 @@ class EvidenciaController extends Controller
         return response($content, 200, $headers);
     }
 
-    private function exportToCsv($evidencias)
-    {
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename=evidencias.csv',
-        ];
-
-        $callback = function() use ($evidencias) {
-            $file = fopen('php://output', 'w');
-            // UTF-8 BOM para Excel
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // Cabeceras
-            fputcsv($file, [
-                'Nombre de la Asistencia', 
-                'Descripción', 
-                'Fecha', 
-                'Usuario', 
-                'Cargo', 
-                'Institución', 
-                'Tipo de II.EE.', 
-                'Provincia', 
-                'Distrito', 
-                'UGEL'
-            ]);
-            
-            // Datos
-            foreach ($evidencias as $item) {
-                fputcsv($file, [
-                    $item->nombreEvidencia,
-                    $item->descripcion,
-                    date('d-m-Y', strtotime($item->fecha)),
-                    $item->name,
-                    $item->cargo,
-                    $item->institucion,
-                    $item->nivelinstitucion,
-                    $item->provincia,
-                    $item->distrito,
-                    $item->ugel
-                ]);
-            }
-            
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-
-    private function exportToPdf($evidencias)
-    {
-        // Aquí podrías usar una biblioteca como TCPDF, Dompdf o mPDF para generar un PDF
-        // Por simplicidad, solo devolvemos un mensaje
-        return response("La exportación a PDF requiere una biblioteca adicional. Por favor, exporta a Excel o CSV.", 200);
-    }
 }
