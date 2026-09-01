@@ -15,8 +15,6 @@
                 <span class="badge badge-{{ $item['label_color'] ?? 'primary' }} right">
                     {{ $item['label'] }}
                 </span>
-            @elseif(isset($count) && $count > 0 && $item['text'] === 'USUARIOS')
-                <span class="badge badge-danger right">{{ $count }}</span>
             @endif
         </p>
 
