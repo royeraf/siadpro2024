@@ -13,7 +13,8 @@ import {
     Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
     ArrowUpNarrowWide, ArrowDownWideNarrow,
     Users, UserPlus, IdCard, Briefcase, Shield, Check,
-    UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid
+    UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
+    BookOpen, CalendarCheck, NotebookPen
 } from 'lucide';
 import { initTableEngine } from './components/datatable-engine';
 
@@ -31,7 +32,8 @@ window.lucideRefresh = () => createIcons({
         Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
         ArrowUpNarrowWide, ArrowDownWideNarrow,
         Users, UserPlus, IdCard, Briefcase, Shield, Check,
-        UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid
+        UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
+        BookOpen, CalendarCheck, NotebookPen
     }
 });
 window.lucideRefresh();

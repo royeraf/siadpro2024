@@ -44,7 +44,7 @@
 @endsection
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i data-lucide="file-text" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Asistencia Técnica Para Especialista UGEL</h1>
+    <x-section-heading icon="file-text">Asistencia Técnica Para Especialista UGEL</x-section-heading>
 @stop
 
 @section('content')
@@ -182,11 +182,7 @@
     @include('evidencia._rows_general')
 </x-table-base>
 
-<div id="tabla-evidencias-ugel-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($evidencias->hasPages())
-        {{ $evidencias->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-evidencias-ugel" :paginator="$evidencias" />
 
 @stop
 

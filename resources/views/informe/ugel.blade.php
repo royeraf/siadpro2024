@@ -44,7 +44,7 @@
 @endsection
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i data-lucide="book-open" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Biblioteca en el Aula Ugel</h1>
+    <x-section-heading icon="book-open">Listado de Biblioteca en el Aula Ugel</x-section-heading>
 @stop
 
 @section('content')
@@ -182,11 +182,7 @@
     @include('informe._rows_general')
 </x-table-base>
 
-<div id="tabla-informes-ugel-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($informes->hasPages())
-        {{ $informes->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-informes-ugel" :paginator="$informes" />
 
 @stop
 

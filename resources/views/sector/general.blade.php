@@ -44,7 +44,7 @@
 @endsection
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i data-lucide="layout-grid" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>{{ $pageTitle }}</h1>
+    <x-section-heading icon="layout-grid">{{ $pageTitle }}</x-section-heading>
 @stop
 
 @section('content')
@@ -337,11 +337,7 @@
     @include('sector._rows_general')
 </x-table-base>
 
-<div id="{{ $tableId }}-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($sectores->hasPages())
-        {{ $sectores->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination :id="$tableId" :paginator="$sectores" />
 
 @stop
 

@@ -45,7 +45,7 @@
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <h1 class="m-0 text-dark"><i data-lucide="notebook-pen" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Producción de Textos Infantiles</h1>
+        <x-section-heading icon="notebook-pen">Listado de Producción de Textos Infantiles</x-section-heading>
         <a href="{{ route('produccions.create') }}" class="btn btn-primary">
             <i data-lucide="circle-plus" class="w-4 h-4 mr-1 inline-block align-text-bottom"></i> Nueva Producción
         </a>
@@ -192,11 +192,7 @@
     @include('produccion._rows')
 </x-table-base>
 
-<div id="tabla-produccions-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($produccions->hasPages())
-        {{ $produccions->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-produccions" :paginator="$produccions" />
 
 @stop
 

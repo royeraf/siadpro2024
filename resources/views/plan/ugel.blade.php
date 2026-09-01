@@ -44,7 +44,7 @@
 @endsection
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i data-lucide="book-heart" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Espacio de Lectura en el Hogar Ugel</h1>
+    <x-section-heading icon="book-heart">Listado de Espacio de Lectura en el Hogar Ugel</x-section-heading>
 @stop
 
 @section('content')
@@ -182,11 +182,7 @@
     @include('plan._rows_general')
 </x-table-base>
 
-<div id="tabla-plans-ugel-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($plans->hasPages())
-        {{ $plans->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-plans-ugel" :paginator="$plans" />
 
 @stop
 

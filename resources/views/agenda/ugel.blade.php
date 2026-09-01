@@ -44,7 +44,7 @@
 @endsection
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i data-lucide="calendar-check" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Agendas de Lectura Para Especialista UGEL</h1>
+    <x-section-heading icon="calendar-check">Listado de Agendas de Lectura Para Especialista UGEL</x-section-heading>
 @stop
 
 @section('content')
@@ -179,11 +179,7 @@
     @include('agenda._rows_general')
 </x-table-base>
 
-<div id="tabla-agendas-ugel-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($agendas->hasPages())
-        {{ $agendas->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-agendas-ugel" :paginator="$agendas" />
 
 @stop
 

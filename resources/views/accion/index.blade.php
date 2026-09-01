@@ -45,7 +45,7 @@
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <h1 class="m-0 text-dark"><i data-lucide="megaphone" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Acciones de Sensibilización</h1>
+        <x-section-heading icon="megaphone">Listado de Acciones de Sensibilización</x-section-heading>
         <a href="{{ route('accions.create') }}" class="btn btn-primary">
             <i data-lucide="circle-plus" class="w-4 h-4 mr-1 inline-block align-text-bottom"></i> Nueva Acción
         </a>
@@ -191,11 +191,7 @@
     @include('accion._rows')
 </x-table-base>
 
-<div id="tabla-acciones-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($accions->hasPages())
-        {{ $accions->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-acciones" :paginator="$accions" />
 
 @stop
 

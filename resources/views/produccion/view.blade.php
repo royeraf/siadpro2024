@@ -44,7 +44,7 @@
 @endsection
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i data-lucide="notebook-pen" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Producción de Textos Infantiles (General)</h1>
+    <x-section-heading icon="notebook-pen">Listado de Producción de Textos Infantiles (General)</x-section-heading>
 @stop
 
 @section('content')
@@ -333,11 +333,7 @@
     @include('produccion._rows_general')
 </x-table-base>
 
-<div id="tabla-produccions-general-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($produccions->hasPages())
-        {{ $produccions->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-produccions-general" :paginator="$produccions" />
 
 @stop
 

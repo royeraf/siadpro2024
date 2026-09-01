@@ -45,7 +45,7 @@
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <h1 class="m-0 text-dark"><i data-lucide="book-heart" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Espacio de Lectura en el Hogar</h1>
+        <x-section-heading icon="book-heart">Listado de Espacio de Lectura en el Hogar</x-section-heading>
         <a href="{{ route('plans.create') }}" class="btn btn-primary">
             <i data-lucide="circle-plus" class="w-4 h-4 mr-1 inline-block align-text-bottom"></i> Nuevo Espacio de Lectura
         </a>
@@ -192,11 +192,7 @@
     @include('plan._rows')
 </x-table-base>
 
-<div id="tabla-plans-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($plans->hasPages())
-        {{ $plans->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-plans" :paginator="$plans" />
 
 @stop
 

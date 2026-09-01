@@ -44,7 +44,7 @@
 @endsection
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i data-lucide="radio" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Acciones de Difusión (General)</h1>
+    <x-section-heading icon="radio">Acciones de Difusión (General)</x-section-heading>
 @stop
 
 @section('content')
@@ -335,11 +335,7 @@
     @include('difusion._rows_general')
 </x-table-base>
 
-<div id="tabla-difusiones-general-pagination" class="mt-3 flex justify-center sm:justify-end">
-    @if ($accions->hasPages())
-        {{ $accions->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
-    @endif
-</div>
+<x-table-pagination id="tabla-difusiones-general" :paginator="$accions" />
 
 @stop
 
