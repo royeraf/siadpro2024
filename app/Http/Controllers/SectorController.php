@@ -88,13 +88,12 @@ class SectorController extends Controller
 
         if ($forceUgel !== null) {
             $query->where('users.ugel', $forceUgel);
-        } else {
-            if ($request->filled('ugels')) {
-                $query->where('users.ugel', $request->input('ugels'));
-            }
-            if ($request->filled('instituciones')) {
-                $query->where('users.institucion', 'LIKE', '%' . $request->input('instituciones') . '%');
-            }
+        } elseif ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
         }
 
         if ($request->filled('texto')) {
@@ -200,6 +199,7 @@ class SectorController extends Controller
             'anio' => $anio,
             'showFullFilters' => $showFullFilters,
             'listaUgels' => collect(),
+            'listaInstituciones' => User::where('ugel', Auth::user()->ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion'),
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.ugel',
             'exportRoute' => 'exportSectoresUgel',
