@@ -21,58 +21,231 @@ class PlanController extends Controller
         $this->middleware('can:plans.director')->only('director');
     }
     
-    public function index()
+    public function index(Request $request)
     {
         $usuario = Auth::user()->id;
-        $plans = Plan::where('estado', '1')->where('idUser',$usuario)->orderby('id','desc')->paginate(10);
-        return view('plan.index')->with('plans',$plans);
+
+        $query = Plan::where('estado', '1')->where('idUser', $usuario);
+
+        if ($request->filled('texto')) {
+            $query->where('nombrePlan', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('fecha')) {
+            $query->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+        if ($request->filled('year')) {
+            $query->whereYear('fecha', $request->input('year'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('nombrePlan', 'LIKE', "%{$buscar}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $plans = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('plan._rows', ['plans' => $plans])->render(),
+                'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $plans->total(),
+                'totalFormatted' => number_format($plans->total()),
+                'from' => $plans->firstItem() ?? 0,
+                'to' => $plans->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaAnios = $this->listaAniosPlan();
+
+        return view('plan.index', compact('plans', 'listaAnios'));
+    }
+
+    /**
+     * Años plausibles disponibles para el selector de filtro, descartando
+     * fechas corruptas (p. ej. años como 23, 203 o 1978 por datos mal
+     * digitados) — mismo criterio que EvidenciaController/InformeController.
+     */
+    private function listaAniosPlan(string $anioActual = null)
+    {
+        $listaAnios = Plan::whereYear('fecha', '>=', 2010)
+            ->selectRaw('DISTINCT YEAR(fecha) as anio')
+            ->orderByDesc('anio')
+            ->pluck('anio');
+
+        $anioActual = $anioActual ?? date('Y');
+        if (!$listaAnios->contains($anioActual)) {
+            $listaAnios->prepend($anioActual);
+        }
+
+        return $listaAnios;
     }
 
     public function general(Request $request)
     {
-        // Obtener el año del request, o usar 2026 como predeterminado
-        $year = $request->get('year', 2026);
-        
-        $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.descripcion","pro_plans.fecha","pro_plans.documento","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.cargo","users.nivelinstitucion","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_plans.idUser")
-                    ->where('pro_plans.estado', '1')
-                    ->whereYear('fecha', $year)
-                    ->orderby('pro_plans.id','desc')
-                    ->paginate(10);
-        
-        return view('plan.view')->with('plans', $plans)->with('selectedYear', $year);
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Plan::select(
+                "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
+                "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_plans.idUser")
+            ->where('pro_plans.estado', '1')
+            ->whereYear('pro_plans.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('docentes')) {
+            $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
+        }
+        if ($request->filled('ugels')) {
+            $query->where('users.ugel', $request->input('ugels'));
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_plans.nombrePlan', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_plans.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        $plans = $query->orderBy('pro_plans.fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('plan._rows_general', ['plans' => $plans])->render(),
+                'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $plans->total(),
+                'totalFormatted' => number_format($plans->total()),
+                'from' => $plans->firstItem() ?? 0,
+                'to' => $plans->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaAnios = $this->listaAniosPlan($anio);
+
+        return view('plan.view', compact('plans', 'anio', 'listaUgels', 'listaAnios'));
     }
 
     public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $year = $request->get('year', 2026); // Año predeterminado 2026
-        
-        $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.documento","pro_plans.fecha","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.nivelinstitucion","users.cargo","users.ugel")
-            ->join("users","users.id","=","pro_plans.idUser")
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Plan::select(
+                "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
+                "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_plans.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_plans.estado', '1')
-            ->whereYear('fecha', $year)
-            ->orderby('pro_plans.id','desc')
-            ->paginate(10);
-            
-        return view("plan.ugel", compact('plans'))->with('selectedYear', $year);
+            ->whereYear('pro_plans.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('instituciones')) {
+            $query->where('users.institucion', $request->input('instituciones'));
+        }
+        if ($request->filled('nivel')) {
+            $query->where('users.nivelinstitucion', $request->input('nivel'));
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_plans.nombrePlan', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_plans.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $plans = $query->orderBy('pro_plans.fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('plan._rows_general', ['plans' => $plans])->render(),
+                'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $plans->total(),
+                'totalFormatted' => number_format($plans->total()),
+                'from' => $plans->firstItem() ?? 0,
+                'to' => $plans->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
+        $listaAnios = $this->listaAniosPlan($anio);
+
+        return view('plan.ugel', compact('plans', 'anio', 'listaInstituciones', 'listaAnios'));
     }
 
     public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $year = $request->get('year', 2026); // Año predeterminado 2026
-        
-        $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.documento","pro_plans.fecha","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
-            ->join("users","users.id","=","pro_plans.idUser")
+        $anio = $request->filled('year') ? $request->input('year') : date('Y');
+
+        $query = Plan::select(
+                "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
+                "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
+                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+            )
+            ->join("users", "users.id", "=", "pro_plans.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_plans.estado', '1')
-            ->whereYear('fecha', $year)
-            ->orderby('pro_plans.id','desc')
-            ->paginate(10);
-            
-        return view("plan.director", compact('plans'))->with('selectedYear', $year);
+            ->whereYear('pro_plans.fecha', $anio);
+
+        if ($request->filled('texto')) {
+            $query->where('pro_plans.nombrePlan', 'LIKE', '%' . $request->input('texto') . '%');
+        }
+        if ($request->filled('fecha')) {
+            $query->where('pro_plans.fecha', 'LIKE', '%' . $request->input('fecha') . '%');
+        }
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_plans.nombrePlan', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_plans.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
+        $plans = $query->orderBy('pro_plans.fecha', 'desc')->paginate(10)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('plan._rows_general', ['plans' => $plans])->render(),
+                'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+                'total' => $plans->total(),
+                'totalFormatted' => number_format($plans->total()),
+                'from' => $plans->firstItem() ?? 0,
+                'to' => $plans->lastItem() ?? 0,
+            ]);
+        }
+
+        $listaAnios = $this->listaAniosPlan($anio);
+
+        return view('plan.director', compact('plans', 'anio', 'listaAnios'));
     }
 
     public function profesorcoordinador(Request $request)
@@ -103,107 +276,22 @@ class PlanController extends Controller
 
     public function buscar(Request $request)
     {
-        $usuario = Auth::user()->id;
-        $texto = trim($request->get('texto'));
-        $year = $request->get('year', 2026); // Año predeterminado 2026
-        
-        $plans = Plan::where("nombrePlan", "LIKE", "%" . $texto . "%")
-            ->where('estado', '1')
-            ->whereYear('fecha', $year)
-            ->where('idUser', $usuario)
-            ->orderby('pro_plans.id', 'desc')
-            ->paginate(10);
-            
-        return view('plan.index')->with('plans', $plans)->with('selectedYear', $year);
+        return $this->index($request);
     }
 
     public function buscarGeneral(Request $request)
     {
-        \Log::info('Params en buscarGeneral:', $request->all());
-        
-        $year = $request->get('year', 2026); // Año predeterminado 2026
-        
-        if (empty($request->get('ugels')) && empty($request->get('instituciones')) && empty($request->get('docentes')) && empty($request->get('texto'))) {
-            return redirect('/plan-general?year=' . $year);
-        } else {    
-            $dni = trim($request->get('texto', ''));
-            $name = trim($request->get('docentes', ''));
-            $ugel = trim($request->get('ugels', ''));
-            $nominstitucion = trim($request->get('instituciones', ''));
-
-            $query = Plan::select(
-                "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.documento", 
-                "pro_plans.fecha", "pro_plans.color", "pro_plans.descripcion", 
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion", 
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_plans.idUser")
-            ->where('pro_plans.estado', '1')
-            ->whereYear('pro_plans.fecha', $year); // Usa el año seleccionado
-
-            // Aplicar cada filtro independientemente si está presente
-            if (!empty($ugel)) {
-                $query->where("users.ugel", "LIKE", "%$ugel%");
-            }
-            
-            if (!empty($dni)) {
-                $query->where("users.dni", "LIKE", "%$dni%");
-            }
-            
-            if (!empty($name)) {
-                $query->where("users.name", "LIKE", "%$name%");
-            }
-            
-            if (!empty($nominstitucion)) {
-                $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-            }
-
-            $plans = $query->orderBy('pro_plans.id', 'desc')->paginate(1000);
-            
-            \Log::info('Total de registros encontrados: ' . $plans->total());
-
-            return view('plan.view')->with('plans', $plans)->with('selectedYear', $year);
-        }
+        return $this->general($request);
     }
 
     public function buscarUgel(Request $request)
     {
-        $ugel = Auth::user()->ugel;
-        $dni = trim($request->get('texto'));
-        $nivel = trim($request->get('nivel'));
-        $nominstitucion = trim($request->get('nominstitucion'));
-        $year = $request->get('year', 2026); // Año predeterminado 2026
-        
-        $plans = Plan::select("pro_plans.id", "pro_plans.nombrePlan", "pro_plans.documento", "pro_plans.fecha", "pro_plans.color", "pro_plans.descripcion", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
-            ->join("users", "users.id", "=", "pro_plans.idUser")
-            ->where("users.ugel", $ugel)
-            ->whereYear('fecha', $year)
-            ->where('pro_plans.estado', '1')
-            ->where("users.dni", "LIKE", "%" . $dni . "%")
-            ->where('users.nivelinstitucion', "LIKE", "%" . $nivel . "%")
-            ->where("users.institucion", "LIKE", "%" . $nominstitucion . "%")
-            ->orderby('pro_plans.id', 'desc')
-            ->paginate(10);
-            
-        return view('plan.ugel')->with('plans', $plans)->with('selectedYear', $year);
+        return $this->ugel($request);
     }
 
     public function buscarDirector(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-        $texto = trim($request->get('texto'));
-        $year = $request->get('year', 2026); // Año predeterminado 2026
-        
-        $plans = Plan::select("pro_plans.id", "pro_plans.nombrePlan", "pro_plans.documento", "pro_plans.fecha", "pro_plans.color", "pro_plans.descripcion", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.ugel")
-            ->join("users", "users.id", "=", "pro_plans.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_plans.estado', '1')
-            ->whereYear('fecha', $year)
-            ->where("pro_plans.nombrePlan", "LIKE", "%" . $texto . "%")
-            ->orderby('pro_plans.id', 'desc')
-            ->paginate(10);
-            
-        return view('plan.director')->with('plans', $plans)->with('selectedYear', $year);
+        return $this->director($request);
     }
 
     

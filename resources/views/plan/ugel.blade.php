@@ -1,285 +1,195 @@
 @extends('adminlte::page')
+
+@section('title', 'Espacio de Lectura en el Hogar (UGEL)')
+
 @section('css')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
-<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/css/admin_custom.css">
+@vite(['resources/css/app.css'])
+<style>
+    .stats-card {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        border-radius: 8px;
+        padding: 12px 18px;
+        margin-bottom: 15px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .stats-icon {
+        font-size: 32px;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    .stats-number {
+        font-size: 24px;
+        font-weight: 700;
+        display: block;
+        color: #facc15;
+        line-height: 1.1;
+    }
+    .stats-title {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.95;
+    }
+    @media (max-width: 575px) {
+        .stats-card {
+            display: flex;
+            width: 100%;
+        }
+    }
+</style>
 @endsection
 
-@section('title', 'Lectura')
-
 @section('content_header')
-    @if(session('mensajeinternet'))
-        <div class="alert alert-danger">
-            {{ session('mensajeinternet') }}
-        </div>
-    @endif
-    <h1>Listado de espacio de lectura en el hogar Ugel</h1>
+    <h1 class="m-0 text-dark"><i data-lucide="book-heart" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Espacio de Lectura en el Hogar Ugel</h1>
 @stop
 
 @section('content')
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-    
-    @if ($errors->has('documento'))
-    <div class="alert alert-danger">
-        {{ $errors->first('documento') }}
-    </div>
-    @endif
-    
-    @if(count($plans)<=0)
-        <div class="alert alert-info">
-            No se encontro Espacio de Lectura en el Hogar!
-        </div>
-    @endif
 
-<form action="{{route('buscarPlanUgel')}}" method="get" class="row g-3">
-    <div class="form-group col-md-2">
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-                <span class="input-group-text">
-                    <i class="fas fa-calendar-alt"></i>
-                </span>
-                <select class="form-control" id="year" name="year">
-                    <option value="2026" {{ !isset($selectedYear) || $selectedYear == 2026 ? 'selected' : '' }}>2026</option>
-                    <option value="2025" {{ isset($selectedYear) && $selectedYear == 2025 ? 'selected' : '' }}>2025</option>
-                    <option value="2024" {{ isset($selectedYear) && $selectedYear == 2024 ? 'selected' : '' }}>2024</option>
-                    <option value="2023" {{ isset($selectedYear) && $selectedYear == 2023 ? 'selected' : '' }}>2023</option>
-                </select>
+<!-- Contador de espacios de lectura -->
+<div class="row">
+    <div class="col-12">
+        <div class="stats-card">
+            <div class="stats-icon">
+                <i data-lucide="book-heart" class="w-8 h-8"></i>
+            </div>
+            <div class="stats-info">
+                <span class="stats-number" id="tabla-plans-ugel-total">{{ number_format($plans->total()) }}</span>
+                <span class="stats-title">Total de Espacios de Lectura en el Hogar ({{ $anio }})</span>
             </div>
         </div>
     </div>
-    <div class="form-group col-md-2">
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-                <span class="input-group-text">
-                <i class="fas fa-file"></i>
-                </span>
-                <input type="text" class="form-control" name="texto" id="dniInput" placeholder="DNI">        
-            </div>
-        </div>
-    </div>
-    <div class="form-group col-md-3">
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-            <span class="input-group-text">
-            <i class="fas fa-award"></i>
-            </span>
-                <div class="col-md-9">
-                    <select id="nivel" name="nivel" class="form-control">
-                        <option value="">----SELECCIONE NIVEL-----</option>
-                            <option value="Escolarizado">Escolarizado</option>
-                            <option value="No escolarizado - PRONOEI">No escolarizado - PRONOEI</option>      
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div> 
-    <div class="form-group col-md-3">
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-            <span class="input-group-text">
-            <i class="fas fa-school"></i>
-            </span>
-                <div class="col-md-10">
-                    <select id="nominstitucion" name="nominstitucion" class="form-control">
-                        <option value="">----SELECCIONE INSTITUCION-----</option>
-                        @foreach ($plans as $plan)
-                            <option value="{{$plan->institucion}}">{{$plan->institucion}}</option>                            
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="form-group col-md-1">
-        <input type="submit" class="btn btn-primary" value="Buscar">
-    </div> 
-</form>
-
-<table id="plans" class="table table-striped table-bordered shadow-lg mt-4 display nowrap" style="width:100%">
-    <thead class="bg-primary text-white">
-    <tr>   
-    <th scope="col">Nombre de Espacio de Lectura</th>
-    <th scope="col">Descripci¨®n</th>
-    <th scope="col">Fecha</th>
-    <th scope="col">Documento</th>
-    <th scope="col">Usuario</th>
-    <th scope="col">Cargo</th>
-    <th scope="col">Instituci¨®n</th>
-    <th scope="col">Tipo de II.EE.</th>
-    <th scope="col">Provincia</th>
-    <th scope="col">Distrito</th>
-    <th scope="col">UGEL</th>
-    </tr>
-    </thead>
-    <tbody >
-    @if(count($plans)<=0)
-    <tr>
-        <td colspan="11">No hay Espacio de Lectura en el Hogar</td>
-    </tr>
-    @else
-    @foreach ($plans as $plan)
-    <tr>
-        <td>{{$plan->nombrePlan}}</td>
-        <td>{{$plan->descripcion}}</td>
-        <td>{{date('d-m-Y', strtotime($plan->fecha))}}</td>
-        <td align="center"><a href="{{ route('plans.download', $plan->id) }}" , target="_blank"><i class='{{$plan->documento}}' style='font-size:24px;color:{{$plan->color}}' ></i></a></td>
-        <td>{{$plan->name}}</td>
-        <td>{{$plan->cargo}}</td>
-        <td>{{$plan->institucion}}</td>
-        <td>{{$plan->nivelinstitucion}}</td>
-        <td>{{$plan->provincia}}</td>
-        <td>{{$plan->distrito}}</td>
-        <td>{{$plan->ugel}}</td>
-    </tr>
-    @endforeach
-    @endif
-    </tbody>
-</table>
-<div class="form-inline">
-    <p>Total de Plan Subidos: {{$plans->total()}}</p> <br>
-    {{$plans->appends(request()->only(['texto', 'nominstitucion', 'nivel', 'year']))->links()}}
 </div>
-                     
-@stop
 
-@section('css')
-<style>
-    .fade {
-        opacity: 0;
-        transition: opacity 0.5s ease-out; /* Duraci1¤71¤7n de la transici1¤71¤7n */
-    }
-</style>
- 
+<!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
+<x-table-base id="tabla-plans-ugel"
+              :perPage="10"
+              :exportable="true"
+              :searchable="true"
+              exportFilename="espacio_lectura_hogar_ugel"
+              :serverPaginated="true"
+              :totalServerRecords="$plans->total()"
+              :fromServer="$plans->firstItem() ?? 0"
+              :toServer="$plans->lastItem() ?? 0"
+              :filterAction="route('plans.ugel')">
+    <x-slot name="filters">
+        <x-table-filter name="year" label="Año" icon="calendar" :options="$listaAnios" :value="$anio" placeholder="Año actual" />
+        <x-table-filter name="texto" label="DNI del Docente" icon="id-card" placeholder="Ingrese DNI" />
+        <x-table-filter name="instituciones" label="Institución" icon="school" :options="$listaInstituciones" :searchable="true" placeholder="Buscar institución..." />
+        <x-table-filter name="nivel" label="Tipo de II.EE." icon="layers" :options="['Escolarizado', 'No escolarizado - PRONOEI']" placeholder="-- Todos --" />
+    </x-slot>
+    <x-slot name="header">
+        <tr>
+            <th @click="sortBy(0)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Nombre del Espacio de Lectura</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 0 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 0 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(1)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Descripción</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 1 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 1 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(2)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 120px;">
+                <div class="flex items-center justify-between">
+                    <span>Fecha</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 2 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 2 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Documento
+            </th>
+            <th @click="sortBy(4)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Usuario</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 4 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 4 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(5)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Cargo</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 5 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 5 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(6)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Institución</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 6 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 6 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(7)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Tipo de II.EE</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 7 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 7 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(8)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Provincia</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 8 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 8 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(9)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Distrito</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 9 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 9 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(10)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>UGEL</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 10 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 10 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+        </tr>
+    </x-slot>
+
+    @include('plan._rows_general')
+</x-table-base>
+
+<div id="tabla-plans-ugel-pagination" class="mt-3 flex justify-center sm:justify-end">
+    @if ($plans->hasPages())
+        {{ $plans->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
+    @endif
+</div>
+
 @stop
 
 @section('js')
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js></script>
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js></script>
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            let alert = document.querySelector('.alert');
-            if (alert) {
-                alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 500); // Espera la transici1¤71¤7n y elimina
-            }
-        }, 3000); // 3000ms = 3 segundos
-    });
-</script>
-
-<script>
-$(document).ready(function() {
-    // Funci¨®n para obtener los par¨¢metros actuales incluyendo el a09o
-    function getCurrentParams() {
-        const params = new URLSearchParams(window.location.search);
-        if (!params.has('year')) {
-            params.append('year', '2026'); // Asegurarse de que year=2026 esté siempre presente por defecto
-        }
-        return params.toString();
-    }
-
-    // Cuando cambia el a09o, recargar la p¨¢gina
-    $('#year').on('change', function() {
-        const currentUrl = new URL(window.location.href);
-        const params = new URLSearchParams(currentUrl.search);
-        params.set('year', $(this).val());
-        
-        // Mantener otros filtros si existen
-        window.location.href = `${currentUrl.pathname}?${params.toString()}`;
-    });
-
-    // Sobrescribir el mensaje de error de DataTables
-    $.fn.dataTable.ext.errMode = 'none';
-    
-    // IMPORTANTE: Solo una inicializaci¨®n de DataTable
-    $('#plans').DataTable({
-        scrollX: true,
-        dom: 'Bfrtip', // Activa los botones
-        "bInfo": false,
-        "bPaginate": false, 
-        "bFilter": false,
-        buttons: [
-            {
-                extend: 'print',
-                text: '<i class="fas fa-print"> Imprimir</i>',
-                className: 'btn btn-warning',
-                exportOptions: { modifier: { page: 'all' } },
-                action: function (e, dt, node, config) {
-                    $.fn.dataTable.ext.buttons.print.action.call(this, e, dt, node, config);
-                }
-            },
-            {
-                extend: 'excelHtml5',
-                text: '<i class="fas fa-file-excel"> Excel</i>',
-                className: 'btn btn-success',
-                exportOptions: { modifier: { page: 'all' } }
-            },
-            {
-                extend: 'pdfHtml5',
-                text: '<i class="fas fa-file-pdf"> PDF</i>',
-                className: 'btn btn-danger',
-                exportOptions: { modifier: { page: 'all' } }
-            },
-            {
-                extend: 'csv',
-                text: '<i class="fas fa-file-csv"> CSV</i>',
-                className: 'btn btn-info',
-                exportOptions: { modifier: { page: 'all' } }
-            },
-            {
-                extend: 'copy',
-                text: '<i class="fas fa-copy"> Copiar</i>',
-                className: 'btn btn-secondary',
-                exportOptions: { modifier: { page: 'all' } }
-            }
-        ],
-        "language": {
-            "emptyTable": "No se encontr¨® espacio de lectura en el hogar!",
-            "zeroRecords": "No se encontr¨® espacio de lectura en el hogar!"
-        }
-    });
-    
-    // Eliminar el modal de error de DataTables si existe
-    $('.dt-error').remove();
-    
-    // Ocultar mensajes de error de DataTables
-    $('.dataTables_empty').parent().parent().hide();
-    
-    // Si no hay datos, ocultamos la tabla pero mantenemos los botones
-    if ($('#plans tbody tr').length === 1 && $('#plans tbody tr td').length === 1) {
-        $('#plans tbody').hide();
-        $('.dt-buttons').css('margin-bottom', '20px');
-    }
-});
-
-function imprimir() {
-    window.print();
-}
-
-// Limitar el DNI a 8 caracteres num¨¦ricos
-document.addEventListener('DOMContentLoaded', function() {
-    const dniInput = document.getElementById('dniInput');
-
-    dniInput.addEventListener('input', function() {
-        const inputValue = dniInput.value.trim();
-        const numericValue = inputValue.replace(/[^\d]/g, ''); // Elimina caracteres no num¨¦ricos
-
-        if (numericValue.length > 8) {
-            dniInput.value = numericValue.slice(0, 8); // Limita a 8 caracteres
-        } else {
-            dniInput.value = numericValue;
-        }
-    });
-});
-</script>
+@vite(['resources/js/app.js'])
 @stop

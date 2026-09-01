@@ -1,487 +1,346 @@
 @extends('adminlte::page')
+
+@section('title', 'Espacio de Lectura en el Hogar (Especialista DRE)')
+
 @section('css')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
-<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/css/admin_custom.css">
+@vite(['resources/css/app.css'])
+<style>
+    .stats-card {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        border-radius: 8px;
+        padding: 12px 18px;
+        margin-bottom: 15px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .stats-icon {
+        font-size: 32px;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    .stats-number {
+        font-size: 24px;
+        font-weight: 700;
+        display: block;
+        color: #facc15;
+        line-height: 1.1;
+    }
+    .stats-title {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.95;
+    }
+    @media (max-width: 575px) {
+        .stats-card {
+            display: flex;
+            width: 100%;
+        }
+    }
+</style>
 @endsection
 
-@section('title', 'Lectura')
-
 @section('content_header')
-    <h1>Listado de Espacio de Lectura en el Hogar para Especialista DRE</h1>
+    <h1 class="m-0 text-dark"><i data-lucide="book-heart" class="w-6 h-6 mr-2 inline-block align-text-bottom"></i>Listado de Espacio de Lectura en el Hogar para Especialista DRE</h1>
 @stop
 
 @section('content')
 
-<form action="{{route('buscarPlanGeneral')}}" method="get" class="row g-3">
-    <div class="form-group col-md-2">
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-                <span class="input-group-text">
-                    <i class="fas fa-calendar-alt"></i>
-                </span>
-                <select class="form-control" id="year" name="year">
-                    <option value="2026" {{ !isset($selectedYear) || $selectedYear == 2026 ? 'selected' : '' }}>2026</option>
-                    <option value="2025" {{ isset($selectedYear) && $selectedYear == 2025 ? 'selected' : '' }}>2025</option>
-                    <option value="2024" {{ isset($selectedYear) && $selectedYear == 2024 ? 'selected' : '' }}>2024</option>
-                    <option value="2023" {{ isset($selectedYear) && $selectedYear == 2023 ? 'selected' : '' }}>2023</option>
-                </select>
+<!-- Contador de espacios de lectura -->
+<div class="row">
+    <div class="col-12">
+        <div class="stats-card">
+            <div class="stats-icon">
+                <i data-lucide="book-heart" class="w-8 h-8"></i>
+            </div>
+            <div class="stats-info">
+                <span class="stats-number" id="tabla-plans-general-total">{{ number_format($plans->total()) }}</span>
+                <span class="stats-title">Total de Espacios de Lectura en el Hogar ({{ $anio }})</span>
             </div>
         </div>
     </div>
-    <div class="form-group col-md-2">
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-                <span class="input-group-text">
-                <i class="fas fa-file"></i>
-                </span>
-                <input type="text" class="form-control" name="texto" id="dniInput" placeholder="DNI">        
-            </div>
-        </div>
-    </div>
-    <div class="form-group col-md-3">
-        <div class="col-md-15 col align-self-center">
-            <div class="input-group-prepend">
-            <span class="input-group-text">
-                <i class="fas fa-building"></i>
-            </span>
-                <select class="form-control" id="ugels" name="ugels">
-                    <option value=""> Seleccione la UGEL: </option>
-                </select>
-            </div>
-        </div>
-    </div>
-    <div class="form-group col-md-2">
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-                <span class="input-group-text">
-                    <i class="fas fa-school"></i>
-                </span>
-                <div class="col-md-4">
-                    <input type="text" class="form-control" id="institucion" name="" autocomplete="off">                    
-                    
-                </div>
-                <div class="col-md-7">
-                    <select name="instituciones" id="instituciones" class="form-control">
-                        <option value="">Selecciona una institución</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="form-group col-md-2">
-        <!-- Lista desplegable para seleccionar El docente (se habilitará dinámicamente) -->
-        <div class="col align-self-center">
-            <div class="input-group-prepend">
-                <span class="input-group-text">
-                    <i class="fas fa-user"></i>
-                </span>
-                <div class="col-md-4">
-                    <input type="text" class="form-control" id="docente" name="" autocomplete="off">                    
-                </div>
-                <div class="col-md-7">
-                    <select name="docentes" id="docentes" class="form-control">
-                        <option value="">Selecciona un Docente</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="form-group col-md-1">
-        <input type="submit" class="btn btn-primary" value="Buscar">
-    </div>    
-</form>
-
-<table id="plans" class="table table-striped table-bordered shadow-lg mt-4 display nowrap" style="width:100%">
-    <thead class="bg-primary text-white">
-        <tr>   
-            <th scope="col">Nombre de Espacio de Lectura</th>
-            <th scope="col">Descripción</th>
-            <th scope="col">Fecha</th>                
-            <th scope="col">Documento</th>
-            <th scope="col">Usuario</th>
-            <th scope="col">Cargo</th>
-            <th scope="col">Institución</th>
-            <th scope="col">Tipo de II.EE.</th>
-            <th scope="col">Provincia</th>
-            <th scope="col">Distrito</th>
-            <th scope="col">UGEL</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if(count($plans)<=0)
-            <tr>
-                <td colspan="11">No hay Espacio de Lectura en el Hogar</td>
-            </tr>
-        @else
-            @foreach ($plans as $plan)
-                <tr>
-                    <td>{{$plan->nombrePlan}}</td>
-                    <td>{{$plan->descripcion}}</td>
-                    <td>{{date('d-m-Y', strtotime($plan->fecha))}}</td>
-                    <td align="center"><a href="{{ route('plans.download', $plan->id) }}" , target="_blank"><i class='{{$plan->documento}}' style='font-size:24px;color:{{$plan->color}}' ></i></a></td>
-                    <td>{{$plan->name}}</td>
-                    <td>{{$plan->cargo}}</td>
-                    <td>{{$plan->institucion}}</td>
-                    <td>{{$plan->nivelinstitucion}}</td>
-                    <td>{{$plan->provincia}}</td>
-                    <td>{{$plan->distrito}}</td>
-                    <td>{{$plan->ugel}}</td>
-                </tr>
-            @endforeach
-        @endif
-    </tbody>
-</table>
-<div class="form-inline">
-    <p>Total de Plan Subidos: {{$plans->total()}}</p> <br>
-    {{$plans->appends(request()->only(['texto', 'instituciones', 'docentes', 'ugels', 'year']))->links()}}
 </div>
-                     
-@stop
 
-@section('css')
- 
+<!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
+<x-table-base id="tabla-plans-general"
+              :perPage="request('per_page', 10)"
+              :exportable="true"
+              :searchable="true"
+              exportFilename="espacio_lectura_hogar_general"
+              :exportUrl="route('exportar.planes', request()->all())"
+              :serverPaginated="true"
+              :totalServerRecords="$plans->total()"
+              :fromServer="$plans->firstItem() ?? 0"
+              :toServer="$plans->lastItem() ?? 0"
+              :filterAction="route('plans.view')">
+    <x-slot name="filters">
+        <x-table-filter name="year" label="Año" icon="calendar" :options="$listaAnios" :value="$anio" placeholder="Año actual" />
+        <x-table-filter name="texto" label="DNI del Docente" icon="id-card" placeholder="Ingrese DNI" />
+
+        {{-- UGEL → Institución → Docente: encadenados vía AJAX --}}
+        <div x-data="{
+                ugel: @js((string) request('ugels', '')),
+                institucion: @js((string) request('instituciones', '')),
+                instQuery: @js((string) request('instituciones', '')),
+                instOpen: false,
+                instOptions: [],
+                docente: @js((string) request('docentes', '')),
+                docQuery: @js((string) request('docentes', '')),
+                docOpen: false,
+                docOptions: [],
+                async loadInstituciones() {
+                    this.instOptions = [];
+                    if (!this.ugel) return;
+                    const year = document.getElementById('year')?.value || '';
+                    const params = new URLSearchParams({ ugel: this.ugel, year });
+                    try {
+                        const res = await fetch('{{ route('buscarInstitucionporUgel-plan') }}?' + params.toString(), {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        });
+                        const data = await res.json();
+                        this.instOptions = data.map(d => d.nomInstitucion);
+                    } catch (e) {}
+                },
+                async loadDocentes() {
+                    this.docOptions = [];
+                    if (!this.institucion) return;
+                    const year = document.getElementById('year')?.value || '';
+                    const params = new URLSearchParams({ docente: this.institucion, ugel: this.ugel, year });
+                    try {
+                        const res = await fetch('{{ route('buscarDocenteporInstitucion-pla') }}?' + params.toString(), {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        });
+                        const data = await res.json();
+                        this.docOptions = data.map(d => d.name);
+                    } catch (e) {}
+                },
+                onUgelChange() {
+                    this.institucion = ''; this.instQuery = ''; this.instOptions = [];
+                    this.docente = ''; this.docQuery = ''; this.docOptions = [];
+                    this.loadInstituciones();
+                },
+                selectInstitucion(name) {
+                    this.institucion = name;
+                    this.instQuery = name;
+                    this.instOpen = false;
+                    this.docente = ''; this.docQuery = ''; this.docOptions = [];
+                    this.loadDocentes();
+                },
+                clearInstitucion() {
+                    this.institucion = ''; this.instQuery = ''; this.instOpen = false;
+                    this.docente = ''; this.docQuery = ''; this.docOptions = [];
+                },
+                selectDocente(name) {
+                    this.docente = name;
+                    this.docQuery = name;
+                    this.docOpen = false;
+                },
+                clearDocente() {
+                    this.docente = ''; this.docQuery = ''; this.docOpen = false;
+                },
+                get filteredInstituciones() {
+                    const q = this.instQuery.toLowerCase();
+                    return q ? this.instOptions.filter(o => o.toLowerCase().includes(q)) : this.instOptions;
+                },
+                get filteredDocentes() {
+                    const q = this.docQuery.toLowerCase();
+                    return q ? this.docOptions.filter(o => o.toLowerCase().includes(q)) : this.docOptions;
+                },
+             }"
+             x-init="if (ugel) loadInstituciones(); if (institucion) loadDocentes();"
+             class="contents">
+
+            <div>
+                <label for="ugels" class="block text-xs font-semibold text-gray-600 mb-1">
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom text-gray-400"></i>
+                    UGEL
+                </label>
+                <select id="ugels" name="ugels" x-model="ugel" @change="onUgelChange()"
+                        class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-2.5 bg-white">
+                    <option value="">-- Todas las UGEL --</option>
+                    @foreach ($listaUgels as $u)
+                        <option value="{{ $u }}">{{ $u }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="instituciones" class="block text-xs font-semibold text-gray-600 mb-1">
+                    <i data-lucide="school" class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom text-gray-400"></i>
+                    Institución
+                </label>
+                <div class="relative" @click.outside="instOpen = false">
+                    <input type="hidden" name="instituciones" :value="institucion">
+                    <input type="text" id="instituciones" x-model="instQuery" autocomplete="off"
+                           :disabled="!ugel"
+                           @focus="instOpen = true" @click="instOpen = true" @input="instOpen = true; if (instQuery === '') clearInstitucion()"
+                           :placeholder="ugel ? 'Buscar institución...' : 'Selecciona una UGEL primero'"
+                           class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 pl-2.5 pr-8 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                    <button type="button" x-show="instQuery.length > 0" @click="clearInstitucion()"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <div x-show="instOpen"
+                         class="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg text-sm">
+                        <template x-if="filteredInstituciones.length === 0">
+                            <div class="px-3 py-2 text-gray-400" x-text="ugel ? 'Sin resultados' : 'Selecciona una UGEL primero'"></div>
+                        </template>
+                        <template x-for="opt in filteredInstituciones.slice(0, 100)" :key="opt">
+                            <div @click="selectInstitucion(opt)"
+                                 class="px-3 py-2 cursor-pointer hover:bg-blue-50"
+                                 :class="{ 'bg-blue-50 font-medium text-blue-700': opt === institucion }"
+                                 x-text="opt"></div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label for="docentes" class="block text-xs font-semibold text-gray-600 mb-1">
+                    <i data-lucide="user" class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom text-gray-400"></i>
+                    Docente
+                </label>
+                <div class="relative" @click.outside="docOpen = false">
+                    <input type="hidden" name="docentes" :value="docente">
+                    <input type="text" id="docentes" x-model="docQuery" autocomplete="off"
+                           :disabled="!institucion"
+                           @focus="docOpen = true" @click="docOpen = true" @input="docOpen = true; if (docQuery === '') clearDocente()"
+                           :placeholder="institucion ? 'Buscar docente...' : 'Selecciona una institución primero'"
+                           class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 pl-2.5 pr-8 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                    <button type="button" x-show="docQuery.length > 0" @click="clearDocente()"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <div x-show="docOpen"
+                         class="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg text-sm">
+                        <template x-if="filteredDocentes.length === 0">
+                            <div class="px-3 py-2 text-gray-400" x-text="institucion ? 'Sin resultados' : 'Selecciona una institución primero'"></div>
+                        </template>
+                        <template x-for="opt in filteredDocentes.slice(0, 100)" :key="opt">
+                            <div @click="selectDocente(opt)"
+                                 class="px-3 py-2 cursor-pointer hover:bg-blue-50"
+                                 :class="{ 'bg-blue-50 font-medium text-blue-700': opt === docente }"
+                                 x-text="opt"></div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <x-table-filter name="nivel" label="Tipo de II.EE." icon="layers" :options="['Escolarizado', 'No escolarizado - PRONOEI']" placeholder="-- Todos --" />
+    </x-slot>
+    <x-slot name="header">
+        <tr>
+            <th @click="sortBy(0)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Nombre del Espacio de Lectura</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 0 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 0 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(1)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Descripción</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 1 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 1 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(2)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 120px;">
+                <div class="flex items-center justify-between">
+                    <span>Fecha</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 2 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 2 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Documento
+            </th>
+            <th @click="sortBy(4)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Usuario</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 4 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 4 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(5)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Cargo</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 5 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 5 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(6)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Institución</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 6 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 6 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(7)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Tipo de II.EE</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 7 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 7 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(8)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Provincia</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 8 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 8 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(9)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>Distrito</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 9 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 9 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(10)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>UGEL</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 10 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 10 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+        </tr>
+    </x-slot>
+
+    @include('plan._rows_general')
+</x-table-base>
+
+<div id="tabla-plans-general-pagination" class="mt-3 flex justify-center sm:justify-end">
+    @if ($plans->hasPages())
+        {{ $plans->appends(request()->except('page'))->links('vendor.pagination.table-tailwind') }}
+    @endif
+</div>
+
 @stop
 
 @section('js')
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js></script>
-<script src=https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js></script>
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js></script>
-<script src=https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js></script>
-<script>
-$(document).ready(function() {
-    // Función para obtener los parámetros actuales incluyendo el año
-    function getCurrentParams() {
-        const params = new URLSearchParams(window.location.search);
-        if (!params.has('year')) {
-            params.append('year', '2026'); // Asegurarse de que year=2026 esté siempre presente por defecto
-        }
-        return params.toString();
-    }
-
-    // Función para obtener el año seleccionado
-    function getSelectedYear() {
-        return $('#year').val() || '2026';
-    }
-
-    // Configuración de DataTables con botones de exportación
-    $('#plans').DataTable({
-        scrollX: true,
-        dom: 'Bfrtip',
-        buttons: [
-            {
-                text: '<i class="fas fa-file-excel"> Excel (Todos)</i>',
-                className: 'btn btn-success',
-                action: function (e, dt, node, config) {
-                    window.location.href = "{{ route('exportar.planes') }}?format=excel&" + getCurrentParams();
-                }
-            },
-            {
-                text: '<i class="fas fa-file-csv"> CSV (Todos)</i>',
-                className: 'btn btn-info',
-                action: function (e, dt, node, config) {
-                    window.location.href = "{{ route('exportar.planes') }}?format=csv&" + getCurrentParams();
-                }
-            },
-            {
-                text: '<i class="fas fa-print"> Imprimir (Todos)</i>',
-                className: 'btn btn-warning',
-                action: function (e, dt, node, config) {
-                    window.open("{{ route('exportar.planes') }}?format=excel&" + getCurrentParams());
-                }
-            },
-            {
-                extend: 'copy',
-                text: '<i class="fas fa-copy"> Copiar (Actual)</i>',
-                className: 'btn btn-secondary'
-            }
-        ]
-    });
-
-    // Cuando cambia el año, recargar la página
-    $('#year').on('change', function() {
-        const currentUrl = new URL(window.location.href);
-        const params = new URLSearchParams(currentUrl.search);
-        params.set('year', $(this).val());
-        
-        // Mantener otros filtros si existen
-        window.location.href = `${currentUrl.pathname}?${params.toString()}`;
-    });
-
-    // Ajax para la búsqueda inicial de UGELs con cantidad de docentes que registraron agendas
-    $.ajax({
-        url: "{{ route('get-ugels-plan') }}",
-        method: 'GET',
-        data: {
-            year: getSelectedYear(),
-            _token: "{{ csrf_token() }}"
-        },
-        dataType: 'json',
-        success: function(data) {
-            var $ugelsSelect = $('#ugels');
-            $ugelsSelect.empty(); // Limpiar opciones existentes
-
-            // Agregar la opción predeterminada
-            $ugelsSelect.append($('<option>', {
-                value: '',
-                text: ' Seleccione la UGEL: '
-            }));
-
-            // Iterar sobre los datos recibidos y agregar las UGELs al select
-            for (var i = 0; i < data.length; i++) {
-                var ugel = data[i].ugel;
-                var docentesCount = data[i].docentes_count;
-
-                // Crear una opción para cada UGEL con la cantidad de docentes
-                var $option = $('<option>', {
-                    value: ugel,
-                    text: ugel + ' (' + docentesCount + ' docente)'
-                });
-
-                // Agregar la opción al select
-                $ugelsSelect.append($option);
-            }
-        },
-        error: function() {
-            alert('Error al cargar las UGELs.');
-        }
-    });
-
-    // Manejar el cambio en la lista de UGEL
-    $('#ugels').on('change', function() {
-        var selectedUgel = $(this).val();
-        
-        // Ajax para la búsqueda de institución por UGEL seleccionada con la información de docentes que registraron agendas
-        $.ajax({
-            url: "{{ route('buscarInstitucionporUgel-plan') }}",
-            method: 'GET',
-            data: {
-                ugel: selectedUgel,
-                year: getSelectedYear(),
-                _token: "{{ csrf_token() }}"
-            },
-            dataType: 'json',
-            success: function(data) {
-                console.log(data);
-                var $institucionesSelect = $('#instituciones');
-                $institucionesSelect.empty(); // Limpia las opciones existentes
-
-                // Agrega la opción predeterminada
-                $institucionesSelect.append($('<option>', {
-                    value: '',
-                    text: 'Selecciona una institución'
-                }));
-
-                // Itera a través de los datos y agrega las instituciones con sus cantidades
-                for (var i = 0; i < data.length; i++) {
-                    var institucion = data[i].nomInstitucion;
-                    var docentesCount = data[i].agendas_count;
-                    var totalDocentes = data[i].total_docentes;
-
-                    // Crea una opción con el nombre de la institución y las cantidades
-                    var $option = $('<option>', {
-                        value: institucion,
-                        text: institucion + ' (' + docentesCount + ' docentes, ' + totalDocentes + ' total)'
-                    });
-
-                    // Agrega la opción a la lista desplegable
-                    $institucionesSelect.append($option);
-                }
-
-                $institucionesSelect.prop('disabled', false); // Habilita la lista desplegable
-            },
-            error: function() {
-                alert('Error al cargar las instituciones.');
-            }   
-        });
-    });
-
-    // Gestión de la búsqueda de instituciones en tiempo real
-    $('#institucion').on('input', function() {
-        var selectedUgel = $('#ugels').val();
-        var searchTerm = $(this).val();
-        
-        // Ajax para la búsqueda en tiempo real de instituciones por UGEL seleccionada
-        $.ajax({
-            url: "{{ route('buscarInstitucionesPlan') }}",
-            method: 'GET',
-            data: {
-                ugel: selectedUgel,
-                term: searchTerm,
-                year: getSelectedYear(),
-                _token: "{{ csrf_token() }}"
-            },
-            dataType: 'json',
-            success: function(data) {
-                console.log(data);
-                var $institucionesSelect = $('#instituciones');
-                $institucionesSelect.empty(); // Limpia las opciones existentes
-
-                // Agregar la opción predeterminada
-                $institucionesSelect.append($('<option>', {
-                    value: '',
-                    text: 'Selecciona una institución'
-                }));
-
-                for (var i = 0; i < data.length; i++) {
-                    var institucion = data[i].nomInstitucion;
-                    var agendasCount = data[i].agendas_count;
-                    var totalDocentes = data[i].total_docentes;
-
-                    // Crear una opción con el nombre del docente y la cantidad de agendas registradas
-                    var $option = $('<option>', {
-                        value: institucion,
-                        text: institucion + ' (' + agendasCount + ' docentes, ' + totalDocentes + ' total)'
-                    });
-                    // Si el docente tiene al menos una agenda, aplicar una clase CSS
-                    if (agendasCount > 0) {
-                        $option.addClass('docente-con-agendas');
-                    }
-                    // Agregar la opción al elemento <select>
-                    $institucionesSelect.append($option);
-                }
-                // Habilitar el elemento <select>
-                $institucionesSelect.prop('disabled', false);
-            },
-            error: function() {
-                alert('Error al cargar las instituciones.');
-            }
-        });
-    });
-
-    // Manejar el cambio en la lista de instituciones
-    $('#instituciones').on('change', function() {
-        var selectedInstitucion = $(this).val();
-        console.log("Institución seleccionada:", selectedInstitucion);
-        
-        // Obtener el valor de UGEL
-        var selectedUgel = $('#ugels').val();
-        console.log("UGEL seleccionada:", selectedUgel);
-
-        // Ajax para la búsqueda de docente por institución seleccionada
-        $.ajax({
-            url: "{{ route('buscarDocenteporInstitucion-pla') }}",
-            method: 'GET',
-            data: {
-                docente: selectedInstitucion,
-                ugel: selectedUgel,
-                year: getSelectedYear(),
-                _token: "{{ csrf_token() }}"
-            },
-            dataType: 'json',
-            success: function(data) {
-                console.log("Datos recibidos:", data);
-                
-                var $docentesSelect = $('#docentes');
-                $docentesSelect.empty();
-
-                // Agregar la opción predeterminada
-                $docentesSelect.append($('<option>', {
-                    value: '',
-                    text: 'Selecciona un Docente'
-                }));
-
-                for (var i = 0; i < data.length; i++) {
-                    var docente = data[i].name;
-                    var agendasCount = data[i].agendas_count;
-
-                    // Crear una opción con el nombre del docente y la cantidad de registros
-                    var $option = $('<option>', {
-                        value: docente,
-                        text: docente + ' (' + agendasCount + ' planes)'
-                    });
-                    
-                    // Si el docente tiene al menos un registro, aplicar una clase CSS
-                    if (agendasCount > 0) {
-                        $option.addClass('docente-con-agendas');
-                    }
-                    
-                    // Agregar la opción al elemento <select>
-                    $docentesSelect.append($option);
-                }
-                
-                // Habilitar el elemento <select>
-                $docentesSelect.prop('disabled', false);
-            },
-            error: function(xhr, status, error) {
-                console.error("Error AJAX:", error);
-                console.error("Estado:", status);
-                console.error("Respuesta:", xhr.responseText);
-                alert('Error al cargar los docentes: ' + error);
-            }
-        });
-    });
-
-    // Gestión de la búsqueda de docentes en tiempo real
-    $('#docente').on('input', function() {
-        var selectedInstitucion = $('#instituciones').val();
-        var searchTerm = $(this).val();
-
-        // Ajax para la búsqueda en tiempo real de docentes
-        $.ajax({
-            url: "{{ route('buscarDocentesPlan') }}",
-            method: 'GET',
-            data: {
-                institucion: selectedInstitucion,
-                term: searchTerm,
-                year: getSelectedYear(),
-                _token: "{{ csrf_token() }}"
-            },
-            dataType: 'json',
-            success: function(data) {
-                console.log(data);
-                var $docentesSelect = $('#docentes');
-                $docentesSelect.empty(); // Limpiar opciones existentes
-
-                // Agregar la opción predeterminada
-                $docentesSelect.append($('<option>', {
-                    value: '',
-                    text: 'Selecciona un Docente'
-                }));
-                for (var i = 0; i < data.length; i++) {
-                    var docente = data[i].name;
-                    var agendasCount = data[i].agendas_count;
-
-                    // Crear una opción con el nombre del docente y la cantidad de agendas registradas
-                    var $option = $('<option>', {
-                        value: docente,
-                        text: docente + ' (' + agendasCount + ' evidencias)'
-                    });
-                    // Si el docente tiene al menos una agenda, aplicar una clase CSS
-                    if (agendasCount > 0) {
-                        $option.addClass('docente-con-agendas');
-                    }
-                    // Agregar la opción al elemento <select>
-                    $docentesSelect.append($option);
-                }
-                $('#docentes').prop('disabled', false);
-            },
-            error: function() {
-                alert('Error al cargar las docentes.');
-            }
-        });
-    });
-});
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const dniInput = document.getElementById('dniInput');
-
-        dniInput.addEventListener('input', function() {
-            const inputValue = dniInput.value.trim();
-            const numericValue = inputValue.replace(/[^\d]/g, ''); // Elimina caracteres no numéricos
-
-            if (numericValue.length > 8) {
-                dniInput.value = numericValue.slice(0, 8); // Limita a 8 caracteres
-            } else {
-                dniInput.value = numericValue;
-            }
-        });
-    });
-</script>
+@vite(['resources/js/app.js'])
 @stop
