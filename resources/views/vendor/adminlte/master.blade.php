@@ -132,6 +132,26 @@
             display: block !important;
         }
 
+        /* Íconos Lucide (SVG) del sidebar: font-size no afecta a un <svg>, por eso necesitan su propia regla.
+           display:inline-block pisa el Preflight de Tailwind (svg{display:block}) que en las vistas migradas
+           forzaba el ícono a su propia línea y empujaba el título del ítem debajo. */
+        .main-sidebar .nav-sidebar .nav-link .nav-icon-lucide {
+            display: inline-block;
+            vertical-align: middle;
+            width: 1.1rem;
+            height: 1.1rem;
+            margin-right: .5rem;
+            flex-shrink: 0;
+        }
+
+        body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .nav-icon-lucide,
+        body.sidebar-collapse.sidebar-mini-md .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .nav-icon-lucide,
+        body.sidebar-collapse.sidebar-mini-xs .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .nav-icon-lucide {
+            margin: 0 auto !important;
+            width: 1.15rem !important;
+            height: 1.15rem !important;
+        }
+
         body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link p,
         body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .badge,
         body.sidebar-collapse.sidebar-mini .main-sidebar:not(:hover) .nav-sidebar .nav-item > .nav-link .right,
@@ -236,6 +256,9 @@
             <livewire:scripts />
         @endif
     @endif
+
+    {{-- App script global: hidrata íconos Lucide (incl. los del sidebar) y Alpine.js en toda página --}}
+    @vite(['resources/js/app.js'])
 
     {{-- Custom Scripts --}}
     @yield('adminlte_js')

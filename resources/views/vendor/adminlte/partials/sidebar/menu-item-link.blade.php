@@ -4,9 +4,16 @@
        href="{{ $item['href'] }}" @if(isset($item['target'])) target="{{ $item['target'] }}" @endif
        {!! $item['data-compiled'] ?? '' !!}>
 
-        <i class="{{ $item['icon'] ?? 'far fa-fw fa-circle' }} {{
-            isset($item['icon_color']) ? 'text-'.$item['icon_color'] : ''
-        }}"></i>
+        @php
+            $iconValue = $item['icon'] ?? 'far fa-fw fa-circle';
+            $iconColorClass = isset($item['icon_color']) ? 'text-'.$item['icon_color'] : '';
+            $isLucideIcon = !str_contains($iconValue, ' ');
+        @endphp
+        @if($isLucideIcon)
+            <i data-lucide="{{ $iconValue }}" class="nav-icon-lucide {{ $iconColorClass }}"></i>
+        @else
+            <i class="{{ $iconValue }} {{ $iconColorClass }}"></i>
+        @endif
 
         <p>
             {{ $item['text'] }}
