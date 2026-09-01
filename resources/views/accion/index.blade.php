@@ -201,6 +201,7 @@
 
 @section('js')
 @vite(['resources/js/app.js'])
+<x-sweet-alert />
 <script>
     setTimeout(function() {
         var alertEl = document.getElementById('alert-success');

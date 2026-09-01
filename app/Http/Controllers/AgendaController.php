@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class AgendaController extends Controller
 {
     public function __construct(){
-        //$this->middleware('auth');
+        $this->middleware('auth');
         //$this->middleware('can:agendas.index')->only('index');
     }
     public function index()
@@ -54,6 +54,8 @@ class AgendaController extends Controller
                 $agenda->nomDocente = Auth::user()->name;
                 $agenda->evento = $request->get('evento');
                 $agenda->color = $request->get('color');
+                $agenda->start = $request->get('start');
+                $agenda->end = $request->get('end');
                 $agenda->institucion = Auth::user()->institucion;
                 $agenda->idUser = Auth::user()->id;
                 $agenda->save();

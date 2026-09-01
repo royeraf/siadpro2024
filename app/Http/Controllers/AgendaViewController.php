@@ -20,13 +20,9 @@ class AgendaViewController extends Controller
         $institucion = Auth::user()->institucion;
         $events = Agenda::all()
         ->where("institucion", $institucion)
-       
         ->where('estado', '1')
         ;
-        
-        return $events;
-        
-        
+
         return view('agenda.view',compact('events'));
 
     }
