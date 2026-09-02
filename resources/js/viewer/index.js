@@ -195,15 +195,19 @@ async function openPdf(url, name) {
     els().next.onclick = () => { if (state.current < numPages) setCurrentPage(state.current + 1, true); };
 
     const rezoom = (newZoom) => {
-        state.zoom = newZoom;
+        const content = els().content;
         const anchor = state.pages[state.current - 1];
+        // Punto de lectura como fracción dentro de la página ancla, para que el
+        // zoom mantenga la zona que se estaba viendo en vez de volver arriba.
+        const rel = anchor ? (content.scrollTop - anchor.wrap.offsetTop) / (anchor.wrap.offsetHeight || 1) : 0;
+        state.zoom = newZoom;
         state.pages.forEach((p) => {
             p.gen++;
             if (p.task && p.task.cancel) { try { p.task.cancel(); } catch (e) { /* noop */ } }
             p.rendered = false;
         });
         sizePages();
-        if (anchor) els().content.scrollTop = anchor.wrap.offsetTop - 8;
+        if (anchor) content.scrollTop = anchor.wrap.offsetTop + rel * anchor.wrap.offsetHeight;
         renderVisiblePages();
     };
     els().zoomOut.onclick = () => rezoom(Math.max(0.25, +(state.zoom - 0.25).toFixed(2)));
@@ -396,8 +400,18 @@ async function openDocx(url, name) {
     els().pageTotal.textContent = numPages;
     els().prev.onclick = () => { if (state.current > 1) setCurrentPage(state.current - 1, true); };
     els().next.onclick = () => { if (state.current < numPages) setCurrentPage(state.current + 1, true); };
-    els().zoomOut.onclick = () => { state.zoom = Math.max(0.5, +(state.zoom - 0.25).toFixed(2)); applyScale(); scrollToPage(state.current); };
-    els().zoomIn.onclick = () => { state.zoom = Math.min(3, +(state.zoom + 0.25).toFixed(2)); applyScale(); scrollToPage(state.current); };
+    // El zoom conserva el punto de lectura (fracción dentro del documento),
+    // no vuelve al inicio de la página.
+    const zoomTo = (newZoom) => {
+        const sOld = state.baseScale * state.zoom;
+        const content = els().content;
+        const rel = (content.scrollTop - host.offsetTop) / (naturalHeight * sOld || 1);
+        state.zoom = newZoom;
+        applyScale();
+        content.scrollTop = host.offsetTop + rel * naturalHeight * state.baseScale * state.zoom;
+    };
+    els().zoomOut.onclick = () => zoomTo(Math.max(0.5, +(state.zoom - 0.25).toFixed(2)));
+    els().zoomIn.onclick = () => zoomTo(Math.min(3, +(state.zoom + 0.25).toFixed(2)));
 
     let resizeTimer = null;
     const onResize = () => {
@@ -465,8 +479,17 @@ async function openSheet(url, name) {
 
     els().prev.onclick = () => { if (state.idx > 0) { state.idx--; render(); } };
     els().next.onclick = () => { if (state.idx < sheets.length - 1) { state.idx++; render(); } };
-    els().zoomOut.onclick = () => { state.scale = Math.max(0.4, +(state.scale - 0.15).toFixed(2)); render(); };
-    els().zoomIn.onclick = () => { state.scale = Math.min(4, +(state.scale + 0.15).toFixed(2)); render(); };
+    // El zoom conserva el punto de lectura (fracción del alto total),
+    // pues render() reconstruye el DOM y el scroll se reiniciaría al tope.
+    const zoomTo = (newScale) => {
+        const content = els().content;
+        const rel = content.scrollHeight ? content.scrollTop / content.scrollHeight : 0;
+        state.scale = newScale;
+        render();
+        content.scrollTop = rel * content.scrollHeight;
+    };
+    els().zoomOut.onclick = () => zoomTo(Math.max(0.4, +(state.scale - 0.15).toFixed(2)));
+    els().zoomIn.onclick = () => zoomTo(Math.min(4, +(state.scale + 0.15).toFixed(2)));
 
     current = { ...current, type: 'sheet' };
     showPager(true, sheets.length > 1, (n) => { state.idx = n - 1; render(); });
