@@ -99,7 +99,7 @@ class ProduccionController extends Controller
         $query = Produccion::select(
                 "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.descripcion",
                 "pro_produccions.documento", "pro_produccions.color", "pro_produccions.fecha",
-                "pro_produccions.lugar", "users.name", "users.cargo", "users.nivelinstitucion",
+                "pro_produccions.lugar", "pro_produccions.enlace", "users.name", "users.cargo", "users.nivelinstitucion",
                 "users.institucion", "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
             ->join("users", "users.id", "=", "pro_produccions.idUser")

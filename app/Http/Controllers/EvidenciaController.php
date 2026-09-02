@@ -85,6 +85,7 @@ class EvidenciaController extends Controller
         $query = Evidencia::select(
                 "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
                 "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
+                "pro_evidencias.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
@@ -152,6 +153,7 @@ class EvidenciaController extends Controller
         $query = Evidencia::select(
                 "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
                 "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
+                "pro_evidencias.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
@@ -204,6 +206,7 @@ class EvidenciaController extends Controller
         $query = Evidencia::select(
                 "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
                 "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
+                "pro_evidencias.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
@@ -305,9 +308,10 @@ class EvidenciaController extends Controller
             $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023 si no se proporciona
     
             $query = Evidencia::select(
-                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", 
-                "pro_evidencias.color", "pro_evidencias.descripcion", "pro_evidencias.fecha", 
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion", 
+                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento",
+                "pro_evidencias.color", "pro_evidencias.descripcion", "pro_evidencias.fecha",
+                "pro_evidencias.enlace",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
             ->join("users", "users.id", "=", "pro_evidencias.idUser")
@@ -354,7 +358,7 @@ class EvidenciaController extends Controller
         $nominstitucion = trim($request->get('nombinstitucion'));
         $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023
         
-        $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.descripcion", "pro_evidencias.fecha", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
+        $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.descripcion", "pro_evidencias.fecha", "pro_evidencias.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_evidencias.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_evidencias.estado', '1')
@@ -375,7 +379,7 @@ class EvidenciaController extends Controller
         $fecha = trim($request->get('fecha'));
         $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023
         
-        $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.tipoevidencia", "pro_evidencias.updated_at", "pro_evidencias.lugar", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
+        $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.tipoevidencia", "pro_evidencias.updated_at", "pro_evidencias.lugar", "pro_evidencias.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_evidencias.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_evidencias.estado', '1')

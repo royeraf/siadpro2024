@@ -77,6 +77,7 @@ class SectorController extends Controller
         $query = Sector::select(
                 'pro_sectores.id', 'pro_sectores.nombreSector', 'pro_sectores.descripcion',
                 'pro_sectores.documento', 'pro_sectores.color', 'pro_sectores.fecha',
+                'pro_sectores.enlace',
                 'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
                 'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
             )
@@ -280,7 +281,7 @@ class SectorController extends Controller
         $institucion = Auth::user()->institucion;
         $selectedYear = $request->get('year', 2026);
         
-        $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
+        $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","pro_sectores.enlace","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
             ->join("users","users.id","=","pro_sectores.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_sectores.estado', '1')
@@ -347,9 +348,10 @@ class SectorController extends Controller
             $selectedYear = $request->get('year', 2026);
 
             $query = Sector::select(
-                "pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", 
-                "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha", 
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion", 
+                "pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento",
+                "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha",
+                "pro_sectores.enlace",
+                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
             ->join("users", "users.id", "=", "pro_sectores.idUser")
@@ -387,7 +389,7 @@ class SectorController extends Controller
         $nominstitucion = trim($request->get('nombinstitucion'));
         $selectedYear = $request->get('year', 2026);
         
-        $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
+        $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha", "pro_sectores.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_sectores.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_sectores.estado', '1')
@@ -408,7 +410,7 @@ class SectorController extends Controller
         $fecha = trim($request->get('fecha'));
         $selectedYear = $request->get('year', 2026);
         
-        $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.tiposector", "pro_sectores.updated_at", "pro_sectores.lugar", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
+        $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.tiposector", "pro_sectores.updated_at", "pro_sectores.lugar", "pro_sectores.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
             ->join("users", "users.id", "=", "pro_sectores.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_sectores.estado', '1')
