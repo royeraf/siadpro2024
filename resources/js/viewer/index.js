@@ -483,10 +483,14 @@ async function openText(url, name) {
 /* --------------------------- No soportado --------------------------- */
 function openUnsupported(name) {
     const body = els().body;
+    const ext = extOf(name);
+    const message = ext
+        ? `No es posible previsualizar este tipo de archivo (<strong>${ext.toUpperCase()}</strong>) en el navegador.`
+        : 'No se encontró un archivo válido para este registro.';
     body.innerHTML = `
         <div class="bg-white shadow-xl rounded-lg p-8 max-w-md mx-auto my-10 text-center">
             <i data-lucide="file-question" class="w-14 h-14 text-gray-400 mx-auto mb-4"></i>
-            <p class="text-gray-600 mb-4">No es posible previsualizar este tipo de archivo (<strong>${extOf(name).toUpperCase()}</strong>) en el navegador.</p>
+            <p class="text-gray-600 mb-4">${message}</p>
             <p class="text-sm text-gray-500 mb-6">Puedes descargarlo para verlo con la aplicación correspondiente.</p>
             <a href="#" id="fv-unsupported-download" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium text-sm">
                 <i data-lucide="download" class="w-4 h-4"></i> Descargar
@@ -556,10 +560,32 @@ function close() {
     const fallback = setTimeout(finish, 220);
 }
 
+const KNOWN_EXTS = [...PDF_EXTS, ...IMG_EXTS, ...DOC_EXTS, ...SHEET_EXTS, 'txt'];
+
+// El nombre visible (basename del registro en la base de datos) a veces llega
+// vacío o mal formado para ciertos registros, aunque la URL del archivo sea
+// válida. Antes de rendirnos, intentamos deducir la extensión de la URL: del
+// parámetro ?path= (rutas tipo visor.stream) o, si no, de la URL misma
+// (rutas que sirven el archivo directamente, p. ej. /archivos_pdf/algo.pdf).
+function guessExt(name, url) {
+    const primary = extOf(name);
+    if (KNOWN_EXTS.includes(primary)) return primary;
+    try {
+        const pathParam = new URL(url, window.location.origin).searchParams.get('path');
+        if (pathParam) {
+            const fromPath = extOf(pathParam);
+            if (KNOWN_EXTS.includes(fromPath)) return fromPath;
+        }
+    } catch (e) { /* URL inválida, seguir con el siguiente intento */ }
+    const fromUrl = extOf(url);
+    if (KNOWN_EXTS.includes(fromUrl)) return fromUrl;
+    return primary;
+}
+
 function open(payload) {
     if (!els().root) return;
     const { url, name, downloadUrl } = payload;
-    const ext = extOf(name);
+    const ext = guessExt(name, url);
 
     cleanup();
     els().title.textContent = name;
