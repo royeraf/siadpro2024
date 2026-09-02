@@ -252,6 +252,10 @@ Route::get('/buscar-usuario', [App\Http\Controllers\UserController::class, 'inde
 Route::get("/produccion-general", ['App\Http\Controllers\ProduccionController'::class, "general"])->middleware('auth')->name('produccions.view');
 Route::get("/accion-general", ['App\Http\Controllers\AccionController'::class, "general"])->middleware('auth')->name('accions.view');
 Route::get('/export-acciones-general', [App\Http\Controllers\AccionController::class, 'exportAccionsGeneral'])->name('exportAccionsGeneral')->middleware('auth');
+Route::get("/accion-ugel", ['App\Http\Controllers\AccionController'::class, "ugel"])->middleware('auth')->name('accions.ugel');
+Route::get('/export-acciones-ugel', [App\Http\Controllers\AccionController::class, 'exportAccionsUgel'])->name('exportAccionsUgel')->middleware('auth');
+Route::get("/accion-director", ['App\Http\Controllers\AccionController'::class, "director"])->middleware('auth')->name('accions.director');
+Route::get('/export-acciones-director', [App\Http\Controllers\AccionController::class, 'exportAccionsDirector'])->name('exportAccionsDirector')->middleware('auth');
 Route::get("/accion-dre", ['App\Http\Controllers\AccionController'::class, "dre"])->middleware('auth')->name('accions.dre');
 Route::get("/plan-general", ['App\Http\Controllers\PlanController'::class, "general"])->middleware('auth')->name('plans.view');
 Route::get("/informe-general", ['App\Http\Controllers\InformeController'::class, "general"])->middleware('auth')->name('informes.view');
@@ -271,6 +275,10 @@ Route::get('/export-sectores-general', [App\Http\Controllers\SectorController::c
 
 Route::get("/difusion-general", ['App\Http\Controllers\DifusionController'::class, "general"])->middleware('auth')->name('difusions.view');
 Route::get('/export-difusion-general', [App\Http\Controllers\DifusionController::class, 'exportDifusionGeneral'])->name('exportDifusionGeneral')->middleware('auth');
+Route::get("/difusion-ugel", ['App\Http\Controllers\DifusionController'::class, "ugel"])->middleware('auth')->name('difusions.ugel');
+Route::get('/export-difusion-ugel', [App\Http\Controllers\DifusionController::class, 'exportDifusionUgel'])->name('exportDifusionUgel')->middleware('auth');
+Route::get("/difusion-director", ['App\Http\Controllers\DifusionController'::class, "director"])->middleware('auth')->name('difusions.director');
+Route::get('/export-difusion-director', [App\Http\Controllers\DifusionController::class, 'exportDifusionDirector'])->name('exportDifusionDirector')->middleware('auth');
 
 
 
@@ -288,6 +296,7 @@ Route::get("/evidencia-director", ['App\Http\Controllers\EvidenciaController'::c
 Route::get("/sector-ugel", ['App\Http\Controllers\SectorController'::class, "ugel"])->middleware('auth')->name('sectores.ugel');
 Route::get('/export-sectores-ugel', [App\Http\Controllers\SectorController::class, 'exportSectoresUgel'])->name('exportSectoresUgel')->middleware('auth');
 Route::get("/sector-director", ['App\Http\Controllers\SectorController'::class, "director"])->middleware('auth')->name('sectores.director');
+Route::get('/export-sectores-director', [App\Http\Controllers\SectorController::class, 'exportSectoresDirector'])->name('exportSectoresDirector')->middleware('auth');
 
 
 
@@ -402,6 +411,10 @@ Route::get('/get-ugels-pro', [ProduccionController::class, 'obtenerUgels'])->nam
 Route::get('/buscar-instituciones-produccion', [ProduccionController::class, 'buscadorinstitucion'])->name('buscarInstitucionesProduccion');
 Route::get('/buscar-docentes-produccion', [ProduccionController::class, 'buscadordocente'])->name('buscarDocentesProduccion');
 Route::get('/produccion-general', [ProduccionController::class, 'general'])->name('produccion.general');
+Route::get('/produccion-ugel', [ProduccionController::class, 'ugel'])->middleware('auth')->name('produccions.ugel');
+Route::get('/export-producciones-ugel', [ProduccionController::class, 'exportProduccionesUgel'])->name('exportProduccionesUgel')->middleware('auth');
+Route::get('/produccion-director', [ProduccionController::class, 'director'])->middleware('auth')->name('produccions.director');
+Route::get('/export-producciones-director', [ProduccionController::class, 'exportProduccionesDirector'])->name('exportProduccionesDirector')->middleware('auth');
 Route::get('/buscadordocente', [ProduccionController::class, 'buscadordocente'])->name('buscadordocente');
 
 Route::get('/buscar-instituciones-por-ugel-pro', [ProduccionController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgel-pro');

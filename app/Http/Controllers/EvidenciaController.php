@@ -66,15 +66,15 @@ class EvidenciaController extends Controller
 
     /**
      * Pestañas de la sección "Asistencia Técnica", una por alcance al que el
-     * usuario autenticado tenga permiso (director queda fuera a propósito:
-     * ese alcance no tiene enlace de menú todavía).
+     * usuario autenticado tenga permiso.
      */
     private function tabsEvidencia(string $activo): array
     {
         return $this->scopeTabs([
-            'index'   => ['permission' => 'evidencias.index', 'label' => 'Mis registros', 'route' => 'evidencias.index'],
-            'ugel'    => ['permission' => 'evidencias.ugel', 'label' => 'UGEL', 'route' => 'evidencias.ugel'],
-            'general' => ['permission' => 'evidencias.view', 'label' => 'General', 'route' => 'evidencias.view'],
+            'index'    => ['permission' => 'evidencias.index', 'label' => 'Mis registros', 'route' => 'evidencias.index'],
+            'ugel'     => ['permission' => 'evidencias.ugel', 'label' => 'UGEL', 'route' => 'evidencias.ugel'],
+            'general'  => ['permission' => 'evidencias.view', 'label' => 'General', 'route' => 'evidencias.view'],
+            'director' => ['permission' => 'evidencias.director', 'label' => 'Director', 'route' => 'evidencias.director'],
         ], $activo);
     }
 
@@ -264,8 +264,9 @@ class EvidenciaController extends Controller
         }
 
         $listaAnios = $this->listaAniosEvidencia($anio);
+        $tabs = $this->tabsEvidencia('director');
 
-        return view('evidencia.director', compact('evidencias', 'anio', 'listaAnios'));
+        return view('evidencia.director', compact('evidencias', 'anio', 'listaAnios', 'tabs'));
     }
 
     public function profesorcoordinador()

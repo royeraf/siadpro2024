@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'Acción de Sensibilización (General)')
+@section('title', 'Acción de Sensibilización')
 
 @section('css')
 <link rel="stylesheet" href="/css/admin_custom.css">
@@ -16,17 +16,17 @@
 <x-section-tabs :tabs="$tabs" color="yellow" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
-<x-table-base id="tabla-acciones-general"
+<x-table-base id="{{ $tableId }}"
               :perPage="request('per_page', 10)"
               :exportable="true"
               :searchable="true"
-              exportFilename="acciones_sensibilizacion_general"
-              :exportUrl="route('exportAccionsGeneral', request()->all())"
+              exportFilename="{{ $tableId }}"
+              :exportUrl="route($exportRoute, request()->all())"
               :serverPaginated="true"
               :totalServerRecords="$accions->total()"
               :fromServer="$accions->firstItem() ?? 0"
               :toServer="$accions->lastItem() ?? 0"
-              :filterAction="route('accions.view')">
+              :filterAction="route($filterActionRoute)">
     <x-slot name="filters">
         <x-table-filter name="anio" label="Año" icon="calendar" :options="$listaAnios" :value="$anio" placeholder="Año actual" />
         <x-table-filter name="texto" label="DNI del Docente" icon="id-card" placeholder="Ingrese DNI" />
@@ -146,7 +146,7 @@
     @include('accion._rows_general')
 </x-table-base>
 
-<x-table-pagination id="tabla-acciones-general" :paginator="$accions" />
+<x-table-pagination :id="$tableId" :paginator="$accions" />
 
 @stop
 

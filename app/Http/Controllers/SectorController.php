@@ -23,7 +23,7 @@ class SectorController extends Controller
         $this->middleware('can:sectores.destroy')->only('destroy');
         $this->middleware('can:sectores.view')->only('general', 'exportSectoresGeneral', 'buscarGeneral');
         $this->middleware('can:sectores.ugel')->only('ugel', 'exportSectoresUgel', 'buscarUgel');
-        $this->middleware('can:sectores.director')->only('director', 'buscarDirector');
+        $this->middleware('can:sectores.director')->only('director', 'buscarDirector', 'exportSectoresDirector');
         // exportarTodos ya no lo usa la vista migrada, pero seguía alcanzable por URL
         // directa sin exigir ningún permiso propio (igual que en Accion/Difusion).
         $this->middleware('can:sectores.view')->only('exportarTodos');
@@ -70,15 +70,16 @@ class SectorController extends Controller
     }
 
     /**
-     * Pestañas de "Sectores del Aula". Director queda fuera a propósito: ese
-     * alcance no tiene enlace de menú (mismo criterio que en Evidencia).
+     * Pestañas de "Sectores del Aula", una por alcance al que el usuario
+     * autenticado tenga permiso.
      */
     private function tabsSector(string $activo): array
     {
         return $this->scopeTabs([
-            'index'   => ['permission' => 'sectores.index', 'label' => 'Mis registros', 'route' => 'sector.index'],
-            'ugel'    => ['permission' => 'sectores.ugel', 'label' => 'UGEL', 'route' => 'sectores.ugel'],
-            'general' => ['permission' => 'sectores.view', 'label' => 'General', 'route' => 'sectores.view'],
+            'index'    => ['permission' => 'sectores.index', 'label' => 'Mis registros', 'route' => 'sector.index'],
+            'ugel'     => ['permission' => 'sectores.ugel', 'label' => 'UGEL', 'route' => 'sectores.ugel'],
+            'general'  => ['permission' => 'sectores.view', 'label' => 'General', 'route' => 'sectores.view'],
+            'director' => ['permission' => 'sectores.director', 'label' => 'Director', 'route' => 'sectores.director'],
         ], $activo);
     }
 
@@ -88,7 +89,7 @@ class SectorController extends Controller
      * UGEL del usuario autenticado, vía $forceUgel). Ambas comparten los mismos
      * filtros de año/DNI/docente, y General añade UGEL/Institución libres.
      */
-    private function sectoresGeneralQuery(Request $request, ?string $forceUgel = null): array
+    private function sectoresGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
     {
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
@@ -103,9 +104,11 @@ class SectorController extends Controller
             ->where('pro_sectores.estado', '1')
             ->whereYear('pro_sectores.fecha', $anio);
 
-        $showFullFilters = $forceUgel === null;
+        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
 
-        if ($forceUgel !== null) {
+        if ($forceInstitucion !== null) {
+            $query->where('users.institucion', $forceInstitucion);
+        } elseif ($forceUgel !== null) {
             $query->where('users.ugel', $forceUgel);
         } elseif ($request->filled('ugels')) {
             $query->where('users.ugel', $request->input('ugels'));
@@ -296,20 +299,34 @@ class SectorController extends Controller
         return $this->streamSectoresExport($query, 'sectores_ugel');
     }
 
+    public function exportSectoresDirector(Request $request)
+    {
+        [$query] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion);
+        return $this->streamSectoresExport($query, 'sectores_director');
+    }
+
     public function director(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-        $selectedYear = $request->get('year', 2026);
-        
-        $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","pro_sectores.enlace","users.name","users.institucion","users.provincia","users.distrito","users.cargo","users.ugel")
-            ->join("users","users.id","=","pro_sectores.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_sectores.estado', '1')
-            ->whereYear('pro_sectores.fecha', $selectedYear)
-            ->orderby('fecha','desc')
-            ->paginate(10);
-            
-        return view("sector.director", compact('sectores', 'selectedYear'));
+        [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion);
+        $sectores = $this->paginateSectores($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxSectoresResponse($request, $sectores);
+        }
+
+        return view('sector.general', [
+            'sectores' => $sectores,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaInstituciones' => collect(),
+            'listaAnios' => $this->listaAniosSectores($anio),
+            'filterActionRoute' => 'sectores.director',
+            'exportRoute' => 'exportSectoresDirector',
+            'pageTitle' => 'Sectores del Aula',
+            'tableId' => 'tabla-sectores-director',
+            'tabs' => $this->tabsSector('director'),
+        ]);
     }
 
     public function profesorcoordinador(Request $request)

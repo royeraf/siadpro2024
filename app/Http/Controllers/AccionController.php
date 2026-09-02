@@ -22,6 +22,8 @@ class AccionController extends Controller
         $this->middleware('can:accions.edit')->only('edit', 'update');
         $this->middleware('can:accions.destroy')->only('destroy');
         $this->middleware('can:accions.view')->only('general', 'exportAccionsGeneral');
+        $this->middleware('can:accions.ugel')->only('ugel', 'exportAccionsUgel');
+        $this->middleware('can:accions.director')->only('director', 'exportAccionsDirector');
         $this->middleware('can:accions.dre')->only('dre');
         // Igual que en DifusionController: buscarGeneral/exportarFiltradoTotal ya no los usa
         // la vista migrada, pero seguían alcanzables por URL directa sin control de acceso
@@ -72,29 +74,29 @@ class AccionController extends Controller
     }
 
     /**
-     * Pestañas de la sección "Acción de Sensibilización". Solo Mis registros +
-     * General: los alcances ugel()/director() de este controlador no tienen
-     * enlace de menú (dead code alcanzable solo por URL directa) porque
-     * general() ya auto-restringe por cargo — ver accionsGeneralQuery().
+     * Pestañas de la sección "Acción de Sensibilización", una por alcance al
+     * que el usuario autenticado tenga permiso.
      */
     private function tabsAccion(string $activo): array
     {
         return $this->scopeTabs([
-            'index'   => ['permission' => 'accions.index', 'label' => 'Mis registros', 'route' => 'accions.index'],
-            'general' => ['permission' => 'accions.view', 'label' => 'General', 'route' => 'accions.view'],
+            'index'    => ['permission' => 'accions.index', 'label' => 'Mis registros', 'route' => 'accions.index'],
+            'ugel'     => ['permission' => 'accions.ugel', 'label' => 'UGEL', 'route' => 'accions.ugel'],
+            'general'  => ['permission' => 'accions.view', 'label' => 'General', 'route' => 'accions.view'],
+            'director' => ['permission' => 'accions.director', 'label' => 'Director', 'route' => 'accions.director'],
         ], $activo);
     }
 
     /**
-     * Alcance de "Acción de Sensibilización (General)" según el cargo del usuario:
-     * Director/Docente/PC -> solo su institución; "Especialista UGEL" (cualquier
-     * cargo no listado con ugel asignada) -> solo su UGEL; Especialista DRE o
-     * administrador sin UGEL asignada -> sin restricción (ve todo).
+     * Consulta base compartida por los tres alcances agregados. Sin parámetros
+     * devuelve todo (alcance General); $forceUgel/$forceInstitucion acotan el
+     * resultado a una UGEL o institución concreta (alcances UGEL/Director). El
+     * alcance real lo decide el permiso que habilitó la ruta, no el cargo del
+     * usuario — antes este método leía `users.cargo` para autolimitarse, lo que
+     * podía divergir del rol real de Spatie.
      */
-    private function accionsGeneralQuery(Request $request): array
+    private function accionsGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
     {
-        $cargo = Auth::user()->cargo;
-        $ugelUser = Auth::user()->ugel;
         $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
         $query = Accion::select(
@@ -109,17 +111,13 @@ class AccionController extends Controller
             ->where('pro_accions.tipo', 'sensibilizacion')
             ->whereYear('pro_accions.fecha', $anio);
 
-        $showFullFilters = true;
+        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
 
-        if ($cargo === 'Director' || $cargo === 'Docente' || $cargo === 'PC') {
-            $query->where('users.institucion', Auth::user()->institucion);
-            $showFullFilters = false;
-        } elseif ($cargo !== 'Especialista DRE' && $ugelUser != '') {
-            $query->where('users.ugel', $ugelUser);
-            $showFullFilters = false;
-        }
-
-        if ($showFullFilters) {
+        if ($forceInstitucion !== null) {
+            $query->where('users.institucion', $forceInstitucion);
+        } elseif ($forceUgel !== null) {
+            $query->where('users.ugel', $forceUgel);
+        } elseif ($showFullFilters) {
             if ($request->filled('ugels')) {
                 $query->where('users.ugel', $request->input('ugels'));
             }
@@ -147,10 +145,8 @@ class AccionController extends Controller
         return [$query, $anio, $showFullFilters];
     }
 
-    public function general(Request $request)
+    private function paginateAccions(Request $request, $query)
     {
-        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request);
-
         $perPageRaw = $request->get('per_page', 10);
         if ($perPageRaw === 'all') {
             $perPage = 100000;
@@ -161,20 +157,11 @@ class AccionController extends Controller
             }
         }
 
-        $accions = $query->orderBy('pro_accions.fecha', 'desc')->paginate($perPage)->withQueryString();
+        return $query->orderBy('pro_accions.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('accion._rows_general', ['accions' => $accions])->render(),
-                'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $accions->total(),
-                'totalFormatted' => number_format($accions->total()),
-                'from' => $accions->firstItem() ?? 0,
-                'to' => $accions->lastItem() ?? 0,
-            ]);
-        }
-
-        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+    private function listaAniosAccion(string $anio): \Illuminate\Support\Collection
+    {
         // Se descartan años fuera de un rango plausible: hay registros antiguos con
         // la fecha mal digitada (p. ej. "0023-08-14" en vez de "2023-08-14") que
         // ensuciarían el selector con años como 23, 203 o 1978.
@@ -187,18 +174,92 @@ class AccionController extends Controller
             $listaAnios->prepend($anio);
         }
 
-        $tabs = $this->tabsAccion('general');
-
-        return view('accion.general', compact('accions', 'anio', 'showFullFilters', 'listaUgels', 'listaAnios', 'tabs'));
+        return $listaAnios;
     }
 
-    public function exportAccionsGeneral(Request $request)
+    private function ajaxAccionsResponse(Request $request, $accions)
     {
-        [$query, $anio] = $this->accionsGeneralQuery($request);
+        return response()->json([
+            'rows' => view('accion._rows_general', ['accions' => $accions])->render(),
+            'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+            'total' => $accions->total(),
+            'totalFormatted' => number_format($accions->total()),
+            'from' => $accions->firstItem() ?? 0,
+            'to' => $accions->lastItem() ?? 0,
+        ]);
+    }
 
+    public function general(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request);
+        $accions = $this->paginateAccions($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxAccionsResponse($request, $accions);
+        }
+
+        return view('accion.general', [
+            'accions' => $accions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaAnios' => $this->listaAniosAccion($anio),
+            'filterActionRoute' => 'accions.view',
+            'exportRoute' => 'exportAccionsGeneral',
+            'tableId' => 'tabla-acciones-general',
+            'tabs' => $this->tabsAccion('general'),
+        ]);
+    }
+
+    public function ugel(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, Auth::user()->ugel);
+        $accions = $this->paginateAccions($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxAccionsResponse($request, $accions);
+        }
+
+        return view('accion.general', [
+            'accions' => $accions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaAnios' => $this->listaAniosAccion($anio),
+            'filterActionRoute' => 'accions.ugel',
+            'exportRoute' => 'exportAccionsUgel',
+            'tableId' => 'tabla-acciones-ugel',
+            'tabs' => $this->tabsAccion('ugel'),
+        ]);
+    }
+
+    public function director(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, null, Auth::user()->institucion);
+        $accions = $this->paginateAccions($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxAccionsResponse($request, $accions);
+        }
+
+        return view('accion.general', [
+            'accions' => $accions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaAnios' => $this->listaAniosAccion($anio),
+            'filterActionRoute' => 'accions.director',
+            'exportRoute' => 'exportAccionsDirector',
+            'tableId' => 'tabla-acciones-director',
+            'tabs' => $this->tabsAccion('director'),
+        ]);
+    }
+
+    private function streamAccionesExport($query, string $filenamePrefix)
+    {
         $accions = $query->orderBy('pro_accions.fecha', 'desc')->get();
 
-        $filename = 'acciones_sensibilizacion_general_' . date('Y-m-d') . '.xls';
+        $filename = $filenamePrefix . '_' . date('Y-m-d') . '.xls';
 
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
@@ -250,34 +311,24 @@ class AccionController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function ugel()
+    public function exportAccionsGeneral(Request $request)
     {
-        $ugel = Auth::user()->ugel;
-        $anio = request()->get('anio', '2026');
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.fecha","pro_accions.lugar","pro_users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
-            ->join("users","users.id","=","pro_accions.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_accions.estado', '1')
-            ->where('pro_accions.tipo', 'sensibilizacion')
-            ->whereYear('fecha', $anio)
-            ->orderby('pro_accions.fecha','desc')
-            ->paginate(10);
-            return view("accion.view",compact('accions'));
+        [$query] = $this->accionsGeneralQuery($request);
+        return $this->streamAccionesExport($query, 'acciones_sensibilizacion_general');
     }
 
-    public function director()
+    public function exportAccionsUgel(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.fecha","pro_accions.lugar","users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
-            ->join("users","users.id","=","pro_accions.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_accions.estado', '1')
-            
-            ->where('pro_accions.tipo', 'sensibilizacion')
-            ->orderby('pro_accions.fecha','desc')
-            ->paginate(10);
-            return view("accion.view",compact('accions'));
+        [$query] = $this->accionsGeneralQuery($request, Auth::user()->ugel);
+        return $this->streamAccionesExport($query, 'acciones_sensibilizacion_ugel');
     }
+
+    public function exportAccionsDirector(Request $request)
+    {
+        [$query] = $this->accionsGeneralQuery($request, null, Auth::user()->institucion);
+        return $this->streamAccionesExport($query, 'acciones_sensibilizacion_director');
+    }
+
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;

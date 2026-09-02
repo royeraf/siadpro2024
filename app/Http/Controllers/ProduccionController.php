@@ -21,8 +21,8 @@ class ProduccionController extends Controller
         $this->middleware('can:produccions.edit')->only('edit', 'update');
         $this->middleware('can:produccions.destroy')->only('destroy');
         $this->middleware('can:produccions.view')->only('general');
-        $this->middleware('can:produccions.ugel')->only('ugel');
-        $this->middleware('can:produccions.director')->only('director');
+        $this->middleware('can:produccions.ugel')->only('ugel', 'exportProduccionesUgel');
+        $this->middleware('can:produccions.director')->only('director', 'exportProduccionesDirector');
         $this->middleware('can:produccions.dre')->only('dre');
     }
     
@@ -70,21 +70,22 @@ class ProduccionController extends Controller
     }
 
     /**
-     * Pestañas de "Producción de Textos Infantiles". Solo Mis registros +
-     * General: este controlador no tiene métodos ugel()/director() (aunque el
-     * constructor sí registra middleware muerto para esos permisos).
+     * Pestañas de "Producción de Textos Infantiles", una por alcance al que el
+     * usuario autenticado tenga permiso.
      */
     private function tabsProduccion(string $activo): array
     {
         return $this->scopeTabs([
-            'index'   => ['permission' => 'produccions.index', 'label' => 'Mis registros', 'route' => 'produccions.index'],
+            'index' => ['permission' => 'produccions.index', 'label' => 'Mis registros', 'route' => 'produccions.index'],
+            'ugel'  => ['permission' => 'produccions.ugel', 'label' => 'UGEL', 'route' => 'produccions.ugel'],
             // La ruta se llama 'produccion.general' (no 'produccions.view'): hay dos
             // Route::get('/produccion-general', ...) en routes/web.php (líneas 252 y
             // 396) a la misma URI con nombres distintos; Laravel deja que la segunda
             // reemplace a la primera por completo, así que 'produccions.view' nunca
             // existe en tiempo de ejecución aunque esté escrito en el código. El resto
             // de la vista (produccion/view.blade.php:29) ya depende de este nombre.
-            'general' => ['permission' => 'produccions.view', 'label' => 'General', 'route' => 'produccion.general'],
+            'general'  => ['permission' => 'produccions.view', 'label' => 'General', 'route' => 'produccion.general'],
+            'director' => ['permission' => 'produccions.director', 'label' => 'Director', 'route' => 'produccions.director'],
         ], $activo);
     }
 
@@ -113,12 +114,17 @@ class ProduccionController extends Controller
         return $listaAnios;
     }
 
-    public function general(Request $request)
+    /**
+     * Consulta base compartida por los tres alcances agregados. Sin parámetros
+     * devuelve todo (alcance General); $forceUgel/$forceInstitucion acotan el
+     * resultado a una UGEL o institución concreta (alcances UGEL/Director). El
+     * alcance real lo decide el permiso que habilitó la ruta, no el cargo del
+     * usuario — antes este método leía `users.cargo` para autolimitarse, lo que
+     * podía divergir del rol real de Spatie (mismo hallazgo que en Accion/Difusion).
+     */
+    private function produccionsGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
     {
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
-
-        $cargo = Auth::user()->cargo;
-        $ugeluser = Auth::user()->ugel;
 
         $query = Produccion::select(
                 "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.descripcion",
@@ -130,16 +136,19 @@ class ProduccionController extends Controller
             ->where('pro_produccions.estado', '1')
             ->whereYear('pro_produccions.fecha', $anio);
 
-        // Alcance por rol (mismo criterio que la implementación original)
-        if ($cargo == 'Especialista DRE') {
-            // Especialista DRE: todas las producciones del año
-        } elseif ($cargo == 'Director' || $cargo == 'Docente' || $cargo == 'PC') {
-            $query->where("users.institucion", Auth::user()->institucion);
-        } elseif ($ugeluser != '') {
-            $query->where("users.ugel", $ugeluser);
-        } else {
-            // Sin cargo/UGEL asignada: solo sus propias producciones
-            $query->where('pro_produccions.idUser', Auth::user()->id);
+        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
+
+        if ($forceInstitucion !== null) {
+            $query->where('users.institucion', $forceInstitucion);
+        } elseif ($forceUgel !== null) {
+            $query->where('users.ugel', $forceUgel);
+        } elseif ($showFullFilters) {
+            if ($request->filled('ugels')) {
+                $query->where('users.ugel', $request->input('ugels'));
+            }
+            if ($request->filled('instituciones')) {
+                $query->where('users.institucion', $request->input('instituciones'));
+            }
         }
 
         if ($request->filled('texto')) {
@@ -147,12 +156,6 @@ class ProduccionController extends Controller
         }
         if ($request->filled('docentes')) {
             $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
-        }
-        if ($request->filled('ugels')) {
-            $query->where('users.ugel', $request->input('ugels'));
-        }
-        if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
         }
         if ($request->filled('nivel')) {
             $query->where('users.nivelinstitucion', $request->input('nivel'));
@@ -165,6 +168,11 @@ class ProduccionController extends Controller
             });
         }
 
+        return [$query, $anio, $showFullFilters];
+    }
+
+    private function paginateProduccions(Request $request, $query)
+    {
         $perPageRaw = $request->get('per_page', 10);
         if ($perPageRaw === 'all') {
             $perPage = 100000;
@@ -175,29 +183,135 @@ class ProduccionController extends Controller
             }
         }
 
-        $produccions = $query->orderBy('pro_produccions.fecha', 'desc')->paginate($perPage)->withQueryString();
+        return $query->orderBy('pro_produccions.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
+
+    private function ajaxProduccionsResponse(Request $request, $produccions)
+    {
+        return response()->json([
+            'rows' => view('produccion._rows_general', ['produccions' => $produccions])->render(),
+            'pagination' => (string) $produccions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+            'total' => $produccions->total(),
+            'totalFormatted' => number_format($produccions->total()),
+            'from' => $produccions->firstItem() ?? 0,
+            'to' => $produccions->lastItem() ?? 0,
+        ]);
+    }
+
+    public function general(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request);
+        $produccions = $this->paginateProduccions($request, $query);
 
         if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('produccion._rows_general', ['produccions' => $produccions])->render(),
-                'pagination' => (string) $produccions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $produccions->total(),
-                'totalFormatted' => number_format($produccions->total()),
-                'from' => $produccions->firstItem() ?? 0,
-                'to' => $produccions->lastItem() ?? 0,
-            ]);
+            return $this->ajaxProduccionsResponse($request, $produccions);
         }
 
         $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
         $listaAnios = $this->listaAniosProduccion($anio);
 
-        $tabs = $this->tabsProduccion('general');
-
-        return view('produccion.view', compact('produccions', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
+        return view('produccion.view', [
+            'produccions' => $produccions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => $listaUgels,
+            'listaAnios' => $listaAnios,
+            'filterActionRoute' => 'produccion.general',
+            'exportRoute' => 'exportar.producciones',
+            'tableId' => 'tabla-produccions-general',
+            'tabs' => $this->tabsProduccion('general'),
+        ]);
     }
 
-        
-    
+    public function ugel(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, Auth::user()->ugel);
+        $produccions = $this->paginateProduccions($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxProduccionsResponse($request, $produccions);
+        }
+
+        return view('produccion.view', [
+            'produccions' => $produccions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaAnios' => $this->listaAniosProduccion($anio),
+            'filterActionRoute' => 'produccions.ugel',
+            'exportRoute' => 'exportProduccionesUgel',
+            'tableId' => 'tabla-produccions-ugel',
+            'tabs' => $this->tabsProduccion('ugel'),
+        ]);
+    }
+
+    public function director(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, null, Auth::user()->institucion);
+        $produccions = $this->paginateProduccions($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxProduccionsResponse($request, $produccions);
+        }
+
+        return view('produccion.view', [
+            'produccions' => $produccions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaAnios' => $this->listaAniosProduccion($anio),
+            'filterActionRoute' => 'produccions.director',
+            'exportRoute' => 'exportProduccionesDirector',
+            'tableId' => 'tabla-produccions-director',
+            'tabs' => $this->tabsProduccion('director'),
+        ]);
+    }
+
+    private function streamProduccionExport($query, string $filenamePrefix)
+    {
+        $produccions = $query->orderBy('pro_produccions.fecha', 'desc')->get();
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => "attachment; filename={$filenamePrefix}.xls",
+        ];
+
+        $content = '<table border="1">';
+        $content .= '<tr><th>Tipo de Producción</th><th>Descripción</th><th>Fecha</th><th>Usuario</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE.</th><th>Provincia</th><th>Distrito</th><th>UGEL</th></tr>';
+
+        foreach ($produccions as $item) {
+            $content .= '<tr>';
+            $content .= '<td>' . htmlspecialchars((string) $item->nombreProduccion, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->descripcion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars(date('d-m-Y', strtotime($item->fecha)), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->name ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->cargo ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->institucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->nivelinstitucion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->provincia ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->distrito ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->ugel ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '</tr>';
+        }
+
+        $content .= '</table>';
+
+        return response($content, 200, $headers);
+    }
+
+    public function exportProduccionesUgel(Request $request)
+    {
+        [$query] = $this->produccionsGeneralQuery($request, Auth::user()->ugel);
+        return $this->streamProduccionExport($query, 'producciones_ugel');
+    }
+
+    public function exportProduccionesDirector(Request $request)
+    {
+        [$query] = $this->produccionsGeneralQuery($request, null, Auth::user()->institucion);
+        return $this->streamProduccionExport($query, 'producciones_director');
+    }
+
+
     public function download($id)
     {
         $produccion = Produccion::findOrFail($id);

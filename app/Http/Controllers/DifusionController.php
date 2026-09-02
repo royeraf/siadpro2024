@@ -17,18 +17,23 @@ class DifusionController extends Controller
 
     public function __construct(){
         $this->middleware('auth');
-        $this->middleware('can:accions.index')->only('index');
-        $this->middleware('can:accions.create')->only('create', 'store');
-        $this->middleware('can:accions.edit')->only('edit', 'update');
-        $this->middleware('can:accions.destroy')->only('destroy');
-        $this->middleware('can:accions.view')->only('general', 'exportDifusionGeneral');
+        // Difusión tenía permisos prestados de Sensibilización (accions.*). Ahora
+        // tiene su propio set difusions.* (ver DifusionPermissionSeeder), con el
+        // mismo reparto de roles que tenían de facto los prestados.
+        $this->middleware('can:difusions.index')->only('index');
+        $this->middleware('can:difusions.create')->only('create', 'store');
+        $this->middleware('can:difusions.edit')->only('edit', 'update');
+        $this->middleware('can:difusions.destroy')->only('destroy');
+        $this->middleware('can:difusions.view')->only('general', 'exportDifusionGeneral');
+        $this->middleware('can:difusions.ugel')->only('ugel', 'exportDifusionUgel');
+        $this->middleware('can:difusions.director')->only('director', 'exportDifusionDirector');
         $this->middleware('can:accions.dre')->only('dre');
         // Los endpoints legacy de abajo (buscarGeneral/exportarTodos) ya no se usan desde
         // la vista migrada, pero seguían alcanzables por URL directa sin control de acceso
         // propio: exportarTodos en particular no aplicaba NINGÚN alcance por cargo (cualquier
         // usuario autenticado podía descargar todas las acciones de difusión de todo el
         // sistema). Se cierran con el mismo permiso que protege la vista general.
-        $this->middleware('can:accions.view')->only('buscarGeneral', 'exportarTodos');
+        $this->middleware('can:difusions.view')->only('buscarGeneral', 'exportarTodos');
     }
 
     public function index(Request $request)
@@ -74,32 +79,34 @@ class DifusionController extends Controller
     }
 
     /**
-     * Pestañas de "Acción de Difusión". Solo Mis registros + General: igual que
-     * en AccionController, ugel()/director() aquí no tienen enlace de menú.
+     * Pestañas de "Acción de Difusión", una por alcance al que el usuario
+     * autenticado tenga permiso.
      */
     private function tabsDifusion(string $activo): array
     {
         return $this->scopeTabs([
-            'index'   => ['permission' => 'accions.index', 'label' => 'Mis registros', 'route' => 'difusions.index'],
-            'general' => ['permission' => 'accions.view', 'label' => 'General', 'route' => 'difusions.view'],
+            'index'    => ['permission' => 'difusions.index', 'label' => 'Mis registros', 'route' => 'difusions.index'],
+            'ugel'     => ['permission' => 'difusions.ugel', 'label' => 'UGEL', 'route' => 'difusions.ugel'],
+            'general'  => ['permission' => 'difusions.view', 'label' => 'General', 'route' => 'difusions.view'],
+            'director' => ['permission' => 'difusions.director', 'label' => 'Director', 'route' => 'difusions.director'],
         ], $activo);
     }
 
     /**
-     * Alcance de "Acción de Difusión (General)" según el cargo del usuario, igual que
-     * AccionController::accionsGeneralQuery(): Director/Docente/PC -> solo su institución;
-     * "Especialista UGEL" (cualquier cargo no listado con ugel asignada) -> solo su UGEL;
-     * Especialista DRE o administrador sin UGEL asignada -> sin restricción (ve todo).
+     * Consulta base compartida por los tres alcances agregados, igual criterio
+     * que AccionController::accionsGeneralQuery(): sin parámetros devuelve todo
+     * (General); $forceUgel/$forceInstitucion acotan el resultado (UGEL/Director).
+     * El alcance lo decide el permiso que habilitó la ruta, no el cargo del
+     * usuario.
      *
      * La versión anterior de general() para estas mismas ramas llamaba literalmente a
      * Accion::select(/* ... *\/)->paginate(10) sin join, sin where de tipo/estado y sin
      * ningún alcance: un Director o Docente veía TODAS las acciones del sistema (de
-     * cualquier institución, sensibilización incluida). Se corrige aquí.
+     * cualquier institución, sensibilización incluida). Se corrigió al migrar a esta
+     * consulta compartida.
      */
-    private function difusionGeneralQuery(Request $request): array
+    private function difusionGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
     {
-        $cargo = Auth::user()->cargo;
-        $ugelUser = Auth::user()->ugel;
         $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
         $query = Accion::select(
@@ -114,17 +121,13 @@ class DifusionController extends Controller
             ->where('pro_accions.tipo', 'difusion')
             ->whereYear('pro_accions.fecha', $anio);
 
-        $showFullFilters = true;
+        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
 
-        if ($cargo === 'Director' || $cargo === 'Docente' || $cargo === 'PC') {
-            $query->where('users.institucion', Auth::user()->institucion);
-            $showFullFilters = false;
-        } elseif ($cargo !== 'Especialista DRE' && $ugelUser != '') {
-            $query->where('users.ugel', $ugelUser);
-            $showFullFilters = false;
-        }
-
-        if ($showFullFilters) {
+        if ($forceInstitucion !== null) {
+            $query->where('users.institucion', $forceInstitucion);
+        } elseif ($forceUgel !== null) {
+            $query->where('users.ugel', $forceUgel);
+        } elseif ($showFullFilters) {
             if ($request->filled('ugels')) {
                 $query->where('users.ugel', $request->input('ugels'));
             }
@@ -152,10 +155,8 @@ class DifusionController extends Controller
         return [$query, $anio, $showFullFilters];
     }
 
-    public function general(Request $request)
+    private function paginateDifusion(Request $request, $query)
     {
-        [$query, $anio, $showFullFilters] = $this->difusionGeneralQuery($request);
-
         $perPageRaw = $request->get('per_page', 10);
         if ($perPageRaw === 'all') {
             $perPage = 100000;
@@ -166,20 +167,11 @@ class DifusionController extends Controller
             }
         }
 
-        $accions = $query->orderBy('pro_accions.fecha', 'desc')->paginate($perPage)->withQueryString();
+        return $query->orderBy('pro_accions.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('difusion._rows_general', ['accions' => $accions])->render(),
-                'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $accions->total(),
-                'totalFormatted' => number_format($accions->total()),
-                'from' => $accions->firstItem() ?? 0,
-                'to' => $accions->lastItem() ?? 0,
-            ]);
-        }
-
-        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+    private function listaAniosDifusion(string $anio): \Illuminate\Support\Collection
+    {
         // Mismo saneo que en AccionController: hay registros con la fecha mal digitada
         // (p. ej. "0024-07-12" en vez de "2024-07-12") que ensuciarían el selector de año.
         $listaAnios = Accion::where('tipo', 'difusion')
@@ -191,18 +183,92 @@ class DifusionController extends Controller
             $listaAnios->prepend($anio);
         }
 
-        $tabs = $this->tabsDifusion('general');
-
-        return view('difusion.general', compact('accions', 'anio', 'showFullFilters', 'listaUgels', 'listaAnios', 'tabs'));
+        return $listaAnios;
     }
 
-    public function exportDifusionGeneral(Request $request)
+    private function ajaxDifusionResponse(Request $request, $accions)
     {
-        [$query, $anio] = $this->difusionGeneralQuery($request);
+        return response()->json([
+            'rows' => view('difusion._rows_general', ['accions' => $accions])->render(),
+            'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+            'total' => $accions->total(),
+            'totalFormatted' => number_format($accions->total()),
+            'from' => $accions->firstItem() ?? 0,
+            'to' => $accions->lastItem() ?? 0,
+        ]);
+    }
 
+    public function general(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->difusionGeneralQuery($request);
+        $accions = $this->paginateDifusion($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxDifusionResponse($request, $accions);
+        }
+
+        return view('difusion.general', [
+            'accions' => $accions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaAnios' => $this->listaAniosDifusion($anio),
+            'filterActionRoute' => 'difusions.view',
+            'exportRoute' => 'exportDifusionGeneral',
+            'tableId' => 'tabla-difusiones-general',
+            'tabs' => $this->tabsDifusion('general'),
+        ]);
+    }
+
+    public function ugel(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->difusionGeneralQuery($request, Auth::user()->ugel);
+        $accions = $this->paginateDifusion($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxDifusionResponse($request, $accions);
+        }
+
+        return view('difusion.general', [
+            'accions' => $accions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaAnios' => $this->listaAniosDifusion($anio),
+            'filterActionRoute' => 'difusions.ugel',
+            'exportRoute' => 'exportDifusionUgel',
+            'tableId' => 'tabla-difusiones-ugel',
+            'tabs' => $this->tabsDifusion('ugel'),
+        ]);
+    }
+
+    public function director(Request $request)
+    {
+        [$query, $anio, $showFullFilters] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion);
+        $accions = $this->paginateDifusion($request, $query);
+
+        if ($request->ajax()) {
+            return $this->ajaxDifusionResponse($request, $accions);
+        }
+
+        return view('difusion.general', [
+            'accions' => $accions,
+            'anio' => $anio,
+            'showFullFilters' => $showFullFilters,
+            'listaUgels' => collect(),
+            'listaAnios' => $this->listaAniosDifusion($anio),
+            'filterActionRoute' => 'difusions.director',
+            'exportRoute' => 'exportDifusionDirector',
+            'tableId' => 'tabla-difusiones-director',
+            'tabs' => $this->tabsDifusion('director'),
+        ]);
+    }
+
+    private function streamDifusionExport($query, string $filenamePrefix)
+    {
         $accions = $query->orderBy('pro_accions.fecha', 'desc')->get();
 
-        $filename = 'acciones_difusion_general_' . date('Y-m-d') . '.xls';
+        $filename = $filenamePrefix . '_' . date('Y-m-d') . '.xls';
 
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
@@ -253,38 +319,24 @@ class DifusionController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-
-    public function ugel()
+    public function exportDifusionGeneral(Request $request)
     {
-        $ugel = Auth::user()->ugel;
-        $anioActual = request()->get('anio', '2026'); // Por defecto 2025
-        
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.fecha","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.updated_at","pro_accions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
-            ->join("users","users.id","=","pro_accions.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_accions.estado', '1')
-            ->where('pro_accions.tipo', 'difusion')
-            ->whereYear('fecha', $anioActual)
-            ->orderby('pro_accions.fecha','desc')
-            ->paginate(10);
-            return view("difusion.view",compact('accions'));
+        [$query] = $this->difusionGeneralQuery($request);
+        return $this->streamDifusionExport($query, 'acciones_difusion_general');
     }
 
-    public function director()
+    public function exportDifusionUgel(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-        $anioActual = request()->get('anio', '2026'); // Por defecto 2025
-        
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.updated_at","pro_accions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
-            ->join("users","users.id","=","pro_accions.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_accions.estado', '1')
-            ->where('pro_accions.tipo', 'difusion')
-            ->orderby('pro_accions.fecha','desc')
-            ->whereYear('fecha', $anioActual)
-            ->paginate(10);
-            return view("difusion.view",compact('accions'));
+        [$query] = $this->difusionGeneralQuery($request, Auth::user()->ugel);
+        return $this->streamDifusionExport($query, 'acciones_difusion_ugel');
     }
+
+    public function exportDifusionDirector(Request $request)
+    {
+        [$query] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion);
+        return $this->streamDifusionExport($query, 'acciones_difusion_director');
+    }
+
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;

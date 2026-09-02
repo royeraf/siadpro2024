@@ -40,8 +40,8 @@ class AgendaViewController extends Controller
     private function tabsAgenda(string $activo): array
     {
         return $this->scopeTabs([
-            'index'   => ['permission' => 'agendas.index', 'label' => 'Mis Eventos', 'route' => 'agendas.index'],
-            'view'    => ['permission' => 'agendas.view', 'label' => 'Mi Institución', 'route' => 'agendas.view'],
+            'index'   => ['permission' => 'agendas.index', 'label' => 'Mis registros', 'route' => 'agendas.index'],
+            'view'    => ['permission' => 'agendas.view', 'label' => 'Director', 'route' => 'agendas.view'],
             'ugel'    => ['permission' => 'agendas.ugel', 'label' => 'UGEL', 'route' => 'agenda.ugel'],
             'general' => ['permission' => 'agendas.general', 'label' => 'General', 'route' => 'agenda.general'],
         ], $activo);

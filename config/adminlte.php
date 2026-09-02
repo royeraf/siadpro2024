@@ -362,7 +362,7 @@ return [
             'url'  => 'difusions',
             'icon' => 'radio',
             'icon_color'  => 'blue',
-            'can' => 'accions.index',
+            'can' => 'difusions.index',
             'active' => ['difusion*'],
         ],
         [

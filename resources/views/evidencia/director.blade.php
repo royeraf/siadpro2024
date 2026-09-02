@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'Asistencia Técnica (Director)')
+@section('title', 'Asistencia Técnica')
 
 @section('css')
 <link rel="stylesheet" href="/css/admin_custom.css">
@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="file-text" color="red">Asistencia Técnica (Director)</x-section-heading>
+    <x-section-heading icon="file-text" color="red">Asistencia Técnica</x-section-heading>
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="red" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-evidencias-director"

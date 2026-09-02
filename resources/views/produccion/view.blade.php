@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'Producción de Textos Infantiles (General)')
+@section('title', 'Producción de Textos Infantiles')
 
 @section('css')
 <link rel="stylesheet" href="/css/admin_custom.css">
@@ -16,21 +16,22 @@
 <x-section-tabs :tabs="$tabs" color="green" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
-<x-table-base id="tabla-produccions-general"
+<x-table-base id="{{ $tableId }}"
               :perPage="request('per_page', 10)"
               :exportable="true"
               :searchable="true"
-              exportFilename="produccion_textos_infantiles_general"
-              :exportUrl="route('exportar.producciones', request()->all())"
+              exportFilename="{{ $tableId }}"
+              :exportUrl="route($exportRoute, request()->all())"
               :serverPaginated="true"
               :totalServerRecords="$produccions->total()"
               :fromServer="$produccions->firstItem() ?? 0"
               :toServer="$produccions->lastItem() ?? 0"
-              :filterAction="route('produccion.general')">
+              :filterAction="route($filterActionRoute)">
     <x-slot name="filters">
         <x-table-filter name="year" label="Año" icon="calendar" :options="$listaAnios" :value="$anio" placeholder="Año actual" />
         <x-table-filter name="texto" label="DNI del Docente" icon="id-card" placeholder="Ingrese DNI" />
 
+        @if($showFullFilters)
         {{-- UGEL → Institución → Docente: encadenados vía AJAX --}}
         <div x-data="{
                 ugel: @js((string) request('ugels', '')),
@@ -180,6 +181,9 @@
                 </div>
             </div>
         </div>
+        @else
+            <x-table-filter name="docentes" label="Docente" icon="user" placeholder="Nombre del docente" />
+        @endif
 
         <x-table-filter name="nivel" label="Tipo de II.EE." icon="layers" :options="['Escolarizado', 'No escolarizado - PRONOEI']" placeholder="-- Todos --" />
     </x-slot>
@@ -284,7 +288,7 @@
     @include('produccion._rows_general')
 </x-table-base>
 
-<x-table-pagination id="tabla-produccions-general" :paginator="$produccions" />
+<x-table-pagination :id="$tableId" :paginator="$produccions" />
 
 @stop
 
