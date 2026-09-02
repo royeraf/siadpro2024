@@ -14,15 +14,20 @@ import {
     ArrowUpNarrowWide, ArrowDownWideNarrow,
     Users, UserPlus, IdCard, Briefcase, Shield, Check,
     UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
-    BookOpen, CalendarCheck, NotebookPen
+    BookOpen, CalendarCheck, NotebookPen,
+    ZoomIn, ZoomOut, Download, Maximize2
 } from 'lucide';
 import { initTableEngine } from './components/datatable-engine';
+import { initFileViewer } from './viewer';
 
 window.Alpine = Alpine;
 Alpine.plugin(focus);
 
 // Inicializar motor de tabla nativo
 initTableEngine();
+
+// Inicializar visualizador de archivos
+initFileViewer();
 
 // Inicializar iconos Lucide (genera SVGs para los elementos data-lucide)
 window.lucideRefresh = () => createIcons({
@@ -33,7 +38,8 @@ window.lucideRefresh = () => createIcons({
         ArrowUpNarrowWide, ArrowDownWideNarrow,
         Users, UserPlus, IdCard, Briefcase, Shield, Check,
         UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
-        BookOpen, CalendarCheck, NotebookPen
+        BookOpen, CalendarCheck, NotebookPen,
+        ZoomIn, ZoomOut, Download, Maximize2
     }
 });
 window.lucideRefresh();

@@ -62,6 +62,9 @@
         @endif
 
     </div>
+
+    {{-- Visualizador de archivos (overlay global) --}}
+    @include('components.file-viewer')
 @stop
 
 @section('adminlte_js')

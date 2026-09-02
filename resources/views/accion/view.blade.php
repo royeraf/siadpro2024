@@ -142,7 +142,7 @@
                             <td>{{$accion->nombreAccion}}</td>
                             <td>{{$accion->lugar}}</td>
                             <td>{{date('d-m-Y', strtotime($accion->fecha))}}</td>
-                            <td align="center"><a href="{{ route('accions.download', $accion->id) }}" , target="_blank"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>
+                            <td align="center"><a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $accion->enlace]) }}" data-name="{{ basename($accion->enlace) }}" data-download="{{ route('accions.download', $accion->id) }}" title="Ver documento"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>
                             <td>{{$accion->name}}</td>
                             <td>{{$accion->cargo}}</td>
                             <td>{{$accion->institucion}}</td>
@@ -158,7 +158,7 @@
                             <td>{{$accion->nombreAccion}}</td>
                             <td>{{$accion->lugar}}</td>
                             <td>{{date('d-m-Y', strtotime($accion->fecha))}}</td>
-                            <td align="center"><a href="{{ route('accions.download', $accion->id) }}" , target="_blank"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>
+                            <td align="center"><a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $accion->enlace]) }}" data-name="{{ basename($accion->enlace) }}" data-download="{{ route('accions.download', $accion->id) }}" title="Ver documento"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>
                             <td>{{$accion->getUser->name}}</td>
                             <td>{{$accion->getUser->cargo}}</td>
                             <td>{{$accion->getUser->institucion}}</td>

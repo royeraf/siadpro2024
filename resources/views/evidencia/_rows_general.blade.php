@@ -4,7 +4,7 @@
         <td class="px-4 py-3">{{ $evidencia->descripcion ?? '-' }}</td>
         <td class="px-4 py-3 whitespace-nowrap">{{ date('d-m-Y', strtotime($evidencia->fecha)) }}</td>
         <td class="px-4 py-3 text-center no-export">
-            <a href="{{ route('evidencias.download', $evidencia->id) }}" target="_blank" title="Descargar documento">
+            <a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $evidencia->enlace]) }}" data-name="{{ basename($evidencia->enlace) }}" data-download="{{ route('evidencias.download', $evidencia->id) }}" title="Ver documento">
                 <i class="{{ $evidencia->documento }}" style="font-size: 20px; color: {{ $evidencia->color }}"></i>
             </a>
         </td>

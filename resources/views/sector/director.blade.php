@@ -68,7 +68,7 @@
                         <td>{{$sector->nombreSector}}</td>
                         <td>{{$sector->tiposector}}</td>
                         <td>{{date('d-m-Y', strtotime($sector->updated_at))}}</td>
-                        <td align="center"><a href="{{ route('sectores.download', $sector->id) }}" , target="_blank"><i class='{{$sector->documento}}' style='font-size:24px;color:{{$sector->color}}' ></i></a></td>
+                        <td align="center"><a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $sector->enlace]) }}" data-name="{{ basename($sector->enlace) }}" data-download="{{ route('sectores.download', $sector->id) }}" title="Ver documento"><i class='{{$sector->documento}}' style='font-size:24px;color:{{$sector->color}}' ></i></a></td>
                         <td>{{$sector->name}}</td>
                         <td>{{$sector->cargo}}</td>
                         <td>{{$sector->institucion}}</td>

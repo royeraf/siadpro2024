@@ -244,7 +244,7 @@
                                     <br>
                                     <div style="display: flex; align-items: center;">
                                         <div>
-                                            <a href="{{ asset('archivos_pdf/'.$dat->archivoPDF) }}" target="_blank">
+                                            <a href="#" data-file-viewer data-src="{{ asset('archivos_pdf/'.$dat->archivoPDF) }}" data-name="{{ $dat->archivoPDF }}" data-download="{{ asset('archivos_pdf/'.$dat->archivoPDF) }}">
                                                 Ver PDF
                                             </a>
                                         </div>
@@ -400,12 +400,12 @@
                                         <br>
                                         <div style="display: flex; align-items: center;">
                                             <div style="margin-right: 10px;">
-                                                <a href="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" target="_blank">
+                                                <a href="#" data-file-viewer data-src="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" data-name="{{ $datos->archivoPDF }}" data-download="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}">
                                                     <img src="{{ asset('archivos_pdf/'.$datos->archivoPDF.'.png') }}" alt="Vista previa del PDF" style="max-width: 100px; height: auto;">
                                                 </a>
                                             </div>
                                             <div>
-                                                <a href="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" target="_blank">Ver PDF</a>
+                                                <a href="#" data-file-viewer data-src="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" data-name="{{ $datos->archivoPDF }}" data-download="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}">Ver PDF</a>
                                             </div>
                                         </div>
                                     @else
@@ -560,12 +560,12 @@
                                         <br>
                                         <div style="display: flex; align-items: center;">
                                             <div style="margin-right: 10px;">
-                                                <a href="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" target="_blank">
+                                                <a href="#" data-file-viewer data-src="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" data-name="{{ $datos->archivoPDF }}" data-download="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}">
                                                     <img src="{{ asset('archivos_pdf/'.$datos->archivoPDF.'.png') }}" alt="Vista previa del PDF" style="max-width: 100px; height: auto;">
                                                 </a>
                                             </div>
                                             <div>
-                                                <a href="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" target="_blank">Ver PDF</a>
+                                                <a href="#" data-file-viewer data-src="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" data-name="{{ $datos->archivoPDF }}" data-download="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}">Ver PDF</a>
                                             </div>
                                         </div>
                                     @else
@@ -716,7 +716,7 @@
                                         <br>
                                         <div style="display: flex; align-items: center;">
                                             <div>
-                                                <a href="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" target="_blank">Ver PDF</a>
+                                                <a href="#" data-file-viewer data-src="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}" data-name="{{ $datos->archivoPDF }}" data-download="{{ asset('archivos_pdf/'.$datos->archivoPDF) }}">Ver PDF</a>
                                             </div>
                                         </div>
                                     @else
