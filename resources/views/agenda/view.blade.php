@@ -22,6 +22,11 @@
 	}
     </style>
 @endsection
+
+@section('content_header')
+    <x-page-header icon="calendar-check" title="Agenda de Lectura" />
+@stop
+
 @section('content')
 
 <x-section-tabs :tabs="$tabs" color="pink" />
