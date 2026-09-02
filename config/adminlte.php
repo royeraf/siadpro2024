@@ -403,20 +403,7 @@ return [
             'url'  => 'evidencias',
             'icon' => 'file-text',
             'icon_color'  => 'red',
-        ],
-        [
-            'text' => 'ASISTENCIA TÉCNICA (UGEL)',
-            'url'  => '/evidencia-ugel',
-            'icon' => 'file-text',
-            'icon_color'  => 'red',
-            'can' => 'evidencias.ugel',
-        ],
-        [
-            'text' => 'ASISTENCIA TÉCNICA (GENERAL)',
-            'url'  => '/evidencia-general',
-            'icon' => 'file-text',
-            'icon_color'  => 'red',
-            'can' => 'evidencias.view',
+            'can' => 'evidencias.index',
         ],
         [
             'text' => 'BIBLIOTECA DEL AULA',

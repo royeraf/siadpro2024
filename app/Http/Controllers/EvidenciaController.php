@@ -56,7 +56,32 @@ class EvidenciaController extends Controller
             ]);
         }
 
-        return view('evidencia.index', compact('evidencias'));
+        $tabs = $this->tabsEvidencia('index');
+
+        return view('evidencia.index', compact('evidencias', 'tabs'));
+    }
+
+    /**
+     * Pestañas de la sección "Asistencia Técnica", una por alcance al que el
+     * usuario autenticado tenga permiso (director queda fuera a propósito:
+     * ese alcance no tiene enlace de menú todavía).
+     */
+    private function tabsEvidencia(string $activo): array
+    {
+        $user = Auth::user();
+        $tabs = [];
+
+        if ($user->can('evidencias.index')) {
+            $tabs[] = ['label' => 'Mis registros', 'url' => route('evidencias.index'), 'active' => $activo === 'index'];
+        }
+        if ($user->can('evidencias.ugel')) {
+            $tabs[] = ['label' => 'UGEL', 'url' => route('evidencias.ugel'), 'active' => $activo === 'ugel'];
+        }
+        if ($user->can('evidencias.view')) {
+            $tabs[] = ['label' => 'General', 'url' => route('evidencias.view'), 'active' => $activo === 'general'];
+        }
+
+        return $tabs;
     }
 
     /**
@@ -140,8 +165,9 @@ class EvidenciaController extends Controller
 
         $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
         $listaAnios = $this->listaAniosEvidencia($anio);
+        $tabs = $this->tabsEvidencia('general');
 
-        return view('evidencia.view', compact('evidencias', 'anio', 'listaUgels', 'listaAnios'));
+        return view('evidencia.view', compact('evidencias', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
     }
 
     public function ugel(Request $request)
@@ -192,8 +218,9 @@ class EvidenciaController extends Controller
 
         $listaInstituciones = User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
         $listaAnios = $this->listaAniosEvidencia($anio);
+        $tabs = $this->tabsEvidencia('ugel');
 
-        return view('evidencia.ugel', compact('evidencias', 'anio', 'listaInstituciones', 'listaAnios'));
+        return view('evidencia.ugel', compact('evidencias', 'anio', 'listaInstituciones', 'listaAnios', 'tabs'));
     }
 
     public function director(Request $request)

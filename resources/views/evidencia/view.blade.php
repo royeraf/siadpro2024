@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="file-text">Asistencia Técnica (General)</x-section-heading>
+    <x-section-heading icon="file-text">Asistencia Técnica</x-section-heading>
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-evidencias-general"

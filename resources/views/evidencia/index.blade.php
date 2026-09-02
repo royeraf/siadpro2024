@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="file-text" title="Listado de Asistencia Técnica" />
+    <x-page-header icon="file-text" title="Asistencia Técnica" />
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" />
 
 @if(session('mensajeinternet'))
     <div class="alert alert-danger">
