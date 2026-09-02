@@ -11,6 +11,7 @@ const DOC_EXTS = ['docx'];
 const SHEET_EXTS = ['xlsx', 'xls', 'csv'];
 
 let current = null;
+let goToPage = null;
 
 function el(id) {
     return document.getElementById(id);
@@ -21,14 +22,14 @@ const els = () => ({
     backdrop: el('fv-backdrop'),
     panel: el('fv-panel'),
     title: el('fv-title'),
+    vtools: el('fv-vtools'),
     pager: el('fv-pager'),
     prev: el('fv-prev'),
     next: el('fv-next'),
-    pageLabel: el('fv-page-label'),
-    zoomBox: el('fv-zoom'),
+    pageInput: el('fv-page-input'),
+    pageTotal: el('fv-page-total'),
     zoomOut: el('fv-zoom-out'),
     zoomIn: el('fv-zoom-in'),
-    zoomReset: el('fv-zoom-reset'),
     download: el('fv-download'),
     close: el('fv-close'),
     content: el('fv-content'),
@@ -53,49 +54,172 @@ async function fetchArrayBuffer(url) {
 }
 
 /* ------------------------------ PDF ------------------------------ */
-function renderPdf(doc, page, scale) {
-    const body = els().body;
-    body.innerHTML = '';
-    const wrap = document.createElement('div');
-    wrap.className = 'shadow-xl bg-white p-2 sm:p-3 my-1';
-    const canvas = document.createElement('canvas');
-    wrap.appendChild(canvas);
-    body.appendChild(wrap);
-    hideLoading();
-
-    return doc.getPage(page).then((pageData) => {
-        const viewport = pageData.getViewport({ scale });
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        return pageData.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-    });
-}
-
+// Visor continuo: todas las páginas se apilan verticalmente, ajustadas al
+// ancho disponible (con margen), y se renderizan de forma perezosa a medida
+// que entran en el viewport.
 async function openPdf(url, name) {
     const buf = await fetchArrayBuffer(url);
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const state = { pdf, page: 1, numPages: pdf.numPages, scale: 1.5 };
+    const numPages = pdf.numPages;
+    const firstPage = await pdf.getPage(1);
+    const baseViewport = firstPage.getViewport({ scale: 1 });
 
-    const setPage = () => {
-        els().pageLabel.textContent = `${state.page}/${state.numPages}`;
-        els().prev.disabled = state.page <= 1;
-        els().next.disabled = state.page >= state.numPages;
-        renderPdf(state.pdf, state.page, state.scale).catch(() => {
-            els().body.innerHTML = '<div class="text-red-600 p-6 text-center">Error al renderizar la página.</div>';
+    const state = { zoom: 1, baseScale: 1, current: 1, pages: [] };
+    const effScale = () => state.baseScale * state.zoom;
+
+    const computeBaseScale = () => {
+        const bodyEl = els().body;
+        const cs = getComputedStyle(bodyEl);
+        const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+        const avail = Math.max(100, bodyEl.clientWidth - padX);
+        state.baseScale = Math.min(avail / baseViewport.width, 4);
+    };
+    computeBaseScale();
+
+    const body = els().body;
+    body.innerHTML = '';
+    state.pages = [];
+    for (let i = 1; i <= numPages; i++) {
+        const wrap = document.createElement('div');
+        wrap.className = 'shadow-xl bg-white shrink-0';
+        const canvas = document.createElement('canvas');
+        canvas.className = 'block w-full h-full';
+        wrap.appendChild(canvas);
+        body.appendChild(wrap);
+        state.pages.push({ index: i, wrap, canvas, rendered: false, task: null, gen: 0 });
+    }
+    hideLoading();
+
+    const sizePages = () => {
+        const s = effScale();
+        const w = Math.round(baseViewport.width * s);
+        const h = Math.round(baseViewport.height * s);
+        state.pages.forEach((p) => {
+            p.wrap.style.width = w + 'px';
+            p.wrap.style.height = h + 'px';
+        });
+    };
+    sizePages();
+
+    // Cada página lleva un token de "generación": si el zoom cambia mientras
+    // una petición pdf.getPage()/render() está en vuelo, esa respuesta llega
+    // desactualizada (stale) y se descarta en vez de pintar sobre el canvas
+    // ya reutilizado por un render más reciente.
+    const renderPage = (p) => {
+        if (p.rendered) return;
+        p.rendered = true;
+        const myGen = p.gen;
+        pdf.getPage(p.index).then((pageData) => {
+            if (p.gen !== myGen) return;
+            const viewport = pageData.getViewport({ scale: effScale() });
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const canvas = p.canvas;
+            canvas.width = Math.floor(viewport.width * dpr);
+            canvas.height = Math.floor(viewport.height * dpr);
+            const ctx = canvas.getContext('2d');
+            const task = pageData.render({
+                canvasContext: ctx,
+                viewport,
+                transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
+            });
+            p.task = task;
+            return task.promise;
+        }).catch((e) => {
+            if (p.gen !== myGen) return;
+            if (e && e.name === 'RenderingCancelledException') { p.rendered = false; return; }
+            p.wrap.innerHTML = '<div class="text-red-600 text-xs p-4 text-center">Error al renderizar la página.</div>';
         });
     };
 
-    els().prev.onclick = () => { if (state.page > 1) { state.page--; setPage(); } };
-    els().next.onclick = () => { if (state.page < state.numPages) { state.page++; setPage(); } };
-    els().zoomOut.onclick = () => { state.scale = Math.max(0.2, +(state.scale - 0.25).toFixed(2)); syncZoom(state.scale); setPage(); };
-    els().zoomIn.onclick = () => { state.scale = Math.min(5, +(state.scale + 0.25).toFixed(2)); syncZoom(state.scale); setPage(); };
-    els().zoomReset.onclick = () => { state.scale = 1.5; syncZoom(state.scale); setPage(); };
+    const renderVisiblePages = () => {
+        const croot = els().content.getBoundingClientRect();
+        state.pages.forEach((p) => {
+            const rect = p.wrap.getBoundingClientRect();
+            if (rect.bottom > croot.top - 400 && rect.top < croot.bottom + 400) renderPage(p);
+        });
+    };
 
-    current.cancel = () => { try { pdf.destroy(); } catch (e) { /* noop */ } };
-    current = { ...current, type: 'pdf', pdf, state };
+    const renderObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const p = state.pages.find((pp) => pp.wrap === entry.target);
+            if (p) renderPage(p);
+        });
+    }, { root: els().content, rootMargin: '400px 0px' });
+    state.pages.forEach((p) => renderObserver.observe(p.wrap));
+    renderVisiblePages();
 
-    showPager(true, () => setPage(), state.numPages > 1);
-    setPage();
+    const setCurrentPage = (n, scrollTo) => {
+        state.current = n;
+        if (document.activeElement !== els().pageInput) {
+            els().pageInput.value = n;
+        }
+        els().prev.disabled = n <= 1;
+        els().next.disabled = n >= numPages;
+        if (scrollTo) {
+            const p = state.pages[n - 1];
+            if (p) els().content.scrollTop = p.wrap.offsetTop - 8;
+        }
+    };
+
+    const pageObserver = new IntersectionObserver((entries) => {
+        let best = null;
+        entries.forEach((entry) => {
+            if (entry.isIntersecting && (!best || entry.intersectionRatio > best.intersectionRatio)) best = entry;
+        });
+        if (best) {
+            const p = state.pages.find((pp) => pp.wrap === best.target);
+            if (p) setCurrentPage(p.index, false);
+        }
+    }, { root: els().content, threshold: [0.25, 0.5, 0.75] });
+    state.pages.forEach((p) => pageObserver.observe(p.wrap));
+
+    els().pageTotal.textContent = numPages;
+
+    els().prev.onclick = () => { if (state.current > 1) setCurrentPage(state.current - 1, true); };
+    els().next.onclick = () => { if (state.current < numPages) setCurrentPage(state.current + 1, true); };
+
+    const rezoom = (newZoom) => {
+        state.zoom = newZoom;
+        const anchor = state.pages[state.current - 1];
+        state.pages.forEach((p) => {
+            p.gen++;
+            if (p.task && p.task.cancel) { try { p.task.cancel(); } catch (e) { /* noop */ } }
+            p.rendered = false;
+        });
+        sizePages();
+        if (anchor) els().content.scrollTop = anchor.wrap.offsetTop - 8;
+        renderVisiblePages();
+    };
+    els().zoomOut.onclick = () => rezoom(Math.max(0.25, +(state.zoom - 0.25).toFixed(2)));
+    els().zoomIn.onclick = () => rezoom(Math.min(5, +(state.zoom + 0.25).toFixed(2)));
+
+    let resizeTimer = null;
+    const onResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            computeBaseScale();
+            rezoom(state.zoom);
+        }, 150);
+    };
+    window.addEventListener('resize', onResize);
+
+    current = {
+        ...current,
+        type: 'pdf',
+        pdf,
+        cleanupExtra: () => {
+            renderObserver.disconnect();
+            pageObserver.disconnect();
+            window.removeEventListener('resize', onResize);
+            clearTimeout(resizeTimer);
+            state.pages.forEach((p) => { if (p.task && p.task.cancel) { try { p.task.cancel(); } catch (e) { /* noop */ } } });
+        },
+    };
+
+    showPager(true, numPages > 1, (n) => setCurrentPage(n, true));
+    showZoom(true);
+    setCurrentPage(1, false);
 }
 
 /* ---------------------------- Imágenes ---------------------------- */
@@ -105,19 +229,41 @@ function openImage(url, name) {
     const img = new Image();
     img.alt = name;
     img.src = url;
-    img.className = 'max-w-full h-auto rounded shadow-lg bg-white transition-transform duration-150';
+    img.className = 'object-contain rounded shadow-lg bg-white transition-transform duration-150';
     body.appendChild(img);
-    img.onload = () => { els().loading.classList.add('hidden'); };
+
+    // Ajusta la imagen al espacio disponible (con margen) en vez de a su
+    // tamaño de píxeles nativo. Se recalcula en cada resize/rotación.
+    const fit = () => {
+        const c = els().content;
+        const cs = getComputedStyle(els().body);
+        const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+        const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+        img.style.maxWidth = Math.max(100, c.clientWidth - padX) + 'px';
+        img.style.maxHeight = Math.max(100, c.clientHeight - padY) + 'px';
+    };
+    img.onload = () => { els().loading.classList.add('hidden'); fit(); };
+    fit();
+
+    let resizeTimer = null;
+    const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(fit, 150); };
+    window.addEventListener('resize', onResize);
 
     const state = { scale: 1 };
-    const apply = () => { img.style.transform = `scale(${state.scale})`; syncZoom(state.scale); };
+    const apply = () => { img.style.transform = `scale(${state.scale})`; };
     els().zoomOut.onclick = () => { state.scale = Math.max(0.2, +(state.scale - 0.25).toFixed(2)); apply(); };
     els().zoomIn.onclick = () => { state.scale = Math.min(5, +(state.scale + 0.25).toFixed(2)); apply(); };
-    els().zoomReset.onclick = () => { state.scale = 1; apply(); };
 
-    current = { ...current, type: 'image', img, state };
-    showPager(false, null, false);
-    els().pageLabel.textContent = '1/1';
+    current = {
+        ...current,
+        type: 'image',
+        img,
+        state,
+        cleanupExtra: () => { window.removeEventListener('resize', onResize); clearTimeout(resizeTimer); },
+    };
+    showPager(false, false, null);
+    showZoom(true);
+    apply();
 }
 
 /* --------------------------- Word (docx) --------------------------- */
@@ -137,15 +283,13 @@ async function openDocx(url, name) {
         const s = state.scale;
         sheet.style.transform = `scale(${s})`;
         sheet.style.marginBottom = `${(s - 1) * 400}px`;
-        syncZoom(s);
     };
     els().zoomOut.onclick = () => { state.scale = Math.max(0.5, +(state.scale - 0.1).toFixed(2)); apply(); };
     els().zoomIn.onclick = () => { state.scale = Math.min(3, +(state.scale + 0.1).toFixed(2)); apply(); };
-    els().zoomReset.onclick = () => { state.scale = 1; apply(); };
 
     current = { ...current, type: 'docx' };
-    showPager(false, null, false);
-    els().pageLabel.textContent = '1/1';
+    showPager(false, false, null);
+    showZoom(true);
     apply();
 }
 
@@ -180,19 +324,20 @@ async function openSheet(url, name) {
         holder.appendChild(tbl);
         body.appendChild(holder);
         hideLoading();
-        els().pageLabel.textContent = `${state.idx + 1}/${sheets.length}`;
+        els().pageInput.value = state.idx + 1;
+        els().pageTotal.textContent = sheets.length;
+        els().prev.disabled = state.idx <= 0;
+        els().next.disabled = state.idx >= sheets.length - 1;
     };
-
-    const applyZoom = () => syncZoom(state.scale);
 
     els().prev.onclick = () => { if (state.idx > 0) { state.idx--; render(); } };
     els().next.onclick = () => { if (state.idx < sheets.length - 1) { state.idx++; render(); } };
-    els().zoomOut.onclick = () => { state.scale = Math.max(0.4, +(state.scale - 0.15).toFixed(2)); render(); applyZoom(); };
-    els().zoomIn.onclick = () => { state.scale = Math.min(4, +(state.scale + 0.15).toFixed(2)); render(); applyZoom(); };
-    els().zoomReset.onclick = () => { state.scale = 1; render(); applyZoom(); };
+    els().zoomOut.onclick = () => { state.scale = Math.max(0.4, +(state.scale - 0.15).toFixed(2)); render(); };
+    els().zoomIn.onclick = () => { state.scale = Math.min(4, +(state.scale + 0.15).toFixed(2)); render(); };
 
     current = { ...current, type: 'sheet' };
-    showPager(true, () => {}, sheets.length > 1);
+    showPager(true, sheets.length > 1, (n) => { state.idx = n - 1; render(); });
+    showZoom(true);
     render();
 }
 
@@ -212,15 +357,13 @@ async function openText(url, name) {
     const apply = () => {
         const s = state.scale;
         pre.style.fontSize = `${s * 100}%`;
-        syncZoom(s);
     };
     els().zoomOut.onclick = () => { state.scale = Math.max(0.5, +(state.scale - 0.1).toFixed(2)); apply(); };
     els().zoomIn.onclick = () => { state.scale = Math.min(3, +(state.scale + 0.1).toFixed(2)); apply(); };
-    els().zoomReset.onclick = () => { state.scale = 1; apply(); };
 
     current = { ...current, type: 'text' };
-    showPager(false, null, false);
-    els().pageLabel.textContent = '1/1';
+    showPager(false, false, null);
+    showZoom(true);
     apply();
 }
 
@@ -241,51 +384,63 @@ function openUnsupported(name) {
         d.href = current.downloadUrl;
         d.setAttribute('download', current.name);
     }
-    showPager(false, null, false);
-    els().pageLabel.textContent = '-';
-    syncZoom(1);
+    showPager(false, false, null);
+    showZoom(false);
     hideLoading();
     window.lucideRefresh && window.lucideRefresh();
 }
 
 /* ------------------------------ Utilidades ------------------------------ */
-function syncZoom(scale) {
-    const pct = Math.round(scale * 100);
-    els().zoomReset.textContent = `${pct}%`;
-}
-
 function hideLoading() {
     els().loading.classList.add('hidden');
 }
 
-function showPager(show, onPageChange, enabled) {
+function showPager(show, enabled, onGoTo) {
     els().pager.classList.toggle('hidden', !show);
     els().pager.classList.toggle('flex', show);
     els().prev.disabled = !enabled;
     els().next.disabled = !enabled;
-    if (onPageChange) {
-        els().pageLabel.onclick = onPageChange;
-    } else {
-        els().pageLabel.onclick = null;
-    }
+    goToPage = onGoTo || null;
+}
+
+function showZoom(show) {
+    els().vtools.classList.toggle('hidden', !show);
+    els().vtools.classList.toggle('flex', show);
 }
 
 async function cleanup() {
+    if (current && current.cleanupExtra) {
+        try { current.cleanupExtra(); } catch (e) { /* noop */ }
+    }
     if (current && current.pdf) {
         try { current.pdf.destroy(); } catch (e) { /* noop */ }
     }
     els().body.innerHTML = '';
     els().loading.classList.remove('hidden');
+    showZoom(false);
+    goToPage = null;
     current = null;
 }
 
 function close() {
-    els().panel.classList.add('translate-y-full');
-    setTimeout(() => {
+    const panel = els().panel;
+    panel.classList.add('translate-y-full');
+
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        panel.removeEventListener('transitionend', onTransitionEnd);
+        clearTimeout(fallback);
         els().root.classList.add('hidden');
         cleanup();
         document.body.style.overflow = '';
-    }, 280);
+    };
+    const onTransitionEnd = (e) => { if (e.target === panel && e.propertyName === 'transform') finish(); };
+
+    panel.addEventListener('transitionend', onTransitionEnd);
+    // Salvaguarda por si transitionend no llega a disparar (p. ej. panel ya oculto)
+    const fallback = setTimeout(finish, 220);
 }
 
 function open(payload) {
@@ -340,6 +495,18 @@ export function initFileViewer() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !els().root.classList.contains('hidden')) close();
+    });
+
+    els().pageInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const input = els().pageInput;
+        const n = parseInt(input.value, 10);
+        if (goToPage && !isNaN(n)) {
+            const max = parseInt(els().pageTotal.textContent, 10) || 1;
+            goToPage(Math.min(Math.max(n, 1), max));
+        }
+        input.blur();
     });
 
     document.addEventListener('click', (e) => {
