@@ -167,17 +167,27 @@ async function openPdf(url, name) {
         }
     };
 
-    const pageObserver = new IntersectionObserver((entries) => {
-        let best = null;
-        entries.forEach((entry) => {
-            if (entry.isIntersecting && (!best || entry.intersectionRatio > best.intersectionRatio)) best = entry;
-        });
-        if (best) {
-            const p = state.pages.find((pp) => pp.wrap === best.target);
-            if (p) setCurrentPage(p.index, false);
+    // Contador de página en base a la posición de scroll (no a intersección):
+    // con IntersectionObserver, cuando dos páginas cruzan su umbral casi al
+    // mismo tiempo el "más visible" salta de una a otra varias veces durante
+    // un mismo scroll. Aquí la página actual es simplemente la última cuyo
+    // borde superior ya pasó la parte de arriba del área visible: un único
+    // valor determinístico, sin parpadeo.
+    let scrollRAF = null;
+    const updateCurrentPageFromScroll = () => {
+        scrollRAF = null;
+        const top = els().content.scrollTop;
+        let idx = 0;
+        for (let i = 0; i < state.pages.length; i++) {
+            if (state.pages[i].wrap.offsetTop <= top + 4) idx = i; else break;
         }
-    }, { root: els().content, threshold: [0.25, 0.5, 0.75] });
-    state.pages.forEach((p) => pageObserver.observe(p.wrap));
+        setCurrentPage(idx + 1, false);
+    };
+    const onScroll = () => {
+        if (scrollRAF) return;
+        scrollRAF = requestAnimationFrame(updateCurrentPageFromScroll);
+    };
+    els().content.addEventListener('scroll', onScroll);
 
     els().pageTotal.textContent = numPages;
 
@@ -215,7 +225,8 @@ async function openPdf(url, name) {
         pdf,
         cleanupExtra: () => {
             renderObserver.disconnect();
-            pageObserver.disconnect();
+            els().content.removeEventListener('scroll', onScroll);
+            if (scrollRAF) cancelAnimationFrame(scrollRAF);
             window.removeEventListener('resize', onResize);
             clearTimeout(resizeTimer);
             state.pages.forEach((p) => { if (p.task && p.task.cancel) { try { p.task.cancel(); } catch (e) { /* noop */ } } });
@@ -362,17 +373,25 @@ async function openDocx(url, name) {
         if (scrollTo) scrollToPage(n);
     };
 
-    const pageObserver = new IntersectionObserver((entries) => {
-        let best = null;
-        entries.forEach((entry) => {
-            if (entry.isIntersecting && (!best || entry.intersectionRatio > best.intersectionRatio)) best = entry;
-        });
-        if (best) {
-            const idx = pages.indexOf(best.target);
-            if (idx !== -1) setCurrentPage(idx + 1, false);
+    // Igual que en openPdf(): contador basado en la posición de scroll, no en
+    // IntersectionObserver, para que no salte entre páginas mientras se hace
+    // scroll (dos páginas cruzando su umbral casi a la vez causaban parpadeo).
+    let scrollRAF = null;
+    const updateCurrentPageFromScroll = () => {
+        scrollRAF = null;
+        const s = state.baseScale * state.zoom;
+        const top = els().content.scrollTop;
+        let idx = 0;
+        for (let i = 0; i < pages.length; i++) {
+            if (host.offsetTop + pageTops[i] * s <= top + 4) idx = i; else break;
         }
-    }, { root: els().content, threshold: [0.25, 0.5, 0.75] });
-    pages.forEach((p) => pageObserver.observe(p));
+        setCurrentPage(idx + 1, false);
+    };
+    const onScroll = () => {
+        if (scrollRAF) return;
+        scrollRAF = requestAnimationFrame(updateCurrentPageFromScroll);
+    };
+    els().content.addEventListener('scroll', onScroll);
 
     els().pageTotal.textContent = numPages;
     els().prev.onclick = () => { if (state.current > 1) setCurrentPage(state.current - 1, true); };
@@ -395,7 +414,8 @@ async function openDocx(url, name) {
         ...current,
         type: 'docx',
         cleanupExtra: () => {
-            pageObserver.disconnect();
+            els().content.removeEventListener('scroll', onScroll);
+            if (scrollRAF) cancelAnimationFrame(scrollRAF);
             window.removeEventListener('resize', onResize);
             clearTimeout(resizeTimer);
         },
