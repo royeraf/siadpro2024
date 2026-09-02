@@ -34,8 +34,17 @@ class FileViewerController extends Controller
             abort(404);
         }
 
-        // Bloquear traversal y nombres inválidos
-        if (str_contains($path, '..') || ! preg_match('/^[A-Za-z0-9_\-ñÑáéíóúÁÉÍÓÚ ()\.]+$/', $parts[1])) {
+        // Bloquear traversal, nombres vacíos, separadores de ruta y caracteres
+        // de control. El nombre del archivo se genera a partir de un campo de
+        // texto libre (p. ej. "Nombre de la Acción"), así que puede legítimamente
+        // contener comas, apóstrofes, °, &, dos puntos, etc. — no se restringe
+        // a una lista de caracteres "seguros" porque eso bloqueaba archivos reales.
+        if (
+            str_contains($path, '..')
+            || $parts[1] === ''
+            || str_contains($parts[1], '/')
+            || preg_match('/[\x00-\x1F]/', $parts[1])
+        ) {
             abort(404);
         }
 
