@@ -10,7 +10,7 @@
 
         <div class="modal-header">
         <h4 class="modal-title" id="myModalLabel">Agregar Evento</h4>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         </div>
         <div class="modal-body">
             <div class="form-group">
@@ -72,7 +72,7 @@
 
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-info" data-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-info" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
             <button type="button" class="btn btn-warning" id="btnEditar">Editar</button>
             <button type="button" class="btn btn-secondary" id="btnCancelar">Cancelar</button>
             <button type="submit" class="btn btn-primary" id="btnAccion">Guardar</button>
