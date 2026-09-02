@@ -570,6 +570,7 @@ function close() {
         panel.removeEventListener('transitionend', onTransitionEnd);
         clearTimeout(fallback);
         els().root.classList.add('hidden');
+        els().root.style.display = 'none';
         cleanup();
         document.body.style.overflow = '';
     };
@@ -615,6 +616,7 @@ function open(payload) {
 
     document.body.style.overflow = 'hidden';
     els().root.classList.remove('hidden');
+    els().root.style.display = '';
     requestAnimationFrame(() => els().panel.classList.remove('translate-y-full'));
 
     current = { url, name, downloadUrl, type: ext };
