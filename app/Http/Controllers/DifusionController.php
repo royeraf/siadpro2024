@@ -88,6 +88,7 @@ class DifusionController extends Controller
         $query = Accion::select(
                 'pro_accions.id', 'pro_accions.nombreAccion', 'pro_accions.descripcion',
                 'pro_accions.documento', 'pro_accions.color', 'pro_accions.fecha',
+                'pro_accions.enlace',
                 'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
                 'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
             )
@@ -314,9 +315,10 @@ class DifusionController extends Controller
                 $nivel = trim($request->get('nivel')); // Obtener el valor del nivel
 
                 $query = Accion::select(
-                    "pro_accions.id", "pro_accions.nombreAccion", "pro_accions.documento", "pro_accions.color", 
-                    "pro_accions.descripcion", "pro_accions.fecha", "pro_accions.lugar", "users.name", "users.cargo", 
-                    "users.nivelinstitucion", "users.institucion", "users.provincia", "users.distrito", "users.ugel", 
+                    "pro_accions.id", "pro_accions.nombreAccion", "pro_accions.documento", "pro_accions.color",
+                    "pro_accions.descripcion", "pro_accions.fecha", "pro_accions.lugar", "pro_accions.enlace",
+                    "users.name", "users.cargo",
+                    "users.nivelinstitucion", "users.institucion", "users.provincia", "users.distrito", "users.ugel",
                     "users.dni"
                 )
                 ->join("users", "users.id", "=", "pro_accions.idUser")
@@ -365,7 +367,7 @@ class DifusionController extends Controller
                     $ugel = trim($request->get('ugel'));
                     $nivel = trim($request->get('nivel')); // Agregar el nuevo filtro
                     
-                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar","users.name","users.cargo","users.nivelinstitucion","users.institucion","users.provincia","users.distrito","users.ugel")
+                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar","pro_accions.enlace","users.name","users.cargo","users.nivelinstitucion","users.institucion","users.provincia","users.distrito","users.ugel")
                     ->join("users","users.id","=","pro_accions.idUser")
                     ->where("users.dni","LIKE","%".$dni."%")
                     ->where("users.name","LIKE","%".$nomdocente."%")

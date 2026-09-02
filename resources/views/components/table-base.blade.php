@@ -53,7 +53,7 @@
                             <i data-lucide="x" class="w-3.5 h-3.5"></i>
                         </button>
                         <div x-show="srvLoading" class="absolute inset-y-0 right-8 flex items-center pointer-events-none">
-                            <svg class="animate-spin h-3.5 w-3.5 text-blue-500" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                            <svg class="animate-spin h-3.5 w-3.5 text-blue-500" width="14" height="14" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         </div>
                     </div>
                 @else

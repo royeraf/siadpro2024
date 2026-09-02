@@ -4,7 +4,7 @@
         <td class="px-4 py-3">{{ $produccion->descripcion ?? '-' }}</td>
         <td class="px-4 py-3 whitespace-nowrap">{{ date('d-m-Y', strtotime($produccion->fecha)) }}</td>
         <td class="px-4 py-3 text-center no-export">
-            <a href="{{ route('produccions.download', $produccion->id) }}" target="_blank" title="Descargar documento">
+            <a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $produccion->enlace]) }}" data-name="{{ basename($produccion->enlace) }}" data-download="{{ route('produccions.download', $produccion->id) }}" title="Ver documento">
                 <i class="{{ $produccion->documento }}" style="font-size: 20px; color: {{ $produccion->color }}"></i>
             </a>
         </td>

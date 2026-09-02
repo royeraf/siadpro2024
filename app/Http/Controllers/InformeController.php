@@ -89,6 +89,7 @@ class InformeController extends Controller
         $query = Informe::select(
                 "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
                 "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
+                "pro_informes.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
@@ -156,6 +157,7 @@ class InformeController extends Controller
         $query = Informe::select(
                 "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
                 "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
+                "pro_informes.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
@@ -208,6 +210,7 @@ class InformeController extends Controller
         $query = Informe::select(
                 "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
                 "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
+                "pro_informes.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )

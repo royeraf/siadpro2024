@@ -89,6 +89,7 @@ class PlanController extends Controller
         $query = Plan::select(
                 "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
                 "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
+                "pro_plans.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
@@ -156,6 +157,7 @@ class PlanController extends Controller
         $query = Plan::select(
                 "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
                 "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
+                "pro_plans.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
@@ -208,6 +210,7 @@ class PlanController extends Controller
         $query = Plan::select(
                 "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
                 "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
+                "pro_plans.enlace",
                 "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
                 "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )

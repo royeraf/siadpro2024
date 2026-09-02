@@ -208,6 +208,8 @@ Route::get('evidencias/{id}/download', ['App\Http\Controllers\EvidenciaControlle
 Route::get('sectores/{id}/download', ['App\Http\Controllers\SectorController'::class, 'download'])->name('sectores.download');
 
 
+Route::get('/visor/stream', ['App\Http\Controllers\FileViewerController'::class, 'stream'])->middleware('auth')->name('visor.stream');
+
 Route::get('informes/{id}/download', ['App\Http\Controllers\InformeController'::class, 'download'])->name('informes.download');
 Route::get('plans/{id}/download', ['App\Http\Controllers\PlanController'::class, 'download'])->name('plans.download');
 

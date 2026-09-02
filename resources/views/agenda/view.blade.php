@@ -41,7 +41,7 @@
 							<div class="modal-content">							
 								<div class="modal-header">
 								<h4 class="modal-title" id="myModalLabel">Visualizacion de Evento</h4>
-								<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+								<button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 								</div>
 								<div class="modal-body center" >							
 									<div class="form-group col-md-12" >
@@ -67,7 +67,7 @@
 								
 								</div>
 								<div class="modal-footer">
-									<button type="button" class="btn btn-info" data-dismiss="modal">Cerrar</button>
+									<button type="button" class="btn btn-info" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
 								</div>
 							</div>
 							</div>
@@ -117,26 +117,26 @@
 				$('#ModalView #end').val(event.end ? moment(event.end).format(formato) : '');
 				$('#ModalView').modal('show');
 			},
-			events: [
-				
-			<?php foreach($events as $event): 
-			
-				$start = explode(" ", $event['start']);
-				$end = explode(" ", $event['end']);
-				$start = isset($start[1]) && $start[1] == '00:00:00' ? $start[0] : $event['start'];
-				$end = isset($end[1]) && $end[1] == '00:00:00' ? $end[0] : $event['end'];
-			?>
-				{
-					id: '<?php echo $event['id']; ?>',
-					title: '<?php echo $event['title']; ?>',
-					nomDocente: '<?php echo $event['nomDocente']; ?>',
-					evento: '<?php echo $event['evento']; ?>',					
-					color: '<?php echo $event['color']; ?>',
-					start: '<?php echo $start; ?>',
-					end: '<?php echo $end; ?>',
-				},
-			<?php endforeach; ?>
-			]
+			events: <?php
+				$jsEvents = [];
+				foreach ($events as $event) {
+					$start = explode(" ", $event['start']);
+					$end = explode(" ", $event['end']);
+					$start = isset($start[1]) && $start[1] == '00:00:00' ? $start[0] : $event['start'];
+					$end = isset($end[1]) && $end[1] == '00:00:00' ? $end[0] : $event['end'];
+
+					$jsEvents[] = [
+						'id' => $event['id'],
+						'title' => $event['title'],
+						'nomDocente' => $event['nomDocente'],
+						'evento' => $event['evento'],
+						'color' => $event['color'],
+						'start' => $start,
+						'end' => $end,
+					];
+				}
+				echo json_encode($jsEvents);
+			?>,
 		});		
 	});
 

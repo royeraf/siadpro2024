@@ -109,7 +109,7 @@
               <div class="icon">
                 <i class="fas fa-users"></i>
               </div>              
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalUser">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalUser" data-toggle="modal" data-target="#myModalUser">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -119,7 +119,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Docentes, Directores y Profesores Coordinadores</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -157,7 +157,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -178,7 +178,7 @@
               <div class="icon">
                 <i class="fas fa-school"></i>
               </div>                            
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalInst">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalInst" data-toggle="modal" data-target="#myModalInst">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -189,7 +189,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Instituciones por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -214,7 +214,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -235,7 +235,7 @@
               <div class="icon">
                 <i class="fas fa-users"></i>
               </div>                                         
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalAcciones">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalAcciones" data-toggle="modal" data-target="#myModalAcciones">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -246,7 +246,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Acciones por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -271,7 +271,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -293,7 +293,7 @@
               <div class="icon">
               <i class="fas fa-users"></i>
               </div>                                                     
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalDifusiones">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalDifusiones" data-toggle="modal" data-target="#myModalDifusiones">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -304,7 +304,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Difusiones por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -329,7 +329,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -351,7 +351,7 @@
               <div class="icon">
               <i class="fas fa-users"></i>
               </div>                                               
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalEvidencias">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalEvidencias" data-toggle="modal" data-target="#myModalEvidencias">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -363,7 +363,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Evidencias por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -388,7 +388,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -410,7 +410,7 @@
               <div class="icon">
               <i class="fas fa-users"></i>
               </div>
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalInformes">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalInformes" data-toggle="modal" data-target="#myModalInformes">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -422,7 +422,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Informes por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -447,7 +447,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -469,7 +469,7 @@
               <div class="icon">
               <i class="fas fa-users"></i>
               </div>
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalPlanes">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalPlanes" data-toggle="modal" data-target="#myModalPlanes">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -480,7 +480,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Planes por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -505,7 +505,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -527,7 +527,7 @@
               <div class="icon">
               <i class="fas fa-users"></i>
               </div>
-              <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalProducciones">
+              <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalProducciones" data-toggle="modal" data-target="#myModalProducciones">
                 Detalles <i class="fas fa-arrow-circle-right"></i>
               </a>
             </div>
@@ -538,7 +538,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Producciones de textos infantiles por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -563,7 +563,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>
@@ -585,7 +585,7 @@
             <div class="icon">
             <i class="fas fa-users"></i>
             </div>
-            <a href="#" class="small-box-footer" data-toggle="modal" data-target="#myModalAgendas">
+            <a href="#" class="small-box-footer" data-bs-toggle="modal" data-bs-target="#myModalAgendas" data-toggle="modal" data-target="#myModalAgendas">
               Detalles <i class="fas fa-arrow-circle-right"></i>
             </a>
           </div>
@@ -596,7 +596,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Cantidad de Agendas de lectura por ugel</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -621,7 +621,7 @@
                 </div>
               </div>              
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
               </div>
             </div>
           </div>

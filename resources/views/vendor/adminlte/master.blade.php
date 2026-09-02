@@ -263,6 +263,27 @@
     {{-- Custom Scripts --}}
     @yield('adminlte_js')
 
+    {{-- DataTables: realinear encabezados (scrollX) cuando la tabla se inicializa
+         antes de que el iframe/contenedor tenga su ancho final --}}
+    <script>
+        (function () {
+            function adjustDataTables() {
+                if (window.jQuery && jQuery.fn.dataTable) {
+                    jQuery.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+                }
+            }
+            window.addEventListener('load', adjustDataTables);
+            window.addEventListener('resize', adjustDataTables);
+            document.addEventListener('visibilitychange', adjustDataTables);
+            // Reintentos iniciales por si la tabla se inicializó con el contenedor aún oculto
+            var retries = 0;
+            var timer = setInterval(function () {
+                adjustDataTables();
+                if (++retries >= 5) clearInterval(timer);
+            }, 800);
+        })();
+    </script>
+
 </body>
 
 </html>

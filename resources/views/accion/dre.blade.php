@@ -169,9 +169,7 @@
                                     <td>{{$accion->descripcion}}</td>
                                     <td>{{date('d-m-Y', strtotime($accion->fecha))}}</td>
                                     <td align="center">
-                                        <a href="{{ route('accions.download', $accion->id) }}" 
-                                        download="{{ $accion->nombreAccion }}" 
-                                        target="_blank">
+                                        <a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $accion->enlace]) }}" data-name="{{ basename($accion->enlace) }}" data-download="{{ route('accions.download', $accion->id) }}" title="Ver documento">
                                             <i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}'></i>
                                         </a>
                                     </td>
@@ -313,7 +311,7 @@
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="exportModalLabel">Seleccione formato de exportación</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
                                 </div>

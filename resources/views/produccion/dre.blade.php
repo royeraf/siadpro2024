@@ -135,7 +135,7 @@
                             <td>{{$produccion->nombreProduccion}}</td>
                             <td>{{$produccion->descripcion}}</td>
                             <td>{{date('d-m-Y', strtotime($produccion->fecha))}}</td>
-                            <td align="center"><a href="{{ route('produccions.download', $produccion->id) }}" target="_blank"><i class='{{$produccion->documento}}' style='font-size:24px;color:{{$produccion->color}}' ></i></a></td>
+                            <td align="center"><a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $produccion->enlace]) }}" data-name="{{ basename($produccion->enlace) }}" data-download="{{ route('produccions.download', $produccion->id) }}" title="Ver documento"><i class='{{$produccion->documento}}' style='font-size:24px;color:{{$produccion->color}}' ></i></a></td>
                             <td>{{$produccion->name}}</td>
                             <td>{{$produccion->cargo}}</td>
                             <td>{{$produccion->institucion}}</td>
