@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Models\Evidencia;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class EvidenciaController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:evidencias.index')->only('index');
@@ -68,20 +71,11 @@ class EvidenciaController extends Controller
      */
     private function tabsEvidencia(string $activo): array
     {
-        $user = Auth::user();
-        $tabs = [];
-
-        if ($user->can('evidencias.index')) {
-            $tabs[] = ['label' => 'Mis registros', 'url' => route('evidencias.index'), 'active' => $activo === 'index'];
-        }
-        if ($user->can('evidencias.ugel')) {
-            $tabs[] = ['label' => 'UGEL', 'url' => route('evidencias.ugel'), 'active' => $activo === 'ugel'];
-        }
-        if ($user->can('evidencias.view')) {
-            $tabs[] = ['label' => 'General', 'url' => route('evidencias.view'), 'active' => $activo === 'general'];
-        }
-
-        return $tabs;
+        return $this->scopeTabs([
+            'index'   => ['permission' => 'evidencias.index', 'label' => 'Mis registros', 'route' => 'evidencias.index'],
+            'ugel'    => ['permission' => 'evidencias.ugel', 'label' => 'UGEL', 'route' => 'evidencias.ugel'],
+            'general' => ['permission' => 'evidencias.view', 'label' => 'General', 'route' => 'evidencias.view'],
+        ], $activo);
     }
 
     /**

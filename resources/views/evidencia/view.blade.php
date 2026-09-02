@@ -13,7 +13,7 @@
 
 @section('content')
 
-<x-section-tabs :tabs="$tabs" />
+<x-section-tabs :tabs="$tabs" color="red" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-evidencias-general"

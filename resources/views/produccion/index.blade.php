@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="notebook-pen" title="Listado de Producción de Textos Infantiles" />
+    <x-page-header icon="notebook-pen" title="Producción de Textos Infantiles" />
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="green" />
 
 @if(session('mensajeinternet'))
     <div class="alert alert-danger">

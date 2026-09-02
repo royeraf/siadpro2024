@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="megaphone" title="Listado de Acciones de Sensibilización" />
+    <x-page-header icon="megaphone" title="Acción de Sensibilización" />
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="yellow" />
 
 @if(session('mensajeinternet'))
     <div class="alert alert-danger">

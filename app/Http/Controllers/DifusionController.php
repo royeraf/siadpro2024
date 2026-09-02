@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use Illuminate\Http\Request;
 use App\Models\Accion;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class DifusionController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:accions.index')->only('index');
@@ -65,7 +68,21 @@ class DifusionController extends Controller
             ]);
         }
 
-        return view('difusion.index', compact('accions'));
+        $tabs = $this->tabsDifusion('index');
+
+        return view('difusion.index', compact('accions', 'tabs'));
+    }
+
+    /**
+     * Pestañas de "Acción de Difusión". Solo Mis registros + General: igual que
+     * en AccionController, ugel()/director() aquí no tienen enlace de menú.
+     */
+    private function tabsDifusion(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'   => ['permission' => 'accions.index', 'label' => 'Mis registros', 'route' => 'difusions.index'],
+            'general' => ['permission' => 'accions.view', 'label' => 'General', 'route' => 'difusions.view'],
+        ], $activo);
     }
 
     /**
@@ -174,7 +191,9 @@ class DifusionController extends Controller
             $listaAnios->prepend($anio);
         }
 
-        return view('difusion.general', compact('accions', 'anio', 'showFullFilters', 'listaUgels', 'listaAnios'));
+        $tabs = $this->tabsDifusion('general');
+
+        return view('difusion.general', compact('accions', 'anio', 'showFullFilters', 'listaUgels', 'listaAnios', 'tabs'));
     }
 
     public function exportDifusionGeneral(Request $request)

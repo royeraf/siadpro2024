@@ -13,7 +13,7 @@
 
 @section('content')
 
-<x-section-tabs :tabs="$tabs" />
+<x-section-tabs :tabs="$tabs" color="red" />
 
 @if(session('mensajeinternet'))
     <div class="alert alert-danger">

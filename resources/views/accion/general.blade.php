@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="megaphone">Acciones de Sensibilización (General)</x-section-heading>
+    <x-section-heading icon="megaphone">Acción de Sensibilización</x-section-heading>
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="yellow" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-acciones-general"

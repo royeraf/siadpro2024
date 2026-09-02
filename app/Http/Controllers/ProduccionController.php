@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Models\Produccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class ProduccionController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:produccions.index')->only('index');
@@ -61,7 +64,22 @@ class ProduccionController extends Controller
 
         $listaAnios = $this->listaAniosProduccion();
 
-        return view('produccion.index', compact('produccions', 'listaAnios'));
+        $tabs = $this->tabsProduccion('index');
+
+        return view('produccion.index', compact('produccions', 'listaAnios', 'tabs'));
+    }
+
+    /**
+     * Pestañas de "Producción de Textos Infantiles". Solo Mis registros +
+     * General: este controlador no tiene métodos ugel()/director() (aunque el
+     * constructor sí registra middleware muerto para esos permisos).
+     */
+    private function tabsProduccion(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'   => ['permission' => 'produccions.index', 'label' => 'Mis registros', 'route' => 'produccions.index'],
+            'general' => ['permission' => 'produccions.view', 'label' => 'General', 'route' => 'produccions.view'],
+        ], $activo);
     }
 
     public function create()
@@ -167,7 +185,9 @@ class ProduccionController extends Controller
         $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
         $listaAnios = $this->listaAniosProduccion($anio);
 
-        return view('produccion.view', compact('produccions', 'anio', 'listaUgels', 'listaAnios'));
+        $tabs = $this->tabsProduccion('general');
+
+        return view('produccion.view', compact('produccions', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
     }
 
         

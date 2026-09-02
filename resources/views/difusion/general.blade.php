@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="radio">Acciones de Difusión (General)</x-section-heading>
+    <x-section-heading icon="radio">Acción de Difusión</x-section-heading>
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="blue" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-difusiones-general"

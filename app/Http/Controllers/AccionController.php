@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use Illuminate\Http\Request;
 use App\Models\Accion;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class AccionController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:accions.index')->only('index');
@@ -63,7 +66,23 @@ class AccionController extends Controller
             ]);
         }
 
-        return view('accion.index', compact('accions'));
+        $tabs = $this->tabsAccion('index');
+
+        return view('accion.index', compact('accions', 'tabs'));
+    }
+
+    /**
+     * Pestañas de la sección "Acción de Sensibilización". Solo Mis registros +
+     * General: los alcances ugel()/director() de este controlador no tienen
+     * enlace de menú (dead code alcanzable solo por URL directa) porque
+     * general() ya auto-restringe por cargo — ver accionsGeneralQuery().
+     */
+    private function tabsAccion(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'   => ['permission' => 'accions.index', 'label' => 'Mis registros', 'route' => 'accions.index'],
+            'general' => ['permission' => 'accions.view', 'label' => 'General', 'route' => 'accions.view'],
+        ], $activo);
     }
 
     /**
@@ -168,7 +187,9 @@ class AccionController extends Controller
             $listaAnios->prepend($anio);
         }
 
-        return view('accion.general', compact('accions', 'anio', 'showFullFilters', 'listaUgels', 'listaAnios'));
+        $tabs = $this->tabsAccion('general');
+
+        return view('accion.general', compact('accions', 'anio', 'showFullFilters', 'listaUgels', 'listaAnios', 'tabs'));
     }
 
     public function exportAccionsGeneral(Request $request)

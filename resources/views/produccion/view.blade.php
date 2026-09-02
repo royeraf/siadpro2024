@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="notebook-pen">Listado de Producción de Textos Infantiles (General)</x-section-heading>
+    <x-section-heading icon="notebook-pen">Producción de Textos Infantiles</x-section-heading>
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="green" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-produccions-general"

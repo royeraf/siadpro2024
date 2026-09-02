@@ -357,25 +357,11 @@ return [
             'can' => 'accions.index',
         ],
         [
-            'text' => 'ACCIÓN DE SENSIBILIZACIÓN (GENERAL)',
-            'url'  => '/accion-general',
-            'icon' => 'megaphone',
-            'icon_color'  => 'yellow',
-            'can' => 'accions.view',
-        ],
-        [
             'text' => 'ACCIÓN DE DIFUSIÓN',
             'url'  => 'difusions',
             'icon' => 'radio',
             'icon_color'  => 'blue',
             'can' => 'accions.index',
-        ],
-        [
-            'text' => 'ACCIÓN DE DIFUSIÓN (GENERAL)',
-            'url'  => '/difusion-general',
-            'icon' => 'radio',
-            'icon_color'  => 'blue',
-            'can' => 'accions.view',
         ],
         [
             'text' => 'SECTORES DEL AULA',
@@ -467,13 +453,6 @@ return [
             'icon' => 'notebook-pen',
             'icon_color'  => 'green',
             'can' => 'produccions.index',
-        ],
-        [
-            'text' => 'PRODUCCIÓN DE TEXTOS INFANTILES (GENERAL)',
-            'url'  => '/produccion-general',
-            'icon' => 'notebook-pen',
-            'icon_color'  => 'green',
-            'can' => 'evidencias.view',
         ],
         [
             'text' => 'AGENDA DE LECTURA',

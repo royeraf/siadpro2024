@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="radio" title="Listado de Acciones de Difusión" />
+    <x-page-header icon="radio" title="Acción de Difusión" />
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="blue" />
 
 @if(session('mensajeinternet'))
     <div class="alert alert-danger">
