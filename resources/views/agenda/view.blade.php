@@ -24,7 +24,7 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="calendar-check" title="Agenda de Lectura" />
+    <x-page-header icon="calendar-check" title="Agenda de Lectura" color="pink" />
 @stop
 
 @section('content')

@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="book-open" title="Biblioteca del Aula" />
+    <x-page-header icon="book-open" title="Biblioteca del Aula" color="orange" />
 @stop
 
 @section('content')

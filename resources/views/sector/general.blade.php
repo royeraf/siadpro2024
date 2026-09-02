@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="layout-grid">{{ $pageTitle }}</x-section-heading>
+    <x-section-heading icon="layout-grid" color="white">{{ $pageTitle }}</x-section-heading>
 @stop
 
 @section('content')

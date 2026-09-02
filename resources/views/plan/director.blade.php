@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="book-heart">Espacio de Lectura en el Hogar</x-section-heading>
+    <x-section-heading icon="book-heart" color="cyan">Espacio de Lectura en el Hogar</x-section-heading>
 @stop
 
 @section('content')

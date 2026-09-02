@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="megaphone">Acción de Sensibilización</x-section-heading>
+    <x-section-heading icon="megaphone" color="yellow">Acción de Sensibilización</x-section-heading>
 @stop
 
 @section('content')

@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="notebook-pen" title="Producción de Textos Infantiles" />
+    <x-page-header icon="notebook-pen" title="Producción de Textos Infantiles" color="green" />
 @stop
 
 @section('content')

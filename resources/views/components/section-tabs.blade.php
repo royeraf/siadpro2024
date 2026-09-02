@@ -22,9 +22,9 @@
 @if(count($tabs) > 1)
 <ul class="flex gap-1 border-b border-gray-300 mb-4 -mt-2" role="tablist">
     @foreach ($tabs as $tab)
-        <li role="presentation" class="flex-1 sm:flex-initial -mb-px">
+        <li role="presentation" class="flex-1 sm:flex-initial min-w-0 -mb-px flex">
             <a href="{{ $tab['url'] }}" role="tab" aria-selected="{{ $tab['active'] ? 'true' : 'false' }}"
-               class="block sm:inline-block text-center px-4 py-2 text-sm rounded-t-md border border-transparent text-decoration-none transition {{ $tab['active'] ? $scheme['active'] : $scheme['inactive'] }}">
+               class="flex-1 flex items-center justify-center text-center px-2 sm:px-4 py-2 text-sm rounded-t-md border border-transparent text-decoration-none transition {{ $tab['active'] ? $scheme['active'] : $scheme['inactive'] }}">
                 {{ $tab['label'] }}
             </a>
         </li>

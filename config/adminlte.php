@@ -355,6 +355,7 @@ return [
             'icon' => 'megaphone',
             'icon_color'  => 'yellow',
             'can' => 'accions.index',
+            'active' => ['accion*'],
         ],
         [
             'text' => 'ACCIÓN DE DIFUSIÓN',
@@ -362,6 +363,7 @@ return [
             'icon' => 'radio',
             'icon_color'  => 'blue',
             'can' => 'accions.index',
+            'active' => ['difusion*'],
         ],
         [
             'text' => 'SECTORES DEL AULA',
@@ -369,6 +371,7 @@ return [
             'icon' => 'layout-grid',
             'icon_color'  => 'white',
             'can' => 'sectores.index',
+            'active' => ['sector*'],
         ],
         [
             'text' => 'ASISTENCIA TÉCNICA',
@@ -376,6 +379,7 @@ return [
             'icon' => 'file-text',
             'icon_color'  => 'red',
             'can' => 'evidencias.index',
+            'active' => ['evidencia*'],
         ],
         [
             'text' => 'BIBLIOTECA DEL AULA',
@@ -383,6 +387,7 @@ return [
             'icon' => 'book-open',
             'icon_color'  => 'orange',
             'can' => ['informes.index', 'informes.view', 'informes.ugel', 'informes.director'],
+            'active' => ['informe*'],
         ],
         [
             'text' => 'ESPACIO DE LECTURA EN EL HOGAR',
@@ -390,6 +395,7 @@ return [
             'icon' => 'book-heart',
             'icon_color'  => 'cyan',
             'can' => ['plans.index', 'plans.view', 'plans.ugel', 'plans.director'],
+            'active' => ['plan*'],
         ],
         [
             'text' => 'PRODUCCIÓN DE TEXTOS INFANTILES',
@@ -397,6 +403,7 @@ return [
             'icon' => 'notebook-pen',
             'icon_color'  => 'green',
             'can' => 'produccions.index',
+            'active' => ['produccion*'],
         ],
         [
             'text' => 'AGENDA DE LECTURA',
@@ -404,6 +411,7 @@ return [
             'icon' => 'calendar-check',
             'icon_color'  => 'pink',
             'can' => ['agendas.index', 'agendas.view', 'agendas.ugel', 'agendas.general'],
+            'active' => ['agenda*'],
         ],
     ],
 

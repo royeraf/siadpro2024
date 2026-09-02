@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="calendar-check">Agenda de Lectura</x-section-heading>
+    <x-section-heading icon="calendar-check" color="pink">Agenda de Lectura</x-section-heading>
 @stop
 
 @section('content')

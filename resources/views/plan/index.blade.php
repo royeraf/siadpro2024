@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="book-heart" title="Espacio de Lectura en el Hogar" />
+    <x-page-header icon="book-heart" title="Espacio de Lectura en el Hogar" color="cyan" />
 @stop
 
 @section('content')

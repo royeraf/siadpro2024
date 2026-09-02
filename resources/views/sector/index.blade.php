@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="layout-grid" title="Sectores del Aula" />
+    <x-page-header icon="layout-grid" title="Sectores del Aula" color="white" />
 @stop
 
 @section('content')

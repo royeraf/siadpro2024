@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="radio">Acción de Difusión</x-section-heading>
+    <x-section-heading icon="radio" color="blue">Acción de Difusión</x-section-heading>
 @stop
 
 @section('content')

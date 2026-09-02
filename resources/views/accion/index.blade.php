@@ -8,7 +8,7 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="megaphone" title="Acción de Sensibilización" />
+    <x-page-header icon="megaphone" title="Acción de Sensibilización" color="yellow" />
 @stop
 
 @section('content')
