@@ -15,7 +15,8 @@ import {
     Users, UserPlus, IdCard, Briefcase, Shield, Check,
     UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
     BookOpen, CalendarCheck, NotebookPen,
-    ZoomIn, ZoomOut, Download, Maximize2
+    ZoomIn, ZoomOut, Download, Maximize2,
+    FileQuestion, AlertTriangle
 } from 'lucide';
 import { initTableEngine } from './components/datatable-engine';
 import { initFileViewer } from './viewer';
@@ -39,7 +40,8 @@ window.lucideRefresh = () => createIcons({
         Users, UserPlus, IdCard, Briefcase, Shield, Check,
         UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
         BookOpen, CalendarCheck, NotebookPen,
-        ZoomIn, ZoomOut, Download, Maximize2
+        ZoomIn, ZoomOut, Download, Maximize2,
+        FileQuestion, AlertTriangle
     }
 });
 window.lucideRefresh();
