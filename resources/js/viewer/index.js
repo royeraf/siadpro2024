@@ -1,6 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
-import * as mammoth from 'mammoth';
+import { renderAsync as renderDocxAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -9,6 +9,11 @@ const IMG_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
 const PDF_EXTS = ['pdf'];
 const DOC_EXTS = ['docx'];
 const SHEET_EXTS = ['xlsx', 'xls', 'csv'];
+// Ancho máximo de "hoja" al ajustar al ancho disponible (PDF/Word). En pantallas
+// angostas nunca se activa (el ancho disponible ya es menor); en desktop evita
+// que la página se estire de borde a borde, dejando márgenes a los costados
+// como en el visor nativo de PDF de Chrome.
+const MAX_READING_WIDTH = 900;
 
 let current = null;
 let goToPage = null;
@@ -71,7 +76,7 @@ async function openPdf(url, name) {
         const bodyEl = els().body;
         const cs = getComputedStyle(bodyEl);
         const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-        const avail = Math.max(100, bodyEl.clientWidth - padX);
+        const avail = Math.max(100, Math.min(bodyEl.clientWidth - padX, MAX_READING_WIDTH));
         state.baseScale = Math.min(avail / baseViewport.width, 4);
     };
     computeBaseScale();
@@ -267,30 +272,138 @@ function openImage(url, name) {
 }
 
 /* --------------------------- Word (docx) --------------------------- */
+// Render fiel al tamaño de papel real (carta/A4, márgenes, saltos de página)
+// vía docx-preview, en vez de reflow de HTML plano. Reutiliza el mismo patrón
+// de "ajustar al ancho + contador de página por scroll" que openPdf().
 async function openDocx(url, name) {
     const buf = await fetchArrayBuffer(url);
-    const result = await mammoth.convertToHtml({ arrayBuffer: buf });
     const body = els().body;
     body.innerHTML = '';
-    const sheet = document.createElement('div');
-    sheet.className = 'bg-white shadow-xl rounded p-4 sm:p-8 w-full max-w-4xl mx-auto text-sm leading-relaxed text-gray-800 origin-top transition-transform duration-150';
-    sheet.innerHTML = result.value || '<p>(documento vacío)</p>';
-    body.appendChild(sheet);
+
+    const host = document.createElement('div'); // tamaño fijo, reserva el espacio; no se transforma
+    const styleEl = document.createElement('style'); // styleContainer que exige renderAsync
+    body.appendChild(styleEl);
+    body.appendChild(host);
+
+    await renderDocxAsync(buf, host, styleEl, {
+        className: 'docx',
+        inWrapper: true,
+        ignoreWidth: false,
+        ignoreHeight: false,
+        breakPages: true,
+        renderHeaders: true,
+        renderFooters: true,
+        renderFootnotes: true,
+        renderEndnotes: true,
+        useBase64URL: true,
+        experimental: true,
+    });
     hideLoading();
 
-    const state = { scale: 1 };
-    const apply = () => {
-        const s = state.scale;
-        sheet.style.transform = `scale(${s})`;
-        sheet.style.marginBottom = `${(s - 1) * 400}px`;
-    };
-    els().zoomOut.onclick = () => { state.scale = Math.max(0.5, +(state.scale - 0.1).toFixed(2)); apply(); };
-    els().zoomIn.onclick = () => { state.scale = Math.min(3, +(state.scale + 0.1).toFixed(2)); apply(); };
+    const wrapperEl = host.querySelector('.docx-wrapper');
+    if (!wrapperEl) {
+        body.innerHTML = '<div class="text-red-600 p-6 text-center">No se pudo renderizar el documento.</div>';
+        current = { ...current, type: 'docx' };
+        showPager(false, false, null);
+        showZoom(false);
+        return;
+    }
+    // El wrapper de docx-preview ya trae fondo/padding propios; los quitamos
+    // porque #fv-content/#fv-body ya dan ese marco visual.
+    wrapperEl.style.background = 'transparent';
+    wrapperEl.style.padding = '0';
 
-    current = { ...current, type: 'docx' };
-    showPager(false, false, null);
+    const pages = [...wrapperEl.querySelectorAll(':scope > section.docx')];
+    const numPages = pages.length || 1;
+
+    // Métricas naturales (scale=1, antes de transformar nada).
+    const wrapRect = wrapperEl.getBoundingClientRect();
+    const naturalWidth = wrapRect.width;
+    const naturalHeight = wrapRect.height;
+    const pageTops = pages.map((p) => p.getBoundingClientRect().top - wrapRect.top);
+    // Fija el tamaño natural del wrapper: si no, al ponerle un ancho explícito
+    // a `host` (abajo) el wrapper (bloque normal, width:auto) se estira para
+    // llenarlo y el transform:scale() escala ESE ancho ya estirado (doble
+    // escalado → la página se ve más ancha que la pantalla).
+    wrapperEl.style.width = naturalWidth + 'px';
+    wrapperEl.style.height = naturalHeight + 'px';
+
+    const state = { zoom: 1, baseScale: 1, current: 1 };
+
+    const computeBaseScale = () => {
+        const cs = getComputedStyle(body);
+        const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+        const avail = Math.max(100, Math.min(body.clientWidth - padX, MAX_READING_WIDTH));
+        state.baseScale = Math.min(avail / naturalWidth, 2);
+    };
+    computeBaseScale();
+
+    const applyScale = () => {
+        const s = state.baseScale * state.zoom;
+        host.style.width = Math.round(naturalWidth * s) + 'px';
+        host.style.height = Math.round(naturalHeight * s) + 'px';
+        wrapperEl.style.transformOrigin = 'top left';
+        wrapperEl.style.transform = `scale(${s})`;
+    };
+    applyScale();
+
+    const scrollToPage = (n) => {
+        const s = state.baseScale * state.zoom;
+        els().content.scrollTop = host.offsetTop + pageTops[n - 1] * s - 8;
+    };
+
+    const setCurrentPage = (n, scrollTo) => {
+        state.current = n;
+        if (document.activeElement !== els().pageInput) {
+            els().pageInput.value = n;
+        }
+        els().prev.disabled = n <= 1;
+        els().next.disabled = n >= numPages;
+        if (scrollTo) scrollToPage(n);
+    };
+
+    const pageObserver = new IntersectionObserver((entries) => {
+        let best = null;
+        entries.forEach((entry) => {
+            if (entry.isIntersecting && (!best || entry.intersectionRatio > best.intersectionRatio)) best = entry;
+        });
+        if (best) {
+            const idx = pages.indexOf(best.target);
+            if (idx !== -1) setCurrentPage(idx + 1, false);
+        }
+    }, { root: els().content, threshold: [0.25, 0.5, 0.75] });
+    pages.forEach((p) => pageObserver.observe(p));
+
+    els().pageTotal.textContent = numPages;
+    els().prev.onclick = () => { if (state.current > 1) setCurrentPage(state.current - 1, true); };
+    els().next.onclick = () => { if (state.current < numPages) setCurrentPage(state.current + 1, true); };
+    els().zoomOut.onclick = () => { state.zoom = Math.max(0.5, +(state.zoom - 0.25).toFixed(2)); applyScale(); scrollToPage(state.current); };
+    els().zoomIn.onclick = () => { state.zoom = Math.min(3, +(state.zoom + 0.25).toFixed(2)); applyScale(); scrollToPage(state.current); };
+
+    let resizeTimer = null;
+    const onResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            computeBaseScale();
+            applyScale();
+            scrollToPage(state.current);
+        }, 150);
+    };
+    window.addEventListener('resize', onResize);
+
+    current = {
+        ...current,
+        type: 'docx',
+        cleanupExtra: () => {
+            pageObserver.disconnect();
+            window.removeEventListener('resize', onResize);
+            clearTimeout(resizeTimer);
+        },
+    };
+
+    showPager(true, numPages > 1, (n) => setCurrentPage(n, true));
     showZoom(true);
-    apply();
+    setCurrentPage(1, false);
 }
 
 /* --------------------------- Excel / CSV --------------------------- */
