@@ -202,6 +202,11 @@
         .main-sidebar .sidebar:hover::-webkit-scrollbar-thumb {
             background-color: rgba(255, 255, 255, 0.4);
         }
+
+        /* Tono más suave para el item seleccionado del sidebar */
+        [class*="sidebar-dark-"] .nav-sidebar > .nav-item > .nav-link.active {
+            background-color: #4c4a6e !important;
+        }
     </style>
 
     {{-- Favicon --}}
