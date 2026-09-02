@@ -191,14 +191,14 @@ Route::get("/dashboard-ugel", ['App\Http\Controllers\DashboardController'::class
 Route::get("/dashboard-pc", ['App\Http\Controllers\DashboardController'::class, "pc"])->middleware('auth')->name('dashboard.pc');
 
 Route::resource('agendas','App\Http\Controllers\AgendaController');
-Route::get('agenda/view', [App\Http\Controllers\AgendaViewController::class, 'index']);
+Route::get('agenda/view', [App\Http\Controllers\AgendaViewController::class, 'index'])->middleware('auth')->name('agendas.view');
 Route::post('agendas/update', [App\Http\Controllers\AgendaController::class, 'update']);
+// Punto de entrada del menú (ver AgendaController::landing()): agendas.index/agendas.view
+// no cubren a EspecDRE/EspecUGEL, así que el enlace del menú no puede apuntar fijo a /agendas.
+Route::get('/agenda-inicio', [App\Http\Controllers\AgendaController::class, 'landing'])->middleware('auth')->name('agendas.landing');
 
 Route::get("/buscar-agenda-general",['App\Http\Controllers\AgendaViewController'::class, "buscarGeneral"])->name('buscarAgendaGeneral')->middleware('auth');
 Route::get("/buscar-agenda-ugel",['App\Http\Controllers\AgendaViewController'::class, "buscarUgel"])->name('buscarAgendaUgel')->middleware('auth');
-
-Route::get("/agenda-ugel", ['App\Http\Controllers\AgendaViewController'::class, "ugel"])->middleware('auth');
-Route::get("/agenda-general", ['App\Http\Controllers\AgendaViewController'::class, "general"])->middleware('auth');
 
 Route::get('produccions/{id}/download', ['App\Http\Controllers\ProduccionController'::class, 'download'])->name('produccions.download');
 Route::get('accions/{id}/download', ['App\Http\Controllers\AccionController'::class, 'download'])->name('accions.download');
@@ -255,6 +255,14 @@ Route::get('/export-acciones-general', [App\Http\Controllers\AccionController::c
 Route::get("/accion-dre", ['App\Http\Controllers\AccionController'::class, "dre"])->middleware('auth')->name('accions.dre');
 Route::get("/plan-general", ['App\Http\Controllers\PlanController'::class, "general"])->middleware('auth')->name('plans.view');
 Route::get("/informe-general", ['App\Http\Controllers\InformeController'::class, "general"])->middleware('auth')->name('informes.view');
+// Punto de entrada del menú (ver InformeController::landing() / PlanController::landing()):
+// informes.index/plans.index no cubren a EspecDRE/EspecUGEL/Director, así que el enlace del
+// menú no puede apuntar fijo a /informes ni /plans.
+Route::get('/informe', [App\Http\Controllers\InformeController::class, 'landing'])->middleware('auth')->name('informes.landing');
+// No se usa "/plan": existe una carpeta física public/plan/ (vacía, huérfana, sin relación con
+// PlanController, que guarda sus archivos en storage/app/public/planA) que el servidor
+// intercepta como recurso estático antes de llegar a Laravel, devolviendo 404 siempre.
+Route::get('/plan-inicio', [App\Http\Controllers\PlanController::class, 'landing'])->middleware('auth')->name('plans.landing');
 Route::get("/evidencia-general", ['App\Http\Controllers\EvidenciaController'::class, "general"])->middleware('auth')->name('evidencias.view');
 # nuevo sector
 Route::get("/sector-general", ['App\Http\Controllers\SectorController'::class, "general"])->middleware('auth')->name('sectores.view');

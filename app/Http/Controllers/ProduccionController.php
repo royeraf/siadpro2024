@@ -78,7 +78,13 @@ class ProduccionController extends Controller
     {
         return $this->scopeTabs([
             'index'   => ['permission' => 'produccions.index', 'label' => 'Mis registros', 'route' => 'produccions.index'],
-            'general' => ['permission' => 'produccions.view', 'label' => 'General', 'route' => 'produccions.view'],
+            // La ruta se llama 'produccion.general' (no 'produccions.view'): hay dos
+            // Route::get('/produccion-general', ...) en routes/web.php (líneas 252 y
+            // 396) a la misma URI con nombres distintos; Laravel deja que la segunda
+            // reemplace a la primera por completo, así que 'produccions.view' nunca
+            // existe en tiempo de ejecución aunque esté escrito en el código. El resto
+            // de la vista (produccion/view.blade.php:29) ya depende de este nombre.
+            'general' => ['permission' => 'produccions.view', 'label' => 'General', 'route' => 'produccion.general'],
         ], $activo);
     }
 

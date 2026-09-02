@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\Agenda;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class AgendaViewController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         //$this->middleware('auth');
         //$this->middleware('can:agendas.view')->only('index');
@@ -23,8 +26,25 @@ class AgendaViewController extends Controller
         ->where('estado', '1')
         ;
 
-        return view('agenda.view',compact('events'));
+        $tabs = $this->tabsAgenda('view');
 
+        return view('agenda.view', compact('events', 'tabs'));
+
+    }
+
+    /**
+     * Duplicado a propósito de AgendaController::tabsAgenda() — mismo criterio
+     * que el resto de los módulos (cada controlador tiene su propia copia
+     * pequeña en vez de forzar una abstracción compartida entre 2 clases).
+     */
+    private function tabsAgenda(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'   => ['permission' => 'agendas.index', 'label' => 'Mis Eventos', 'route' => 'agendas.index'],
+            'view'    => ['permission' => 'agendas.view', 'label' => 'Mi Institución', 'route' => 'agendas.view'],
+            'ugel'    => ['permission' => 'agendas.ugel', 'label' => 'UGEL', 'route' => 'agenda.ugel'],
+            'general' => ['permission' => 'agendas.general', 'label' => 'General', 'route' => 'agenda.general'],
+        ], $activo);
     }
 
     public function ugel(Request $request)
@@ -88,8 +108,9 @@ class AgendaViewController extends Controller
         $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
         $listaDocentes = \App\Models\User::where('ugel', $ugel)->whereNotNull('name')->where('name', '!=', '')->distinct()->orderBy('name')->pluck('name');
         $listaAnios = $this->listaAniosAgenda($anio);
+        $tabs = $this->tabsAgenda('ugel');
 
-        return view('agenda.ugel', compact('agendas', 'anio', 'listaInstituciones', 'listaDocentes', 'listaAnios'));
+        return view('agenda.ugel', compact('agendas', 'anio', 'listaInstituciones', 'listaDocentes', 'listaAnios', 'tabs'));
     }
 
     public function buscarUgel(Request $request)
@@ -158,8 +179,9 @@ class AgendaViewController extends Controller
 
         $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
         $listaAnios = $this->listaAniosAgenda($anio);
+        $tabs = $this->tabsAgenda('general');
 
-        return view('agenda.general', compact('agendas', 'anio', 'listaUgels', 'listaAnios'));
+        return view('agenda.general', compact('agendas', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
     }
 
     public function buscarGeneral(Request $request)

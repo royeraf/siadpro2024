@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="layout-grid" title="Listado de Sectores del Aula" />
+    <x-page-header icon="layout-grid" title="Sectores del Aula" />
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="white" />
 
 @if(session('success'))
     <div id="alert-success" class="alert alert-success alert-dismissible fade show" role="alert">

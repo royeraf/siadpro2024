@@ -6,6 +6,7 @@
 @endsection
 
 @section('css')
+@vite(['resources/css/app.css'])
 
 <!-- Bootstrap Core CSS -->
 <!-- FullCalendar -->
@@ -22,6 +23,9 @@
     </style>
 @endsection
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="pink" />
+
  <!-- Page Content -->
 
     <!-- Main content -->

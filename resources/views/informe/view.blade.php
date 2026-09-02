@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="book-open">Listado de Biblioteca en el Aula para Especialista DRE</x-section-heading>
+    <x-section-heading icon="book-open">Biblioteca del Aula</x-section-heading>
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="orange" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-informes-general"

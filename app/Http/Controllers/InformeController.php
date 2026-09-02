@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Models\Informe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class InformeController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:informes.index')->only('index');
@@ -58,8 +61,38 @@ class InformeController extends Controller
         }
 
         $listaAnios = $this->listaAniosInforme();
+        $tabs = $this->tabsInforme('index');
 
-        return view('informe.index', compact('informes', 'listaAnios'));
+        return view('informe.index', compact('informes', 'listaAnios', 'tabs'));
+    }
+
+    /**
+     * Pestañas de "Biblioteca del Aula" — a diferencia de Evidencia/Sectores,
+     * aquí Director SÍ tiene enlace de menú, así que va incluido.
+     */
+    private function tabsInforme(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'    => ['permission' => 'informes.index', 'label' => 'Mis registros', 'route' => 'informes.index'],
+            'ugel'     => ['permission' => 'informes.ugel', 'label' => 'UGEL', 'route' => 'informes.ugel'],
+            'general'  => ['permission' => 'informes.view', 'label' => 'General', 'route' => 'informes.view'],
+            'director' => ['permission' => 'informes.director', 'label' => 'Director', 'route' => 'informes.director'],
+        ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. informes.index (Mis registros) NO incluye a
+     * EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
+     * respectivamente — así que la entrada de menú no puede apuntar fijo a
+     * /informes o esos roles se quedan sin poder llegar a nada. Redirige a la
+     * primera pestaña a la que el usuario realmente tenga acceso.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsInforme('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     /**
@@ -145,8 +178,9 @@ class InformeController extends Controller
 
         $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
         $listaAnios = $this->listaAniosInforme($anio);
+        $tabs = $this->tabsInforme('general');
 
-        return view('informe.view', compact('informes', 'anio', 'listaUgels', 'listaAnios'));
+        return view('informe.view', compact('informes', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
     }
 
     public function ugel(Request $request)
@@ -198,8 +232,9 @@ class InformeController extends Controller
 
         $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
         $listaAnios = $this->listaAniosInforme($anio);
+        $tabs = $this->tabsInforme('ugel');
 
-        return view('informe.ugel', compact('informes', 'anio', 'listaInstituciones', 'listaAnios'));
+        return view('informe.ugel', compact('informes', 'anio', 'listaInstituciones', 'listaAnios', 'tabs'));
     }
 
     public function director(Request $request)
@@ -247,8 +282,9 @@ class InformeController extends Controller
         }
 
         $listaAnios = $this->listaAniosInforme($anio);
+        $tabs = $this->tabsInforme('director');
 
-        return view('informe.director', compact('informes', 'anio', 'listaAnios'));
+        return view('informe.director', compact('informes', 'anio', 'listaAnios', 'tabs'));
     }
 
     public function profesorcoordinador()

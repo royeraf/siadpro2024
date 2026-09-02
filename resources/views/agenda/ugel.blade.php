@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-section-heading icon="calendar-check">Listado de Agendas de Lectura Para Especialista UGEL</x-section-heading>
+    <x-section-heading icon="calendar-check">Agenda de Lectura</x-section-heading>
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="pink" />
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-agendas-ugel"

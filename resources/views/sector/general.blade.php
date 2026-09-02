@@ -13,6 +13,8 @@
 
 @section('content')
 
+<x-section-tabs :tabs="$tabs" color="white" />
+
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="{{ $tableId }}"
               :perPage="request('per_page', 10)"

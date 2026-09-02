@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class PlanController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:plans.index')->only('index');
@@ -58,8 +61,38 @@ class PlanController extends Controller
         }
 
         $listaAnios = $this->listaAniosPlan();
+        $tabs = $this->tabsPlan('index');
 
-        return view('plan.index', compact('plans', 'listaAnios'));
+        return view('plan.index', compact('plans', 'listaAnios', 'tabs'));
+    }
+
+    /**
+     * Pestañas de "Espacio de Lectura en el Hogar" — Director tiene enlace de
+     * menú (a diferencia de Evidencia/Sectores), así que va incluido.
+     */
+    private function tabsPlan(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'    => ['permission' => 'plans.index', 'label' => 'Mis registros', 'route' => 'plans.index'],
+            'ugel'     => ['permission' => 'plans.ugel', 'label' => 'UGEL', 'route' => 'plans.ugel'],
+            'general'  => ['permission' => 'plans.view', 'label' => 'General', 'route' => 'plans.view'],
+            'director' => ['permission' => 'plans.director', 'label' => 'Director', 'route' => 'plans.director'],
+        ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. plans.index (Mis registros) NO incluye a
+     * EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
+     * respectivamente — así que la entrada de menú no puede apuntar fijo a
+     * /plans o esos roles se quedan sin poder llegar a nada. Redirige a la
+     * primera pestaña a la que el usuario realmente tenga acceso.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsPlan('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     /**
@@ -145,8 +178,9 @@ class PlanController extends Controller
 
         $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
         $listaAnios = $this->listaAniosPlan($anio);
+        $tabs = $this->tabsPlan('general');
 
-        return view('plan.view', compact('plans', 'anio', 'listaUgels', 'listaAnios'));
+        return view('plan.view', compact('plans', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
     }
 
     public function ugel(Request $request)
@@ -198,8 +232,9 @@ class PlanController extends Controller
 
         $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
         $listaAnios = $this->listaAniosPlan($anio);
+        $tabs = $this->tabsPlan('ugel');
 
-        return view('plan.ugel', compact('plans', 'anio', 'listaInstituciones', 'listaAnios'));
+        return view('plan.ugel', compact('plans', 'anio', 'listaInstituciones', 'listaAnios', 'tabs'));
     }
 
     public function director(Request $request)
@@ -247,8 +282,9 @@ class PlanController extends Controller
         }
 
         $listaAnios = $this->listaAniosPlan($anio);
+        $tabs = $this->tabsPlan('director');
 
-        return view('plan.director', compact('plans', 'anio', 'listaAnios'));
+        return view('plan.director', compact('plans', 'anio', 'listaAnios', 'tabs'));
     }
 
     public function profesorcoordinador(Request $request)

@@ -8,10 +8,12 @@
 @endsection
 
 @section('content_header')
-    <x-page-header icon="book-open" title="Listado de Biblioteca en el Aula" />
+    <x-page-header icon="book-open" title="Biblioteca del Aula" />
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="orange" />
 
 @if(session('mensajeinternet'))
     <div class="alert alert-danger">

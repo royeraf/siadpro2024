@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Models\Agenda;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 
 class AgendaController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         //$this->middleware('can:agendas.index')->only('index');
@@ -18,7 +21,36 @@ class AgendaController extends Controller
     {
         $usuario = Auth::user()->id;
         $events = Agenda::all()->where('idUser',$usuario)->where('estado', '1');
-        return view('agenda.index')->with('events',$events);
+        $tabs = $this->tabsAgenda('index');
+        return view('agenda.index')->with('events',$events)->with('tabs', $tabs);
+    }
+
+    /**
+     * Pestañas de "Agenda de Lectura". agendas.general/agendas.ugel se crean
+     * en AgendaPermissionSeeder — antes estaban prestados de evidencias.view
+     * y plans.ugel en el menú (copy-paste), sin permiso propio.
+     */
+    private function tabsAgenda(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'   => ['permission' => 'agendas.index', 'label' => 'Mis Eventos', 'route' => 'agendas.index'],
+            'view'    => ['permission' => 'agendas.view', 'label' => 'Mi Institución', 'route' => 'agendas.view'],
+            'ugel'    => ['permission' => 'agendas.ugel', 'label' => 'UGEL', 'route' => 'agenda.ugel'],
+            'general' => ['permission' => 'agendas.general', 'label' => 'General', 'route' => 'agenda.general'],
+        ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. agendas.index (Admin+Docente) y agendas.view
+     * (Admin+Director) no cubren a EspecDRE/EspecUGEL, que solo tienen
+     * agendas.general/agendas.ugel — redirige a la primera pestaña accesible.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsAgenda('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     public function create()

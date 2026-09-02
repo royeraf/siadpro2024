@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Models\Sector;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class SectorController extends Controller
 {
+    use HasScopeTabs;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:sectores.index')->only('index');
@@ -61,7 +64,22 @@ class SectorController extends Controller
             ]);
         }
 
-        return view('sector.index', compact('sectores'));
+        $tabs = $this->tabsSector('index');
+
+        return view('sector.index', compact('sectores', 'tabs'));
+    }
+
+    /**
+     * Pestañas de "Sectores del Aula". Director queda fuera a propósito: ese
+     * alcance no tiene enlace de menú (mismo criterio que en Evidencia).
+     */
+    private function tabsSector(string $activo): array
+    {
+        return $this->scopeTabs([
+            'index'   => ['permission' => 'sectores.index', 'label' => 'Mis registros', 'route' => 'sector.index'],
+            'ugel'    => ['permission' => 'sectores.ugel', 'label' => 'UGEL', 'route' => 'sectores.ugel'],
+            'general' => ['permission' => 'sectores.view', 'label' => 'General', 'route' => 'sectores.view'],
+        ], $activo);
     }
 
     /**
@@ -181,8 +199,9 @@ class SectorController extends Controller
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.view',
             'exportRoute' => 'exportSectoresGeneral',
-            'pageTitle' => 'Sectores del Aula (General)',
+            'pageTitle' => 'Sectores del Aula',
             'tableId' => 'tabla-sectores-general',
+            'tabs' => $this->tabsSector('general'),
         ]);
     }
 
@@ -204,8 +223,9 @@ class SectorController extends Controller
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.ugel',
             'exportRoute' => 'exportSectoresUgel',
-            'pageTitle' => 'Sectores del Aula (UGEL)',
+            'pageTitle' => 'Sectores del Aula',
             'tableId' => 'tabla-sectores-ugel',
+            'tabs' => $this->tabsSector('ugel'),
         ]);
     }
 

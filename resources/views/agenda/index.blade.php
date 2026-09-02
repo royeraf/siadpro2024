@@ -4,6 +4,7 @@
 @endsection
 
 @section('css')
+@vite(['resources/css/app.css'])
 
 <!-- FullCalendar -->
 <link href="vendor/css/fullcalendar.css" rel="stylesheet">
@@ -24,6 +25,9 @@
 @stop
 
 @section('content')
+
+<x-section-tabs :tabs="$tabs" color="pink" />
+
         <div class="row" id="eventos">
             <div class="col-12">
                 <div class="card card-danger card-outline">
