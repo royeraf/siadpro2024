@@ -10,7 +10,6 @@ return new class extends Migration
 
     private array $permissionNames = [
         'agendas.index',
-        'agendas.view',
     ];
 
     public function up()
