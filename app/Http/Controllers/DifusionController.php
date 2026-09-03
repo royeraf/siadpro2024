@@ -34,6 +34,8 @@ class DifusionController extends Controller
         // usuario autenticado podía descargar todas las acciones de difusión de todo el
         // sistema). Se cierran con el mismo permiso que protege la vista general.
         $this->middleware('can:difusions.view')->only('buscarGeneral', 'exportarTodos');
+        // buscar() (ruta /buscar-difusion) tampoco tenía permiso propio.
+        $this->middleware('can:difusions.index')->only('buscar');
     }
 
     public function index(Request $request)
@@ -90,6 +92,21 @@ class DifusionController extends Controller
             'general'  => ['permission' => 'difusions.view', 'label' => 'General', 'route' => 'difusions.view'],
             'director' => ['permission' => 'difusions.director', 'label' => 'Director', 'route' => 'difusions.director'],
         ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. difusions.index (Mis registros) no incluye a
+     * EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
+     * respectivamente — así que la entrada de menú no puede apuntar fijo a
+     * /difusions o esos roles se quedan sin poder llegar a nada. Redirige a la
+     * primera pestaña a la que el usuario realmente tenga acceso.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsDifusion('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     /**

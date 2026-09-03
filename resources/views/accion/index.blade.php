@@ -36,9 +36,11 @@
     </div>
 @endif
 
+@can('accions.create')
 <div class="flex justify-start mb-3">
     <x-create-button :href="route('accions.create')">Nueva Acción</x-create-button>
 </div>
+@endcan
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->
 <x-table-base id="tabla-acciones"

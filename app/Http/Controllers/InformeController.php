@@ -22,6 +22,14 @@ class InformeController extends Controller
         $this->middleware('can:informes.view')->only('general');
         $this->middleware('can:informes.ugel')->only('ugel');
         $this->middleware('can:informes.director')->only('director');
+        // Los buscar*/exportarTodos son alcanzables por URL directa (rutas
+        // /buscar-informe*, /exportar-biblioteca) y no quedaban cubiertos por
+        // ningún permiso propio: un director podía leer el alcance General o
+        // UGEL entero por ahí, sin tener informes.view/informes.ugel.
+        $this->middleware('can:informes.index')->only('buscar');
+        $this->middleware('can:informes.view')->only('buscarGeneral', 'exportarTodos');
+        $this->middleware('can:informes.ugel')->only('buscarUgel');
+        $this->middleware('can:informes.director')->only('buscarDirector');
     }
     
     public function index(Request $request)

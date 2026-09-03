@@ -31,7 +31,9 @@
 @endif
 
 <div class="flex justify-start mb-3">
+    @can('sectores.create')
     <x-create-button :href="route('sectores.create')">Nuevo Sector</x-create-button>
+    @endcan
 </div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->

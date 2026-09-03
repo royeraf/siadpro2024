@@ -15,11 +15,14 @@
         <td class="px-4 py-3 whitespace-nowrap">{{ $sector->getUser->ugel ?? '-' }}</td>
         <td class="px-4 py-3 text-center no-export whitespace-nowrap">
             <div class="inline-flex items-center justify-center gap-1">
+                @can('sectores.edit')
                 <a href="{{ url('/sectores/' . $sector->id . '/edit') }}"
                    class="inline-flex items-center justify-center p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded shadow-sm transition text-xs"
                    title="Editar">
                     <i data-lucide="pencil" class="w-4 h-4"></i>
                 </a>
+                @endcan
+                @can('sectores.destroy')
                 <form action="{{ route('sectores.destroy', $sector->id) }}" method="POST" onsubmit="return confirm('¿Está seguro de eliminar este sector?');" class="inline-flex items-center justify-center gap-1 m-0">
                     @csrf
                     @method('DELETE')
@@ -29,6 +32,7 @@
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </form>
+                @endcan
             </div>
         </td>
     </tr>

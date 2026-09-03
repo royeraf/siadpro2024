@@ -29,6 +29,8 @@ class AccionController extends Controller
         // la vista migrada, pero seguían alcanzables por URL directa sin control de acceso
         // propio más allá del "auth" genérico.
         $this->middleware('can:accions.view')->only('buscarGeneral', 'exportarFiltradoTotal');
+        // buscar() (ruta /buscar-accion) tampoco tenía permiso propio.
+        $this->middleware('can:accions.index')->only('buscar');
     }
     
     public function index(Request $request)
@@ -85,6 +87,21 @@ class AccionController extends Controller
             'general'  => ['permission' => 'accions.view', 'label' => 'General', 'route' => 'accions.view'],
             'director' => ['permission' => 'accions.director', 'label' => 'Director', 'route' => 'accions.director'],
         ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. accions.index (Mis registros) no incluye a
+     * EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
+     * respectivamente — así que la entrada de menú no puede apuntar fijo a
+     * /accions o esos roles se quedan sin poder llegar a nada. Redirige a la
+     * primera pestaña a la que el usuario realmente tenga acceso.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsAccion('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     /**

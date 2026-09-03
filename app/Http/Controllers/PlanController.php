@@ -22,6 +22,14 @@ class PlanController extends Controller
         $this->middleware('can:plans.view')->only('general');
         $this->middleware('can:plans.ugel')->only('ugel');
         $this->middleware('can:plans.director')->only('director');
+        // Los buscar*/exportarTodos son alcanzables por URL directa (rutas
+        // /buscar-plan*, /exportar-planes) y no quedaban cubiertos por ningún
+        // permiso propio: un director podía leer el alcance General o UGEL
+        // entero por ahí, sin tener plans.view/plans.ugel.
+        $this->middleware('can:plans.index')->only('buscar');
+        $this->middleware('can:plans.view')->only('buscarGeneral', 'exportarTodos');
+        $this->middleware('can:plans.ugel')->only('buscarUgel');
+        $this->middleware('can:plans.director')->only('buscarDirector');
     }
     
     public function index(Request $request)

@@ -15,11 +15,14 @@
         <td class="px-4 py-3 whitespace-nowrap">{{ $produccion->getUser->ugel ?? '-' }}</td>
         <td class="px-4 py-3 text-center no-export whitespace-nowrap">
             <div class="inline-flex items-center justify-center gap-1">
+                @can('produccions.edit')
                 <a href="{{ url('/produccions/' . $produccion->id . '/edit') }}"
                    class="inline-flex items-center justify-center p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded shadow-sm transition text-xs"
                    title="Editar">
                     <i data-lucide="pencil" class="w-4 h-4"></i>
                 </a>
+                @endcan
+                @can('produccions.destroy')
                 <form action="{{ route('produccions.destroy', $produccion->id) }}" method="POST" onsubmit="return confirm('¿Está seguro de eliminar esta producción de textos infantiles?');" class="inline-flex items-center justify-center gap-1 m-0">
                     @csrf
                     @method('DELETE')
@@ -29,6 +32,7 @@
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </form>
+                @endcan
             </div>
         </td>
     </tr>

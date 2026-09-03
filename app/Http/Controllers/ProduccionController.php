@@ -24,6 +24,12 @@ class ProduccionController extends Controller
         $this->middleware('can:produccions.ugel')->only('ugel', 'exportProduccionesUgel');
         $this->middleware('can:produccions.director')->only('director', 'exportProduccionesDirector');
         $this->middleware('can:produccions.dre')->only('dre');
+        // buscar/buscarGeneral/exportarTodos son alcanzables por URL directa
+        // (rutas /buscar-produccion*, /exportar-producciones) y no quedaban
+        // cubiertos por ningún permiso propio: un director podía leer todo el
+        // alcance General por ahí, sin tener produccions.view.
+        $this->middleware('can:produccions.index')->only('buscar');
+        $this->middleware('can:produccions.view')->only('buscarGeneral', 'exportarTodos');
     }
     
     public function index(Request $request)
@@ -87,6 +93,21 @@ class ProduccionController extends Controller
             'general'  => ['permission' => 'produccions.view', 'label' => 'General', 'route' => 'produccion.general'],
             'director' => ['permission' => 'produccions.director', 'label' => 'Director', 'route' => 'produccions.director'],
         ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. produccions.index (Mis registros) no incluye
+     * a EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
+     * respectivamente — así que la entrada de menú no puede apuntar fijo a
+     * /produccions o esos roles se quedan sin poder llegar a nada. Redirige a
+     * la primera pestaña a la que el usuario realmente tenga acceso.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsProduccion('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     public function create()

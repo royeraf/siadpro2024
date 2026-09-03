@@ -267,6 +267,16 @@ Route::get('/informe', [App\Http\Controllers\InformeController::class, 'landing'
 // PlanController, que guarda sus archivos en storage/app/public/planA) que el servidor
 // intercepta como recurso estático antes de llegar a Laravel, devolviendo 404 siempre.
 Route::get('/plan-inicio', [App\Http\Controllers\PlanController::class, 'landing'])->middleware('auth')->name('plans.landing');
+
+// Mismo patrón que informes.landing/plans.landing: accions.index/difusions.index/
+// sectores.index/evidencias.index/produccions.index no cubren a EspecDRE/EspecUGEL/
+// Director, así que el enlace del menú de estos 5 módulos no puede apuntar fijo al
+// índice — se redirige a la primera pestaña a la que el usuario tenga acceso.
+Route::get('/accion-inicio', [App\Http\Controllers\AccionController::class, 'landing'])->middleware('auth')->name('accions.landing');
+Route::get('/difusion-inicio', [App\Http\Controllers\DifusionController::class, 'landing'])->middleware('auth')->name('difusions.landing');
+Route::get('/sector-inicio', [App\Http\Controllers\SectorController::class, 'landing'])->middleware('auth')->name('sectores.landing');
+Route::get('/evidencia-inicio', [App\Http\Controllers\EvidenciaController::class, 'landing'])->middleware('auth')->name('evidencias.landing');
+Route::get('/produccion-inicio', [App\Http\Controllers\ProduccionController::class, 'landing'])->middleware('auth')->name('produccions.landing');
 Route::get("/evidencia-general", ['App\Http\Controllers\EvidenciaController'::class, "general"])->middleware('auth')->name('evidencias.view');
 # nuevo sector
 Route::get("/sector-general", ['App\Http\Controllers\SectorController'::class, "general"])->middleware('auth')->name('sectores.view');
@@ -300,8 +310,8 @@ Route::get('/export-sectores-director', [App\Http\Controllers\SectorController::
 
 
 
-Route::get('/get-ugels-ag', [AgendaViewController::class, 'obtenerUgels'])->name('get-ugels-ag');
-Route::get('/get-institucions', [AgendaViewController::class, 'obtenerInstitucions'])->name('get-institucions');
+Route::get('/get-ugels-ag', [AgendaViewController::class, 'obtenerUgels'])->middleware('auth')->name('get-ugels-ag');
+Route::get('/get-institucions', [AgendaViewController::class, 'obtenerInstitucions'])->middleware('auth')->name('get-institucions');
 
 Route::get('/buscar-instituciones', [EvidenciaController::class, 'buscador'])->name('buscarInstituciones');
 
@@ -310,22 +320,22 @@ Route::get('/buscar-instituciones', [EvidenciaController::class, 'buscador'])->n
 
 /* BUSQUEDA DE AGENDA */
 
-Route::get('/buscar-instituciones-agenda', [AgendaViewController::class, 'buscadorinstitucion'])->name('buscarInstitucionesAgenda');
-Route::get('/buscar-docentes-agenda', [AgendaViewController::class, 'buscadordocente'])->name('buscarDocentesAgenda');
+Route::get('/buscar-instituciones-agenda', [AgendaViewController::class, 'buscadorinstitucion'])->middleware('auth')->name('buscarInstitucionesAgenda');
+Route::get('/buscar-docentes-agenda', [AgendaViewController::class, 'buscadordocente'])->middleware('auth')->name('buscarDocentesAgenda');
 
-Route::get('/buscar-instituciones-por-ugel-ag', [AgendaViewController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgel-ag');
-Route::get('/buscar-docentes-por-institucion-ag', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion-ag');
-Route::get('/exportar-agendas', [App\Http\Controllers\AgendaViewController::class, 'exportarTodos'])->name('exportar.agendas');
-Route::get('/buscar-docente-por-institucion-agenda', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucionAgenda');
+Route::get('/buscar-instituciones-por-ugel-ag', [AgendaViewController::class, 'buscarInstitucionporUgel'])->middleware('auth')->name('buscarInstitucionporUgel-ag');
+Route::get('/buscar-docentes-por-institucion-ag', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->middleware('auth')->name('buscarDocenteporInstitucion-ag');
+Route::get('/exportar-agendas', [App\Http\Controllers\AgendaViewController::class, 'exportarTodos'])->middleware('auth')->name('exportar.agendas');
+Route::get('/buscar-docente-por-institucion-agenda', [AgendaViewController::class, 'buscarDocenteporInstitucion'])->middleware('auth')->name('buscarDocenteporInstitucionAgenda');
 
 
 
 // Rutas para la secci��n de agendas
-Route::get('/agenda-general', [App\Http\Controllers\AgendaViewController::class, 'general'])->name('agenda.general');
-Route::get('/buscar-institucion-por-ugel-ag', [App\Http\Controllers\AgendaViewController::class, 'buscarInstitucionporUgel'])->name('buscarInstitucionporUgelAg');
-Route::get('/agenda-ugel', [App\Http\Controllers\AgendaViewController::class, 'ugel'])->name('agenda.ugel');
+Route::get('/agenda-general', [App\Http\Controllers\AgendaViewController::class, 'general'])->middleware('auth')->name('agenda.general');
+Route::get('/buscar-institucion-por-ugel-ag', [App\Http\Controllers\AgendaViewController::class, 'buscarInstitucionporUgel'])->middleware('auth')->name('buscarInstitucionporUgelAg');
+Route::get('/agenda-ugel', [App\Http\Controllers\AgendaViewController::class, 'ugel'])->middleware('auth')->name('agenda.ugel');
 
-Route::get('/buscar-docente-por-institucion', [App\Http\Controllers\AgendaViewController::class, 'buscarDocenteporInstitucion'])->name('buscarDocenteporInstitucion');
+Route::get('/buscar-docente-por-institucion', [App\Http\Controllers\AgendaViewController::class, 'buscarDocenteporInstitucion'])->middleware('auth')->name('buscarDocenteporInstitucion');
 
 /* BUSQUEDA DE AGENDA */
 

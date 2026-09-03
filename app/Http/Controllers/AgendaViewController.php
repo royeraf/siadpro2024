@@ -15,8 +15,10 @@ class AgendaViewController extends Controller
     use HasScopeTabs;
 
     public function __construct(){
-        //$this->middleware('auth');
-        //$this->middleware('can:agendas.view')->only('index');
+        $this->middleware('auth');
+        $this->middleware('can:agendas.view')->only('index');
+        $this->middleware('can:agendas.ugel')->only('ugel', 'buscarUgel');
+        $this->middleware('can:agendas.general')->only('general', 'buscarGeneral', 'exportarTodos');
     }
     public function index()
     {

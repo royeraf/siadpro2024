@@ -60,6 +60,7 @@
                     <input type="datetime-local" name="end" class="form-control" id="end" required>
                 </div>
             </div>
+            @can('agendas.destroy')
             <div class="form-group" id="grupoEliminar">
                 <div class="col-sm-offset-2 col-sm-10">
                     <div class="checkbox">
@@ -67,13 +68,16 @@
                     </div>
                 </div>
             </div>
+            @endcan
 
             <input type="hidden" name="id" class="form-control" id="id">
 
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-info" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
+            @can('agendas.edit')
             <button type="button" class="btn btn-warning" id="btnEditar">Editar</button>
+            @endcan
             <button type="button" class="btn btn-secondary" id="btnCancelar">Cancelar</button>
             <button type="submit" class="btn btn-primary" id="btnAccion">Guardar</button>
         </div>

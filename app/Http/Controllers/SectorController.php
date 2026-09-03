@@ -27,6 +27,8 @@ class SectorController extends Controller
         // exportarTodos ya no lo usa la vista migrada, pero seguía alcanzable por URL
         // directa sin exigir ningún permiso propio (igual que en Accion/Difusion).
         $this->middleware('can:sectores.view')->only('exportarTodos');
+        // buscar() (ruta /buscar-sector) tampoco tenía permiso propio.
+        $this->middleware('can:sectores.index')->only('buscar');
     }
 
     public function index(Request $request)
@@ -81,6 +83,21 @@ class SectorController extends Controller
             'general'  => ['permission' => 'sectores.view', 'label' => 'General', 'route' => 'sectores.view'],
             'director' => ['permission' => 'sectores.director', 'label' => 'Director', 'route' => 'sectores.director'],
         ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. sectores.index (Mis registros) no incluye a
+     * EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
+     * respectivamente — así que la entrada de menú no puede apuntar fijo a
+     * /sector o esos roles se quedan sin poder llegar a nada. Redirige a la
+     * primera pestaña a la que el usuario realmente tenga acceso.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsSector('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     /**

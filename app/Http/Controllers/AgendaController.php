@@ -15,7 +15,12 @@ class AgendaController extends Controller
 
     public function __construct(){
         $this->middleware('auth');
-        //$this->middleware('can:agendas.index')->only('index');
+        $this->middleware('can:agendas.index')->only('index');
+        $this->middleware('can:agendas.create')->only('create', 'store');
+        $this->middleware('can:agendas.edit')->only('update');
+        // landing() se queda sin permiso propio: valida por sí misma con
+        // abort_if(empty($tabs)) contra las pestañas a las que el usuario
+        // realmente tenga acceso (ver landing() más abajo).
     }
     public function index()
     {
@@ -76,10 +81,16 @@ class AgendaController extends Controller
     public function update(Request $request, agenda $agenda)
     {
         $agenda = Agenda::findOrFail($request->id);
+        // agendas.edit (exigido por el constructor) no distingue de quién es el
+        // registro: sin esto, cualquier usuario con permiso de escritura podía
+        // modificar o borrar la agenda de cualquier otro, con solo conocer el id.
+        abort_unless((int) $agenda->idUser === Auth::id(), 403);
+
             if ($request->get('delete') == 'on') {
+                abort_unless(Auth::user()->can('agendas.destroy'), 403);
                 $agenda->estado = '0';
                 $agenda->idUser = Auth::user()->id;
-                $agenda->save();    
+                $agenda->save();
             }
             else{
                 $agenda->title = $request->get('title');

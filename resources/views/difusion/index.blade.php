@@ -37,7 +37,9 @@
 @endif
 
 <div class="flex justify-start mb-3">
+    @can('difusions.create')
     <x-create-button :href="route('difusions.create')">Nueva Difusión</x-create-button>
+    @endcan
 </div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->

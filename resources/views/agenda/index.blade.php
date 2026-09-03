@@ -137,9 +137,13 @@
 
 			},
 			defaultDate: yyyy+"-"+mm+"-"+dd,
-			editable: true,
-			eventLimit: true, 
-			selectable: true,
+			// Defensa en profundidad: el backend ya exige agendas.create/agendas.edit
+			// en el constructor de AgendaController, pero además se oculta la
+			// interacción de arrastrar/soltar y de seleccionar un día vacío si el
+			// usuario no tiene el permiso correspondiente.
+			editable: @can('agendas.edit') true @else false @endcan,
+			eventLimit: true,
+			selectable: @can('agendas.create') true @else false @endcan,
 			selectHelper: true,
 			select: function(start, end) {
 				$('#formEvento')[0].reset();

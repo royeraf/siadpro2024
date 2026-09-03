@@ -37,7 +37,9 @@
 @endif
 
 <div class="flex justify-start mb-3">
+    @can('informes.create')
     <x-create-button :href="route('informes.create')">Nueva Biblioteca</x-create-button>
+    @endcan
 </div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->

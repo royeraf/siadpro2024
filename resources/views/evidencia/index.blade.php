@@ -37,7 +37,9 @@
 @endif
 
 <div class="flex justify-start mb-3">
+    @can('evidencias.create')
     <x-create-button :href="route('evidencias.create')">Nueva Asistencia Técnica</x-create-button>
+    @endcan
 </div>
 
 <!-- Tabla Base Reutilizable con Tailwind CSS y Alpine.js -->

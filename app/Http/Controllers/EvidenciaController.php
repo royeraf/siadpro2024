@@ -24,6 +24,14 @@ class EvidenciaController extends Controller
         $this->middleware('can:evidencias.view')->only('general');
         $this->middleware('can:evidencias.ugel')->only('ugel');
         $this->middleware('can:evidencias.director')->only('director');
+        // Los buscar*/exportarTodos son alcanzables por URL directa (rutas
+        // /buscar-evidencia*, /exportar-evidencias) y no quedaban cubiertos por
+        // ningún permiso propio: un director podía leer el alcance General o
+        // UGEL entero por ahí, sin tener evidencias.view/evidencias.ugel.
+        $this->middleware('can:evidencias.index')->only('buscar');
+        $this->middleware('can:evidencias.view')->only('buscarGeneral', 'exportarTodos');
+        $this->middleware('can:evidencias.ugel')->only('buscarUgel');
+        $this->middleware('can:evidencias.director')->only('buscarDirector');
     }
     
     public function index(Request $request)
@@ -76,6 +84,21 @@ class EvidenciaController extends Controller
             'general'  => ['permission' => 'evidencias.view', 'label' => 'General', 'route' => 'evidencias.view'],
             'director' => ['permission' => 'evidencias.director', 'label' => 'Director', 'route' => 'evidencias.director'],
         ], $activo);
+    }
+
+    /**
+     * Punto de entrada del menú. evidencias.index (Mis registros) no incluye a
+     * EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
+     * respectivamente — así que la entrada de menú no puede apuntar fijo a
+     * /evidencias o esos roles se quedan sin poder llegar a nada. Redirige a
+     * la primera pestaña a la que el usuario realmente tenga acceso.
+     */
+    public function landing()
+    {
+        $tabs = $this->tabsEvidencia('index');
+        abort_if(empty($tabs), 403);
+
+        return redirect($tabs[0]['url']);
     }
 
     /**
@@ -315,103 +338,24 @@ class EvidenciaController extends Controller
         return view('evidencia.index')->with('evidencias', $evidencias);
     }
 
+    /**
+     * Antes duplicaba la consulta de general() con sus propios filtros y
+     * devolvía la vista sin $tabs (rompía <x-section-tabs>). Delegar es el
+     * mismo criterio ya usado en InformeController::buscarGeneral().
+     */
     public function buscarGeneral(Request $request)
     {
-        if (empty($request->get('ugels')) && empty($request->get('instituciones')) && 
-            empty($request->get('docentes')) && empty($request->get('texto')) && 
-            empty($request->get('nivel')) && empty($request->get('anio'))) {
-            return redirect('/evidencia-general');
-        } else {
-            $dni = trim($request->get('texto'));
-            $name = trim($request->get('docentes'));
-            $ugel = trim($request->get('ugels'));
-            $nominstitucion = trim($request->get('instituciones'));
-            $nivel = trim($request->get('nivel'));
-            $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023 si no se proporciona
-    
-            $query = Evidencia::select(
-                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento",
-                "pro_evidencias.color", "pro_evidencias.descripcion", "pro_evidencias.fecha",
-                "pro_evidencias.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_evidencias.idUser")
-            ->where('pro_evidencias.estado', '1');
-            
-            // Aplicar filtro de año
-            if (!empty($anio)) {
-                $query->whereYear('pro_evidencias.fecha', $anio);
-            }
-    
-            // Aplicar cada filtro independientemente si está presente
-            if (!empty($ugel)) {
-                $query->where("users.ugel", "LIKE", "%$ugel%");
-            }
-            
-            if (!empty($dni)) {
-                $query->where("users.dni", "LIKE", "%$dni%");
-            }
-            
-            if (!empty($name)) {
-                $query->where("users.name", "LIKE", "%$name%");
-            }
-            
-            if (!empty($nominstitucion)) {
-                $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-            }
-            
-            // Aplicar filtro de nivel de institución si está presente
-            if (!empty($nivel)) {
-                $query->where("users.nivelinstitucion", "LIKE", "%$nivel%");
-            }
-    
-            $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->paginate(1000);
-    
-            return view('evidencia.view')->with('evidencias', $evidencias);
-        }
+        return $this->general($request);
     }
 
     public function buscarUgel(Request $request)
     {
-        $ugel = Auth::user()->ugel;
-        $dni = trim($request->get('texto'));
-        $nivel = trim($request->get('nivel'));
-        $nominstitucion = trim($request->get('nombinstitucion'));
-        $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023
-        
-        $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.descripcion", "pro_evidencias.fecha", "pro_evidencias.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
-            ->join("users", "users.id", "=", "pro_evidencias.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_evidencias.estado', '1')
-            ->where("users.dni", "LIKE", "%" . $dni . "%")
-            ->whereYear('fecha', $anio)
-            ->where('users.nivelinstitucion', "LIKE", "%" . $nivel . "%")
-            ->where("users.institucion", "LIKE", "%" . $nominstitucion . "%")
-            ->orderBy('pro_evidencias.fecha', 'desc')
-            ->paginate(10);
-            
-        return view('evidencia.ugel')->with('evidencias', $evidencias);
+        return $this->ugel($request);
     }
 
     public function buscarDirector(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-        $texto = trim($request->get('texto'));
-        $fecha = trim($request->get('fecha'));
-        $anio = trim($request->get('anio')) ?: '2026'; // Valor por defecto 2023
-        
-        $evidencias = Evidencia::select("pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.tipoevidencia", "pro_evidencias.updated_at", "pro_evidencias.lugar", "pro_evidencias.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
-            ->join("users", "users.id", "=", "pro_evidencias.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_evidencias.estado', '1')
-            ->whereYear('fecha', $anio)
-            ->where("pro_evidencias.nombreEvidencia", "LIKE", "%" . $texto . "%")
-            ->where("pro_evidencias.fecha", "LIKE", "%" . $fecha . "%")
-            ->orderBy('pro_evidencias.fecha', 'desc')
-            ->paginate(10);
-            
-        return view('evidencia.director')->with('evidencias', $evidencias);
+        return $this->director($request);
     }
 
 
