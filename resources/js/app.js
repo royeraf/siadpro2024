@@ -14,7 +14,7 @@ import {
     ArrowUpNarrowWide, ArrowDownWideNarrow,
     Users, UserPlus, IdCard, Briefcase, Shield, Check,
     UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
-    BookOpen, CalendarCheck, NotebookPen,
+    BookOpen, CalendarCheck, NotebookPen, House,
     ZoomIn, ZoomOut, Download, Maximize2,
     FileQuestion, AlertTriangle
 } from 'lucide';
@@ -39,7 +39,7 @@ window.lucideRefresh = () => createIcons({
         ArrowUpNarrowWide, ArrowDownWideNarrow,
         Users, UserPlus, IdCard, Briefcase, Shield, Check,
         UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
-        BookOpen, CalendarCheck, NotebookPen,
+        BookOpen, CalendarCheck, NotebookPen, House,
         ZoomIn, ZoomOut, Download, Maximize2,
         FileQuestion, AlertTriangle
     }

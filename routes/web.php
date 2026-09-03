@@ -58,9 +58,9 @@ Route::middleware([
     })->name('dashboard');
 });
 
-Route::get('/inicio', function () {
-    return view('admin.index');
-});
+Route::get('/inicio', [App\Http\Controllers\InicioController::class, 'index'])
+    ->middleware('auth')
+    ->name('inicio');
 
 //RUTAS DE INSITUCIONES/INTERNET-----------------------------------------------
 
