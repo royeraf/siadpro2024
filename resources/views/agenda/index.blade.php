@@ -120,6 +120,19 @@
         border-color: #1e40af !important;
         color: #ffffff !important;
     }
+
+    /* Selector de Sección (Color) */
+    #ModalEvent #color {
+        font-weight: 600;
+        transition: color 0.2s ease;
+    }
+    #ModalEvent #color:disabled,
+    #ModalEvent #color[readonly] {
+        background-color: #f8fafc !important;
+        opacity: 1 !important;
+        -webkit-text-fill-color: currentColor !important;
+        cursor: default;
+    }
 </style>
 @endsection
 
@@ -167,11 +180,60 @@
 		var eventoActual = null;
 		var formato = 'YYYY-MM-DD[T]HH:mm:ss';
 
+		// Refleja visualmente el color seleccionado en el texto del select y en la muestra previa
+		function actualizarColorSeccion() {
+			var val = $('#color').val();
+			if (val) {
+				$('#color').css({
+					'color': val,
+					'-webkit-text-fill-color': val,
+					'font-weight': '700'
+				});
+				$('#colorBadge').css({
+					'background-color': val,
+					'border-color': val,
+					'box-shadow': '0 0 0 1px rgba(0,0,0,0.15)'
+				});
+			} else {
+				$('#color').css({
+					'color': '#495057',
+					'-webkit-text-fill-color': '#495057',
+					'font-weight': 'normal'
+				});
+				$('#colorBadge').css({
+					'background-color': 'transparent',
+					'border-color': '#ced4da',
+					'box-shadow': 'none'
+				});
+			}
+		}
+
+		function setColorValue(color) {
+			if (!color) {
+				$('#color').val('');
+				actualizarColorSeccion();
+				return;
+			}
+			$('#color').val(color);
+			if (!$('#color').val()) {
+				$('#color option').each(function() {
+					if ($(this).val().toLowerCase() === color.toLowerCase()) {
+						$('#color').val($(this).val());
+						return false;
+					}
+				});
+			}
+			actualizarColorSeccion();
+		}
+
+		$('#color').on('change', actualizarColorSeccion);
+		actualizarColorSeccion();
+
 		function llenarCamposDesdeEvento(event) {
 			$('#id').val(event.id);
 			$('#title').val(event.title);
 			$('#evento').val(event.evento);
-			$('#color').val(event.color);
+			setColorValue(event.color);
 			$('#start').val(moment(event.start).format(formato));
 			$('#end').val(moment(event.end).format(formato));
 		}
@@ -252,6 +314,7 @@
 			selectHelper: true,
 			select: function(start, end) {
 				$('#formEvento')[0].reset();
+				setColorValue('');
 				eventoActual = null;
 				$('#id').val('');
 				$('#start').val(moment(start).format(formato));

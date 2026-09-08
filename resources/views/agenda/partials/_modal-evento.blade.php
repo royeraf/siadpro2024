@@ -30,22 +30,28 @@
             <div class="form-group">
                 <label for="color" class="col-sm-3 control-label">Seccion</label>
                 <div class="col-sm-8">
-                    <select name="color" class="form-control" id="color" required>
-                        <option value="">Seleccionar</option>
-                        <option style="color:#FF0085;" value="#FF0085">&#9724; Lila</option>
-                        <option style="color:#0071c5;" value="#0071c5">&#9724; Azul oscuro</option>
-                        <option style="color:#40E0D0;" value="#40E0D0">&#9724; Turquesa</option>
-                        <option style="color:#008000;" value="#008000">&#9724; Verde</option>
-                        <option style="color:#FFD700;" value="#FFD700">&#9724; Amarillo</option>
-                        <option style="color:#FF8C00;" value="#FF8C00">&#9724; Naranja</option>
-                        <option style="color:#FF0000;" value="#FF0000">&#9724; Rojo</option>
-                        <option style="color:#9D00FF;" value="#9D00FF">&#9724; Violeta</option>
-                        <option style="color:#BA4A00;" value="#BA4A00">&#9724; Marron</option>
-                        <option style="color:#99A3A4;" value="#99A3A4">&#9724; Gris</option>
-                        <option style="color:#21618C;" value="#21618C">&#9724; Acero</option>
-                        <option style="color:#000;" value="#000">&#9724; Negro</option>
-
-                    </select>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-white" id="colorPreviewContainer" style="padding: 0 10px; display: flex; align-items: center; justify-content: center;">
+                                <span id="colorBadge" style="display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ced4da; background-color: transparent; transition: all 0.2s ease;"></span>
+                            </span>
+                        </div>
+                        <select name="color" class="form-control" id="color" required>
+                            <option value="">Seleccionar</option>
+                            <option style="color:#FF0085; font-weight: 600;" value="#FF0085">Lila</option>
+                            <option style="color:#0071c5; font-weight: 600;" value="#0071c5">Azul oscuro</option>
+                            <option style="color:#40E0D0; font-weight: 600;" value="#40E0D0">Turquesa</option>
+                            <option style="color:#008000; font-weight: 600;" value="#008000">Verde</option>
+                            <option style="color:#FFD700; font-weight: 600;" value="#FFD700">Amarillo</option>
+                            <option style="color:#FF8C00; font-weight: 600;" value="#FF8C00">Naranja</option>
+                            <option style="color:#FF0000; font-weight: 600;" value="#FF0000">Rojo</option>
+                            <option style="color:#9D00FF; font-weight: 600;" value="#9D00FF">Violeta</option>
+                            <option style="color:#BA4A00; font-weight: 600;" value="#BA4A00">Marron</option>
+                            <option style="color:#99A3A4; font-weight: 600;" value="#99A3A4">Gris</option>
+                            <option style="color:#21618C; font-weight: 600;" value="#21618C">Acero</option>
+                            <option style="color:#000000; font-weight: 600;" value="#000000">Negro</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="form-group">
