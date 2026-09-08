@@ -49,7 +49,17 @@
 }
 
 /* Modal */
-#modalResumen .modal-dialog { max-width: 960px; }
+#modalResumen {
+    z-index: 1060 !important;
+}
+#modalResumen .modal-dialog {
+    max-width: 960px;
+    z-index: 1061 !important;
+}
+#modalResumen .modal-content {
+    opacity: 1 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+}
 #modal-cards .mod-card { border-left: 4px solid; transition: transform .15s; }
 #modal-cards .mod-card:hover { transform: translateY(-2px); }
 #modalResumen .btn-secondary {
@@ -388,11 +398,18 @@
     /* ══════════════════════════════════════
        Funciones globales para abrir/cerrar modal
     ══════════════════════════════════════ */
+    $(document).ready(function () {
+        $('#modalResumen').appendTo('body');
+    });
+
     window.cerrarModalResumen = function () {
         $('#modalResumen').modal('hide');
     };
 
     window.abrirModalResumen = function () {
+        if ($('#modalResumen').parent().is(':not(body)')) {
+            $('#modalResumen').appendTo('body');
+        }
         $('#modalResumen').modal('show');
 
         if (cachedData) {
