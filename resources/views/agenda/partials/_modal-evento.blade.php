@@ -74,12 +74,20 @@
 
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-info" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">
+                <i class="fas fa-times mr-1"></i> Cerrar
+            </button>
             @can('agendas.edit')
-            <button type="button" class="btn btn-warning" id="btnEditar">Editar</button>
+            <button type="button" class="btn btn-warning" id="btnEditar">
+                <i class="fas fa-edit mr-1"></i> Editar
+            </button>
             @endcan
-            <button type="button" class="btn btn-secondary" id="btnCancelar">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="btnAccion">Guardar</button>
+            <button type="button" class="btn btn-secondary" id="btnCancelar">
+                <i class="fas fa-ban mr-1"></i> Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" id="btnAccion">
+                <i class="fas fa-save mr-1"></i> Guardar
+            </button>
         </div>
     </form>
     </div>

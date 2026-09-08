@@ -7,7 +7,7 @@
 @vite(['resources/css/app.css'])
 
 <!-- FullCalendar -->
-<link href="vendor/css/fullcalendar.css" rel="stylesheet">
+<link href="{{ asset('vendor/css/fullcalendar.css') }}" rel="stylesheet">
 <style>
 	#calendar {
 		max-width: 700px;
@@ -16,7 +16,107 @@
 		float: none;
 		margin: 0 auto;
 	}
-    </style>
+    /* Garantizar que el modal y su contenido estén por encima del backdrop y 100% nítidos */
+    #ModalEvent {
+        z-index: 1060 !important;
+    }
+    #ModalEvent .modal-dialog {
+        z-index: 1061 !important;
+    }
+    .modal-backdrop {
+        z-index: 1050 !important;
+    }
+    #ModalEvent .modal-content {
+        opacity: 1 !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    /* Estilos explícitos y vivos para botones del modal de evento */
+    #ModalEvent .modal-footer {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 0.6rem !important;
+        background-color: #f8fafc !important;
+        border-top: 1px solid #e2e8f0 !important;
+        padding: 0.75rem 1.25rem !important;
+    }
+    #ModalEvent .modal-footer .btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.4rem !important;
+        font-weight: 600 !important;
+        padding: 0.45rem 1.1rem !important;
+        border-radius: 0.375rem !important;
+        font-size: 0.92rem !important;
+        line-height: 1.5 !important;
+        opacity: 1 !important;
+        filter: none !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12) !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+    }
+    #ModalEvent .modal-footer .btn:hover {
+        opacity: 1 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.16) !important;
+    }
+    #ModalEvent .modal-footer .btn:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Botón Cerrar: tono pizarra oscuro, elegante, sólido y de alto contraste */
+    #ModalEvent .btn-secondary {
+        background-color: #475569 !important;
+        border-color: #334155 !important;
+        color: #ffffff !important;
+    }
+    #ModalEvent .btn-secondary:hover {
+        background-color: #334155 !important;
+        border-color: #1e293b !important;
+        color: #ffffff !important;
+    }
+
+    /* Botón Editar: ámbar / dorado vibrante, cálido, con texto blanco nítido */
+    #ModalEvent #btnEditar,
+    #ModalEvent .btn-warning {
+        background-color: #f59e0b !important;
+        border-color: #d97706 !important;
+        color: #ffffff !important;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2) !important;
+    }
+    #ModalEvent #btnEditar:hover,
+    #ModalEvent .btn-warning:hover {
+        background-color: #d97706 !important;
+        border-color: #b45309 !important;
+        color: #ffffff !important;
+    }
+
+    /* Botón Cancelar */
+    #ModalEvent #btnCancelar {
+        background-color: #64748b !important;
+        border-color: #475569 !important;
+        color: #ffffff !important;
+    }
+    #ModalEvent #btnCancelar:hover {
+        background-color: #475569 !important;
+        border-color: #334155 !important;
+        color: #ffffff !important;
+    }
+
+    /* Botón Guardar / Modificar (Acción principal) */
+    #ModalEvent .btn-primary {
+        background-color: #2563eb !important;
+        border-color: #1d4ed8 !important;
+        color: #ffffff !important;
+    }
+    #ModalEvent .btn-primary:hover {
+        background-color: #1d4ed8 !important;
+        border-color: #1e40af !important;
+        color: #ffffff !important;
+    }
+</style>
 @endsection
 
 @section('title', 'Agenda')
@@ -32,32 +132,31 @@
         <div class="row" id="eventos">
             <div class="col-12">
                 <div class="card card-danger card-outline">
-                        <div class="col-lg-12 text-center">
-                            <div id="calendar" class="col-centered">
-                                @csrf
-                            </div>
+                    <div class="col-lg-12 text-center">
+                        <div id="calendar" class="col-centered">
+                            @csrf
                         </div>
-                    
-                    @include('agenda.partials._modal-evento')
+                    </div>
                 </div>
             </div>
         </div>          
-@stop
 
-@section('css')
- 
+        @include('agenda.partials._modal-evento')
 @stop
 
 @section('js')
 
 <!-- FullCalendar -->
-<script src="vendor/js/moment.min.js"></script>
-<script src="vendor/js/fullcalendar/fullcalendar.js"></script>
-<script src="vendor/js/fullcalendar/locale/es.js"></script>
+<script src="{{ asset('vendor/js/moment.min.js') }}"></script>
+<script src="{{ asset('vendor/js/fullcalendar/fullcalendar.js') }}"></script>
+<script src="{{ asset('vendor/js/fullcalendar/locale/es.js') }}"></script>
 
 
         <script>
             $(document).ready(function() {
+
+		// Mover el modal directamente al body para evitar que cualquier backdrop o contenedor padre lo oscurezca
+		$('#ModalEvent').appendTo('body');
 
 		// Datos originales del evento actualmente abierto en el modal, para
 		// poder restaurarlos si el usuario cancela una edición sin guardar.
@@ -97,12 +196,12 @@
 
 			if (mode === 'edit') {
 				$('#myModalLabel').text('Modificar Evento');
-				$('#btnAccion').text('Modificar');
+				$('#btnAccion').html('<i class="fas fa-save mr-1"></i> Modificar');
 				$('#grupoEliminar').show();
 				$('#btnCancelar').show();
 			} else {
 				$('#myModalLabel').text('Agregar Evento');
-				$('#btnAccion').text('Registrar');
+				$('#btnAccion').html('<i class="fas fa-save mr-1"></i> Registrar');
 				$('#grupoEliminar').hide();
 				$('#btnCancelar').hide();
 			}

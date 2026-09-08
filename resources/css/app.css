@@ -2,6 +2,173 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════════════════════
+   Compatibilidad Bootstrap / AdminLTE con Tailwind CSS Preflight
+   Previene que el reset de Tailwind elimine backgrounds, bordes y padding
+   de los botones nativos de Bootstrap (.btn).
+   ══════════════════════════════════════════════════════════════════════ */
+.btn,
+button.btn,
+[type='button'].btn,
+[type='submit'].btn,
+[type='reset'].btn,
+a.btn {
+    display: inline-block;
+    font-weight: 500;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    text-decoration: none;
+    opacity: 1 !important;
+    filter: none !important;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.btn-primary,
+button.btn-primary,
+[type='button'].btn-primary,
+[type='submit'].btn-primary {
+    color: #ffffff !important;
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+}
+.btn-primary:hover,
+button.btn-primary:hover,
+[type='button'].btn-primary:hover,
+[type='submit'].btn-primary:hover {
+    color: #ffffff !important;
+    background-color: #0069d9 !important;
+    border-color: #0062cc !important;
+}
+
+.btn-secondary,
+button.btn-secondary,
+[type='button'].btn-secondary,
+[type='submit'].btn-secondary {
+    color: #ffffff !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+.btn-secondary:hover,
+button.btn-secondary:hover,
+[type='button'].btn-secondary:hover,
+[type='submit'].btn-secondary:hover {
+    color: #ffffff !important;
+    background-color: #5a6268 !important;
+    border-color: #545b62 !important;
+}
+
+.btn-info,
+button.btn-info,
+[type='button'].btn-info,
+[type='submit'].btn-info {
+    color: #ffffff !important;
+    background-color: #17a2b8 !important;
+    border-color: #17a2b8 !important;
+}
+.btn-info:hover,
+button.btn-info:hover,
+[type='button'].btn-info:hover,
+[type='submit'].btn-info:hover {
+    color: #ffffff !important;
+    background-color: #138496 !important;
+    border-color: #117a8b !important;
+}
+
+.btn-warning,
+button.btn-warning,
+[type='button'].btn-warning,
+[type='submit'].btn-warning {
+    color: #1f2d3d !important;
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+}
+.btn-warning:hover,
+button.btn-warning:hover,
+[type='button'].btn-warning:hover,
+[type='submit'].btn-warning:hover {
+    color: #1f2d3d !important;
+    background-color: #e0a800 !important;
+    border-color: #d39e00 !important;
+}
+
+.btn-danger,
+button.btn-danger,
+[type='button'].btn-danger,
+[type='submit'].btn-danger {
+    color: #ffffff !important;
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+}
+.btn-danger:hover,
+button.btn-danger:hover,
+[type='button'].btn-danger:hover,
+[type='submit'].btn-danger:hover {
+    color: #ffffff !important;
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+}
+
+.btn-success,
+button.btn-success,
+[type='button'].btn-success,
+[type='submit'].btn-success {
+    color: #ffffff !important;
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+.btn-success:hover,
+button.btn-success:hover,
+[type='button'].btn-success:hover,
+[type='submit'].btn-success:hover {
+    color: #ffffff !important;
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+}
+
+.btn-default,
+button.btn-default,
+[type='button'].btn-default,
+[type='submit'].btn-default {
+    color: #444444 !important;
+    background-color: #f8f9fa !important;
+    border-color: #dddddd !important;
+}
+.btn-default:hover,
+button.btn-default:hover,
+[type='button'].btn-default:hover,
+[type='submit'].btn-default:hover {
+    color: #333333 !important;
+    background-color: #e2e6ea !important;
+    border-color: #dae0e5 !important;
+}
+
+.modal-header .close,
+button.close {
+    padding: 1rem 1rem !important;
+    margin: -1rem -1rem -1rem auto !important;
+    background-color: transparent !important;
+    border: 0 !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    color: #000000 !important;
+    text-shadow: 0 1px 0 #fff !important;
+    opacity: 0.5 !important;
+}
+.modal-header .close:hover,
+button.close:hover {
+    opacity: 0.75 !important;
+    color: #000000 !important;
+}
+
+
 @media (max-width: 767px) {
     .table-stacked thead {
         display: none;

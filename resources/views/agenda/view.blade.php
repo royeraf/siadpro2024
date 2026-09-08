@@ -8,9 +8,8 @@
 @section('css')
 @vite(['resources/css/app.css'])
 
-<!-- Bootstrap Core CSS -->
 <!-- FullCalendar -->
-<link href="/vendor/css/fullcalendar.css" rel="stylesheet">
+<link href="{{ asset('vendor/css/fullcalendar.css') }}" rel="stylesheet">
 
 <style>
 	#calendar {
@@ -20,7 +19,51 @@
 		float: none;
 		margin: 0 auto;
 	}
-    </style>
+    #ModalView {
+        z-index: 1060 !important;
+    }
+    #ModalView .modal-dialog {
+        z-index: 1061 !important;
+    }
+    #ModalView .modal-content {
+        opacity: 1 !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+    }
+    #ModalView .modal-footer {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        background-color: #f8fafc !important;
+        border-top: 1px solid #e2e8f0 !important;
+        padding: 0.75rem 1.25rem !important;
+    }
+    #ModalView .modal-footer .btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.4rem !important;
+        font-weight: 600 !important;
+        padding: 0.45rem 1.1rem !important;
+        border-radius: 0.375rem !important;
+        font-size: 0.92rem !important;
+        opacity: 1 !important;
+        filter: none !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12) !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+    }
+    #ModalView .btn-secondary {
+        background-color: #475569 !important;
+        border-color: #334155 !important;
+        color: #ffffff !important;
+    }
+    #ModalView .btn-secondary:hover {
+        background-color: #334155 !important;
+        border-color: #1e293b !important;
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.16) !important;
+    }
+</style>
 @endsection
 
 @section('content_header')
@@ -38,66 +81,68 @@
             <div class="row" id="eventos">			
                 <div class="col-12">
                     <div class="card card-primary card-outline">
-							<div class="col-lg-12 text-center">		
-							</div>
-							<div id="calendar" class="col-centered">
-							</div>
-				
-						
-                        <!-- Modal Visualizar Eventos-->
-						<div class="modal fade" id="ModalView" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-							<div class="modal-dialog" role="document">
-							<div class="modal-content">							
-								<div class="modal-header">
-								<h4 class="modal-title" id="myModalLabel">Visualizacion de Evento</h4>
-								<button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-								</div>
-								<div class="modal-body center" >							
-									<div class="form-group col-md-12" >
-										<label for="title" class="col-sm-3 control-label">Titulo</label>
-										<input type="text" name="title" class="form-control" id="title" placeholder="Titulo" readonly>
-									</div>
-									<div class="form-group col-md-12">
-										<label for="evento" class="col-sm-3 control-label">Evento</label><br>
-										<br><textarea name="evento" id="evento" class="form-control" rows="3" placeholder="Descripcion del evento" readonly></textarea>
-									</div>							
-									<div class="form-group col-md-12" >
-										<label for="nomDocente" class="col-sm-3 control-label">Docente</label>
-										<input type="text" name="nomDocente" class="form-control" id="nomDocente" placeholder="nomDocente" readonly>
-									</div>
-									<div class="form-group col-md-12">
-										<label for="start" class="col-sm-5 control-label">Fecha Inicial</label>
-										<input type="text" name="start" class="form-control" id="start" readonly>
-									</div>
-										<div class="form-group col-md-12">
-										<label for="end" class="col-sm-3 control-label">Fecha Final</label>
-										<input type="text" name="end" class="form-control" id="end" readonly>
-									</div>
-								
-								</div>
-								<div class="modal-footer">
-									<button type="button" class="btn btn-info" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
-								</div>
-							</div>
-							</div>
-						</div>
-						<!-- Modal Visualizar Eventos-->
+                        <div class="col-lg-12 text-center">		
+                        </div>
+                        <div id="calendar" class="col-centered">
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Modal Visualizar Eventos-->
+            <div class="modal fade" id="ModalView" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+                <div class="modal-dialog" role="document">
+                <div class="modal-content">							
+                    <div class="modal-header">
+                    <h4 class="modal-title" id="myModalLabel">Visualizacion de Evento</h4>
+                    <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body center" >							
+                        <div class="form-group col-md-12" >
+                            <label for="title" class="col-sm-3 control-label">Titulo</label>
+                            <input type="text" name="title" class="form-control" id="title" placeholder="Titulo" readonly>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <label for="evento" class="col-sm-3 control-label">Evento</label><br>
+                            <br><textarea name="evento" id="evento" class="form-control" rows="3" placeholder="Descripcion del evento" readonly></textarea>
+                        </div>							
+                        <div class="form-group col-md-12" >
+                            <label for="nomDocente" class="col-sm-3 control-label">Docente</label>
+                            <input type="text" name="nomDocente" class="form-control" id="nomDocente" placeholder="nomDocente" readonly>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <label for="start" class="col-sm-5 control-label">Fecha Inicial</label>
+                            <input type="text" name="start" class="form-control" id="start" readonly>
+                        </div>
+                            <div class="form-group col-md-12">
+                            <label for="end" class="col-sm-3 control-label">Fecha Final</label>
+                            <input type="text" name="end" class="form-control" id="end" readonly>
+                        </div>
+                    
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+            <!-- Modal Visualizar Eventos-->
 
 	
 @endsection
 
 @section('js')
 <!-- FullCalendar -->
-<script src="/vendor/js/moment.min.js"></script>
-<script src="/vendor/js/fullcalendar/fullcalendar.js"></script>
-<script src="/vendor/js/fullcalendar/locale/es.js"></script>
+<script src="{{ asset('vendor/js/moment.min.js') }}"></script>
+<script src="{{ asset('vendor/js/fullcalendar/fullcalendar.js') }}"></script>
+<script src="{{ asset('vendor/js/fullcalendar/locale/es.js') }}"></script>
 
 <script>
 	$(document).ready(function() {
-    	
+		// Mover el modal directamente al body para evitar que el backdrop lo oscurezca
+		$('#ModalView').appendTo('body');
 
 		var date = new Date();
        	var yyyy = date.getFullYear().toString();
