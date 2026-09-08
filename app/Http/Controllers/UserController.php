@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
+use App\Services\ReniecService;
 
 class UserController extends Controller
 {
@@ -152,28 +153,123 @@ class UserController extends Controller
             ->pluck('ugel');
     }
 
+    public function checkDni(Request $request, string $dni, ReniecService $reniecService)
+    {
+        $cleanDni = trim($dni);
+
+        if (!preg_match('/^[0-9]{8}$/', $cleanDni)) {
+            return response()->json([
+                'valid' => false,
+                'exists' => false,
+                'message' => 'El DNI debe contener exactamente 8 dígitos numéricos.',
+            ], 422);
+        }
+
+        $excludeId = $request->query('exclude_id');
+
+        $query = User::where('dni', $cleanDni);
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        $user = $query->first(['id', 'name', 'email', 'cargo', 'institucion', 'ugel', 'estado']);
+
+        if ($user) {
+            $estadoTexto = (int) $user->estado === 1 ? 'Activo' : 'Inactivo';
+            return response()->json([
+                'valid' => true,
+                'exists' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'cargo' => $user->cargo ?? 'Sin cargo',
+                    'institucion' => $user->institucion,
+                    'ugel' => $user->ugel,
+                    'estado' => $estadoTexto,
+                ],
+                'message' => "Este DNI ya está registrado para: {$user->name} ({$user->cargo}) - {$estadoTexto}.",
+            ]);
+        }
+
+        // Si se solicita consultar en RENIEC (formulario de creación de usuario)
+        $reniecData = null;
+        if ($request->boolean('buscar_reniec', false)) {
+            $reniecResult = $reniecService->consultarDni($cleanDni);
+            if (!empty($reniecResult['success']) && !empty($reniecResult['data'])) {
+                $reniecData = $reniecResult['data'];
+            }
+        }
+
+        return response()->json([
+            'valid' => true,
+            'exists' => false,
+            'reniec' => $reniecData !== null,
+            'reniec_data' => $reniecData,
+            'message' => $reniecData
+                ? "DNI disponible y datos encontrados en RENIEC: {$reniecData['nombre_completo']}"
+                : 'DNI disponible.',
+        ]);
+    }
+
     public function store(Request $request)
     {
-        $request->validate([
-            'dni' => 'required|unique:users,dni',
-            'email' => 'required|unique:users,email',
+        $validator = Validator::make($request->all(), [
+            'dni' => 'required|digits:8|unique:users,dni',
+            'name' => 'required|string|max:191',
+            'email' => 'required|string|email|max:191|unique:users,email',
+            'password' => 'required|string|min:6|max:50',
+            'estado' => 'required|in:0,1',
+            'cargo' => 'required|string|max:50',
+            'ugel' => 'nullable|string|max:191',
+            'institucion' => 'nullable|string|max:191',
+            'nivelinstitucion' => 'nullable|string|max:191',
+            'provincia' => 'nullable|string|max:80',
+            'distrito' => 'nullable|string|max:80',
+        ], [
+            'dni.required' => 'El DNI es obligatorio.',
+            'dni.digits' => 'El DNI debe tener exactamente 8 dígitos.',
+            'dni.unique' => 'Este DNI ya está registrado en otro usuario.',
+            'name.required' => 'Los apellidos y nombres son obligatorios.',
+            'name.max' => 'Los apellidos y nombres no deben exceder los 191 caracteres.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El formato del correo electrónico no es válido.',
+            'email.unique' => 'Este correo electrónico ya está registrado en otro usuario.',
+            'email.max' => 'El correo electrónico no debe exceder los 191 caracteres.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
+            'password.max' => 'La contraseña no debe exceder los 50 caracteres.',
+            'estado.required' => 'El estado es obligatorio.',
+            'estado.in' => 'El estado seleccionado no es válido.',
+            'cargo.required' => 'El cargo es obligatorio.',
+            'cargo.max' => 'El cargo no debe exceder los 50 caracteres.',
+            'institucion.max' => 'La institución no debe exceder los 191 caracteres.',
+            'provincia.max' => 'La provincia no debe exceder los 80 caracteres.',
+            'distrito.max' => 'El distrito no debe exceder los 80 caracteres.',
         ]);
-        $users = new User();
-        $users->created_by = Auth::id();
-        $users->name = Str::upper($request->get('name'));
-        $users->email = $request->get('email');
-        $users->ugel = Str::upper($request->get('ugel'));
-        $users->institucion = Str::upper($request->get('institucion'));
-        $users->dni = $request->get('dni');
-        $users->nivelinstitucion = $request->get('nivelinstitucion');
-        $users->cargo = $request->get('cargo');
-        $users->distrito = Str::upper($request->get('distrito'));
-        $users->provincia = Str::upper($request->get('provincia'));
-        $users->estado = $request->get('estado');
-        $users->password = bcrypt($request->get('password'));
-        $users->save();
 
-        return redirect()->route('users.index')
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $user = new User();
+        $user->created_by = Auth::id();
+        $user->name = Str::upper($request->get('name'));
+        $user->email = trim($request->get('email'));
+        $user->ugel = $request->filled('ugel') ? Str::upper($request->get('ugel')) : null;
+        $user->institucion = $request->filled('institucion') ? Str::upper($request->get('institucion')) : null;
+        $user->dni = trim($request->get('dni'));
+        $user->nivelinstitucion = $request->get('nivelinstitucion');
+        $user->cargo = $request->get('cargo');
+        $user->distrito = $request->filled('distrito') ? Str::upper($request->get('distrito')) : null;
+        $user->provincia = $request->filled('provincia') ? Str::upper($request->get('provincia')) : null;
+        $user->estado = (int) $request->get('estado');
+        $user->password = bcrypt($request->get('password'));
+        $user->save();
+
+        return redirect()->route('users.index', ['estado' => $user->estado])
             ->with('success', 'Usuario creado con éxito');
     }
 
@@ -188,81 +284,88 @@ class UserController extends Controller
     }
 
     
-public function update(Request $request, User $user)
-{
-    // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
+    public function update(Request $request, User $user)
+    {
+        // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
 
-    // El formulario de asignación de roles (user.edit) solo envía "roles[]"
-    if ($request->has('roles') && !$request->has('name')) {
-        $validated = $request->validate([
-            'roles' => 'array',
-            'roles.*' => 'integer|exists:roles,id',
+        // El formulario de asignación de roles (user.edit) solo envía "roles[]"
+        if ($request->has('roles') && !$request->has('name')) {
+            $validated = $request->validate([
+                'roles' => 'array',
+                'roles.*' => 'integer|exists:roles,id',
+            ]);
+            $user->roles()->sync($this->filterAssignableRoles($validated['roles'] ?? []));
+            return redirect()->route('users.index', ['estado' => $user->estado])
+                ->with('success', 'Rol actualizado correctamente.');
+        }
+
+        // Validación personalizada con mensajes en español
+        $validator = Validator::make($request->all(), [
+            'dni' => 'required|digits:8|unique:users,dni,' . $user->id,
+            'name' => 'required|string|max:191',
+            'email' => 'required|string|email|max:191|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:6|max:50',
+            'estado' => 'required|in:0,1',
+            'cargo' => 'required|string|max:50',
+            'ugel' => 'nullable|string|max:191',
+            'institucion' => 'nullable|string|max:191',
+            'nivelinstitucion' => 'nullable|string|max:191',
+            'provincia' => 'nullable|string|max:80',
+            'distrito' => 'nullable|string|max:80',
+        ], [
+            'dni.required' => 'El DNI es obligatorio.',
+            'dni.digits' => 'El DNI debe tener exactamente 8 dígitos.',
+            'dni.unique' => 'Este DNI ya está registrado en otro usuario.',
+            'name.required' => 'Los apellidos y nombres son obligatorios.',
+            'name.max' => 'Los apellidos y nombres no deben exceder los 191 caracteres.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El formato del correo electrónico no es válido.',
+            'email.unique' => 'Este correo electrónico ya está registrado en otro usuario.',
+            'email.max' => 'El correo electrónico no debe exceder los 191 caracteres.',
+            'password.min' => 'La nueva contraseña debe tener al menos 6 caracteres.',
+            'password.max' => 'La nueva contraseña no debe exceder los 50 caracteres.',
+            'estado.required' => 'El estado es obligatorio.',
+            'estado.in' => 'El estado seleccionado no es válido.',
+            'cargo.required' => 'El cargo es obligatorio.',
+            'cargo.max' => 'El cargo no debe exceder los 50 caracteres.',
+            'institucion.max' => 'La institución no debe exceder los 191 caracteres.',
+            'provincia.max' => 'La provincia no debe exceder los 80 caracteres.',
+            'distrito.max' => 'El distrito no debe exceder los 80 caracteres.',
         ]);
-        $user->roles()->sync($this->filterAssignableRoles($validated['roles'] ?? []));
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        // Actualizar los datos del usuario
+        $user->dni = trim($request->get('dni'));
+        $user->name = Str::upper($request->get('name'));
+        $user->email = trim($request->get('email'));
+        $user->ugel = $request->filled('ugel') ? Str::upper($request->get('ugel')) : null;
+        $user->institucion = $request->filled('institucion') ? Str::upper($request->get('institucion')) : null;
+        $user->nivelinstitucion = $request->get('nivelinstitucion');
+        $user->cargo = $request->get('cargo');
+        $user->distrito = $request->filled('distrito') ? Str::upper($request->get('distrito')) : null;
+        $user->provincia = $request->filled('provincia') ? Str::upper($request->get('provincia')) : null;
+        $user->estado = (int) $request->get('estado');
+
+        // Solo actualizar la contraseña si se proporciona una nueva
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->get('password'));
+        }
+
+        // Sincronizar roles (mantienes tu lógica original)
+        if ($request->has('roles')) {
+            $user->roles()->sync($this->filterAssignableRoles($request->roles));
+        }
+
+        $user->save();
+
         return redirect()->route('users.index', ['estado' => $user->estado])
-            ->with('success', 'Rol actualizado correctamente.');
+            ->with('success', 'Usuario actualizado correctamente.');
     }
-
-    // Validaci��n personalizada con mensajes en espa�0�9ol
-    $validator = Validator::make($request->all(), [
-        'dni' => 'required|unique:users,dni,' . $user->id,
-        'email' => 'required|email|unique:users,email,' . $user->id,
-        'name' => 'required|string|max:255',
-        'ugel' => 'required',
-        'institucion' => 'required|string|max:30',
-        'nivelinstitucion' => 'required',
-        'provincia' => 'required|string|max:30',
-        'distrito' => 'required|string|max:30',
-        'cargo' => 'required',
-        'estado' => 'required',
-    ], [
-        'dni.unique' => 'Este DNI ya est�� registrado en otro usuario.',
-        'email.unique' => 'Este correo electr��nico ya est�� registrado en otro usuario.',
-        'email.email' => 'El formato del correo electr��nico no es v��lido.',
-        'name.required' => 'El nombre es obligatorio.',
-        'ugel.required' => 'La UGEL es obligatoria.',
-        'institucion.required' => 'La instituci��n es obligatoria.',
-        'nivelinstitucion.required' => 'El tipo de II.EE. es obligatorio.',
-        'provincia.required' => 'La provincia es obligatoria.',
-        'distrito.required' => 'El distrito es obligatorio.',
-        'cargo.required' => 'El cargo es obligatorio.',
-        'estado.required' => 'El estado es obligatorio.',
-    ]);
-
-    // Si la validaci��n falla, redirigir con errores
-    if ($validator->fails()) {
-        return redirect()->back()
-                         ->withErrors($validator)
-                         ->withInput();
-    }
-
-    // Actualizar los datos del usuario
-    $user->dni = $request->get('dni');
-    $user->name = Str::upper($request->get('name'));
-    $user->email = $request->get('email');
-    $user->ugel = $request->get('ugel');
-    $user->institucion = Str::upper($request->get('institucion'));
-    $user->nivelinstitucion = $request->get('nivelinstitucion');
-    $user->cargo = $request->get('cargo');
-    $user->distrito = Str::upper($request->get('distrito'));
-    $user->provincia = Str::upper($request->get('provincia'));
-    $user->estado = $request->get('estado');
-    
-    // Solo actualizar la contrase�0�9a si se proporciona una nueva
-    if ($request->filled('password')) {
-        $user->password = bcrypt($request->get('password'));
-    }
-
-    // Sincronizar roles (mantienes tu l��gica original)
-    if ($request->has('roles')) {
-        $user->roles()->sync($this->filterAssignableRoles($request->roles));
-    }
-
-    $user->save();
-
-    return redirect()->route('users.index', ['estado' => $user->estado])
-        ->with('success', 'Usuario actualizado correctamente.');
-}
 
     public function destroy($id)
     {

@@ -160,6 +160,9 @@ Route::post('/interInstitucion/buscar_index', function (Illuminate\Http\Request 
 
 Route::resource('institucions','App\Http\Controllers\InstitucionController');
 Route::resource('tallers','App\Http\Controllers\TallerController');
+Route::get('/users/check-dni/{dni}', [UserController::class, 'checkDni'])
+    ->name('users.check-dni')
+    ->middleware('auth');
 Route::resource('users','App\Http\Controllers\UserController');
 // "Usuarios inhabilitados" ahora es el tab estado=0 dentro de /users.
 Route::get('/usersi', fn () => redirect()->route('users.index', ['estado' => '0']))

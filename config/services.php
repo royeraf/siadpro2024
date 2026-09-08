@@ -30,4 +30,21 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
+
+    'reniec' => [
+        'url' => env('RENIEC_API_URL', 'https://api.decolecta.com/v1/reniec/dni'),
+        'token' => env('RENIEC_API_TOKEN'),
+    ],
+
+    'perudevs' => [
+        'url' => env('PERUDEVS_DNI_URL', 'https://api.perudevs.com/api/v1/dni/simple'),
+        'token' => env('PERUDEVS_DNI_TOKEN'),
+    ],
+
+    'apiperu' => [
+        'url' => env('APIPERU_DNI_URL', 'https://apiperu.dev/api/dni'),
+        'token' => env('APIPERU_DNI_TOKEN'),
+    ],
+
 ];
+

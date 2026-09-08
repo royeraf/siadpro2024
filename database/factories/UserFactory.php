@@ -34,6 +34,9 @@ class UserFactory extends Factory
             'remember_token' => Str::random(10),
             'profile_photo_path' => null,
             'current_team_id' => null,
+            'dni' => $this->faker->unique()->numerify('########'),
+            'cargo' => 'Docente',
+            'estado' => 1,
         ];
     }
 

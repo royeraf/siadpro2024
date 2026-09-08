@@ -36,6 +36,7 @@ class User extends Authenticatable
         'distrito',
         'institucion',
         'nivelinstitucion',
+        'ugel',
         'created_by',
     ];
 
