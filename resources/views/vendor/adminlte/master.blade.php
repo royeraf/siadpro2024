@@ -26,8 +26,6 @@
     @if(!config('adminlte.enabled_laravel_mix'))
         <link rel="stylesheet" href="{{ asset('vendor/fontawesome-free/css/all.min.css') }}">
         <link rel="stylesheet" href="{{ asset('vendor/overlayScrollbars/css/OverlayScrollbars.min.css') }}">
-        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/favicon.png') }}">
-        <link rel="shortcut icon" type="image/icon" href="{{asset('favicons/favicon.png')}}">
 
         {{-- Configured Stylesheets --}}
         @include('adminlte::plugins', ['type' => 'css'])
