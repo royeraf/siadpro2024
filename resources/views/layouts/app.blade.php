@@ -10,8 +10,9 @@
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/favicon.png') }}">
-        <link rel="shortcut icon" type="image/icon" href="{{asset('favicons/favicon.png')}}">
+        @php($favVersion = '?v=' . (@filemtime(public_path('favicons/favicon.png')) ?: '2'))
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/favicon.png') }}{{ $favVersion }}">
+        <link rel="shortcut icon" type="image/icon" href="{{ asset('favicons/favicon.png') }}{{ $favVersion }}">
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])

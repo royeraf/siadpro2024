@@ -2,8 +2,9 @@
 
 @section('adminlte_css_pre')
     <link rel="stylesheet" href="{{ asset('vendor/icheck-bootstrap/icheck-bootstrap.min.css') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/favicon.png') }}">
-    <link rel="shortcut icon" type="image/icon" href="{{asset('favicons/favicon.png')}}">
+    @php($favVersion = '?v=' . (@filemtime(public_path('favicons/favicon.png')) ?: '2'))
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/favicon.png') }}{{ $favVersion }}">
+    <link rel="shortcut icon" type="image/icon" href="{{ asset('favicons/favicon.png') }}{{ $favVersion }}">
     <style>
         .icheck-compact label {
             font-size: 0.85rem;
