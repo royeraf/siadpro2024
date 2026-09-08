@@ -38,12 +38,12 @@
         padding: 0.75rem 1.25rem !important;
     }
     #ModalView .modal-footer .btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 0.4rem !important;
-        font-weight: 600 !important;
-        padding: 0.45rem 1.1rem !important;
-        border-radius: 0.375rem !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 600;
+        padding: 0.45rem 1.1rem;
+        border-radius: 0.375rem;
         font-size: 0.92rem !important;
         opacity: 1 !important;
         filter: none !important;

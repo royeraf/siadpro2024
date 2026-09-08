@@ -42,19 +42,23 @@
         padding: 0.75rem 1.25rem !important;
     }
     #ModalEvent .modal-footer .btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 0.4rem !important;
-        font-weight: 600 !important;
-        padding: 0.45rem 1.1rem !important;
-        border-radius: 0.375rem !important;
-        font-size: 0.92rem !important;
-        line-height: 1.5 !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 600;
+        padding: 0.45rem 1.1rem;
+        border-radius: 0.375rem;
+        font-size: 0.92rem;
+        line-height: 1.5;
         opacity: 1 !important;
         filter: none !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12) !important;
-        transition: all 0.2s ease-in-out !important;
-        cursor: pointer !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+    }
+    #ModalEvent .modal-footer .btn[style*="display: none"],
+    #ModalEvent .modal-footer .btn.d-none {
+        display: none !important;
     }
     #ModalEvent .modal-footer .btn:hover {
         opacity: 1 !important;
@@ -182,6 +186,7 @@
 				$('#title, #evento, #start, #end').prop('readonly', true);
 				$('#color').prop('disabled', true);
 				$('#myModalLabel').text('Visualización de Evento');
+				$('#btnCerrar').show().html('<i class="fas fa-times mr-1"></i> Cerrar');
 				$('#btnEditar').show();
 				$('#btnCancelar').hide();
 				$('#btnAccion').hide();
@@ -192,18 +197,19 @@
 			$('#title, #evento, #start, #end').prop('readonly', false);
 			$('#color').prop('disabled', false);
 			$('#btnEditar').hide();
-			$('#btnAccion').show();
 
 			if (mode === 'edit') {
 				$('#myModalLabel').text('Modificar Evento');
-				$('#btnAccion').html('<i class="fas fa-save mr-1"></i> Modificar');
+				$('#btnCerrar').hide();
+				$('#btnCancelar').show().html('<i class="fas fa-ban mr-1"></i> Cancelar');
+				$('#btnAccion').show().html('<i class="fas fa-save mr-1"></i> Modificar');
 				$('#grupoEliminar').show();
-				$('#btnCancelar').show();
 			} else {
 				$('#myModalLabel').text('Agregar Evento');
-				$('#btnAccion').html('<i class="fas fa-save mr-1"></i> Registrar');
-				$('#grupoEliminar').hide();
+				$('#btnCerrar').show().html('<i class="fas fa-times mr-1"></i> Cancelar');
 				$('#btnCancelar').hide();
+				$('#btnAccion').show().html('<i class="fas fa-save mr-1"></i> Registrar');
+				$('#grupoEliminar').hide();
 			}
 		}
 

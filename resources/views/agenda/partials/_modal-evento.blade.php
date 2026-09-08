@@ -61,7 +61,7 @@
                 </div>
             </div>
             @can('agendas.destroy')
-            <div class="form-group" id="grupoEliminar">
+            <div class="form-group" id="grupoEliminar" style="display: none;">
                 <div class="col-sm-offset-2 col-sm-10">
                     <div class="checkbox">
                     <label class="text-danger"><input type="checkbox" name="delete" id="deleteCheckbox"> Eliminar Evento</label>
@@ -74,18 +74,18 @@
 
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">
+            <button type="button" class="btn btn-secondary" id="btnCerrar" data-bs-dismiss="modal" data-dismiss="modal">
                 <i class="fas fa-times mr-1"></i> Cerrar
             </button>
             @can('agendas.edit')
-            <button type="button" class="btn btn-warning" id="btnEditar">
+            <button type="button" class="btn btn-warning" id="btnEditar" style="display: none;">
                 <i class="fas fa-edit mr-1"></i> Editar
             </button>
             @endcan
-            <button type="button" class="btn btn-secondary" id="btnCancelar">
+            <button type="button" class="btn btn-secondary" id="btnCancelar" style="display: none;">
                 <i class="fas fa-ban mr-1"></i> Cancelar
             </button>
-            <button type="submit" class="btn btn-primary" id="btnAccion">
+            <button type="submit" class="btn btn-primary" id="btnAccion" style="display: none;">
                 <i class="fas fa-save mr-1"></i> Guardar
             </button>
         </div>
