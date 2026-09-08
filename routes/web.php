@@ -189,6 +189,7 @@ Route::get("/dashboard-index", ['App\Http\Controllers\DashboardController'::clas
 Route::get("/dashboard-dre", ['App\Http\Controllers\DashboardController'::class, "dre"])->middleware('auth')->name('dashboard.dre');
 Route::get("/dashboard-ugel", ['App\Http\Controllers\DashboardController'::class, "ugel"])->middleware('auth')->name('dashboard.ugel');
 Route::get("/dashboard-pc", ['App\Http\Controllers\DashboardController'::class, "pc"])->middleware('auth')->name('dashboard.pc');
+Route::get('/dashboard/resumen-modulos', [App\Http\Controllers\DashboardController::class, 'resumenModulos'])->middleware('auth')->name('dashboard.resumen-modulos');
 
 Route::resource('agendas','App\Http\Controllers\AgendaController');
 Route::get('agenda/view', [App\Http\Controllers\AgendaViewController::class, 'index'])->middleware('auth')->name('agendas.view');

@@ -794,6 +794,71 @@
           <!-- /.col -->
         </div>
         <!-- /.row -->
+
+      {{-- ============================================================
+           RESUMEN DE PARTICIPACIÓN POR MÓDULO
+           ============================================================ --}}
+      <div class="row mt-3">
+        <div class="col-12">
+          <div class="card card-primary card-outline">
+            <div class="card-header d-flex align-items-center">
+              <h3 class="card-title mb-0">
+                <i class="fas fa-chart-bar mr-2"></i>
+                Resumen de Participación por Módulo
+              </h3>
+              <span id="resumen-scope-badge" class="badge badge-info ml-2" style="font-size:0.85rem;"></span>
+              <div class="card-tools ml-auto">
+                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                  <i class="fas fa-minus"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+
+              {{-- Tarjetas de totales por módulo --}}
+              <div class="row" id="resumen-cards">
+                <div class="col-12 text-center py-3">
+                  <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                  <p class="text-muted mt-2">Cargando estadísticas...</p>
+                </div>
+              </div>
+
+              {{-- Gráfico de barras horizontales --}}
+              <div class="row mt-3" id="resumen-grafico-row" style="display:none!important;">
+                <div class="col-lg-8 col-12">
+                  <h6 class="text-muted mb-2">
+                    <i class="fas fa-users mr-1"></i>
+                    Docentes que registraron por módulo
+                    <small id="resumen-total-label" class="ml-1"></small>
+                  </h6>
+                  <canvas id="chartResumenModulos" style="max-height:320px;"></canvas>
+                </div>
+                <div class="col-lg-4 col-12 mt-3 mt-lg-0">
+                  <h6 class="text-muted mb-2"><i class="fas fa-list mr-1"></i>Detalle por módulo</h6>
+                  <div id="resumen-tabla" class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead class="thead-light">
+                        <tr>
+                          <th>Módulo</th>
+                          <th class="text-right">Registros</th>
+                          <th class="text-right">Docentes</th>
+                          <th class="text-right">%</th>
+                        </tr>
+                      </thead>
+                      <tbody id="resumen-tabla-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+            </div>{{-- /card-body --}}
+          </div>{{-- /card --}}
+        </div>
+      </div>
+      {{-- ============================================================
+           FIN RESUMEN DE PARTICIPACIÓN POR MÓDULO
+           ============================================================ --}}
+
       </div><!--/. container-fluid -->
     </section>
     <!-- /.content -->
@@ -1786,5 +1851,161 @@ $(document).ready(function () {
 
 
 });
+</script>
+
+<script>
+// ============================================================
+// RESUMEN DE PARTICIPACIÓN POR MÓDULO — scoped por rol
+// ============================================================
+(function () {
+  const colores = {
+    agenda:    { bg: '#3c8dbc', light: '#d2eaf5' },
+    accion:    { bg: '#00a65a', light: '#d4f4e5' },
+    difusion:  { bg: '#00c0ef', light: '#ccf2fc' },
+    evidencia: { bg: '#dd4b39', light: '#fad9d5' },
+    plan:      { bg: '#f39c12', light: '#fdedc4' },
+    produccion:{ bg: '#8224D5', light: '#e4d0f7' },
+    informe:   { bg: '#605ca8', light: '#dddaf5' },
+  };
+
+  const iconos = {
+    agenda:    'fa-calendar-alt',
+    accion:    'fa-bullhorn',
+    difusion:  'fa-share-alt',
+    evidencia: 'fa-images',
+    plan:      'fa-book-open',
+    produccion:'fa-pencil-alt',
+    informe:   'fa-file-alt',
+  };
+
+  function colorPorcentaje(pct) {
+    if (pct >= 75) return 'success';
+    if (pct >= 50) return 'primary';
+    if (pct >= 25) return 'warning';
+    return 'danger';
+  }
+
+  let chartResumen = null;
+
+  function renderCards(data) {
+    const container = document.getElementById('resumen-cards');
+    const badge     = document.getElementById('resumen-scope-badge');
+    const totalLabel= document.getElementById('resumen-total-label');
+
+    badge.textContent = data.scope;
+    totalLabel.textContent = `(total: ${data.totalDocentes} docentes)`;
+
+    let html = '';
+    data.modulos.forEach(function (m) {
+      const col   = colores[m.key] || { bg: '#6c757d', light: '#e2e3e5' };
+      const icon  = iconos[m.key]  || 'fa-folder';
+      const color = colorPorcentaje(m.porcentaje);
+
+      html += `
+        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-3">
+          <div class="card shadow-sm h-100 mb-0" style="border-left: 4px solid ${col.bg};">
+            <div class="card-body py-3">
+              <div class="d-flex align-items-center mb-2">
+                <span class="rounded-circle d-flex align-items-center justify-content-center mr-2"
+                      style="width:36px;height:36px;background:${col.light};flex-shrink:0;">
+                  <i class="fas ${icon}" style="color:${col.bg};font-size:1rem;"></i>
+                </span>
+                <div style="min-width:0;">
+                  <div class="text-muted small" style="line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                       title="${m.nombre}">${m.nombre}</div>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-end mb-1">
+                <div>
+                  <span class="h4 mb-0 font-weight-bold" style="color:${col.bg};">${m.porcentaje}%</span>
+                  <small class="text-muted ml-1">participación</small>
+                </div>
+                <div class="text-right">
+                  <div class="small text-muted">${m.docentes_con_registro.toLocaleString()} docentes</div>
+                  <div class="small text-muted">${m.registros.toLocaleString()} registros</div>
+                </div>
+              </div>
+              <div class="progress" style="height:6px;">
+                <div class="progress-bar bg-${color}" role="progressbar"
+                     style="width:${Math.min(m.porcentaje, 100)}%"
+                     aria-valuenow="${m.porcentaje}" aria-valuemin="0" aria-valuemax="100">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+
+    // Tabla
+    const tbody = document.getElementById('resumen-tabla-body');
+    tbody.innerHTML = data.modulos.map(function (m) {
+      const color = colorPorcentaje(m.porcentaje);
+      return `<tr>
+        <td>${m.nombre}</td>
+        <td class="text-right">${m.registros.toLocaleString()}</td>
+        <td class="text-right">${m.docentes_con_registro.toLocaleString()}</td>
+        <td class="text-right"><span class="badge badge-${color}">${m.porcentaje}%</span></td>
+      </tr>`;
+    }).join('');
+
+    // Gráfico de barras horizontal
+    const graficRow = document.getElementById('resumen-grafico-row');
+    graficRow.style.setProperty('display', 'flex', 'important');
+
+    const labels     = data.modulos.map(m => m.nombre);
+    const valores    = data.modulos.map(m => m.docentes_con_registro);
+    const bgColors   = data.modulos.map(m => (colores[m.key] || { bg: '#6c757d' }).bg);
+    const pcts       = data.modulos.map(m => m.porcentaje);
+
+    if (chartResumen) { chartResumen.destroy(); }
+    const ctx = document.getElementById('chartResumenModulos').getContext('2d');
+    chartResumen = new Chart(ctx, {
+      type: 'horizontalBar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Docentes con registro',
+          data: valores,
+          backgroundColor: bgColors,
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        responsive: true,
+        scales: {
+          xAxes: [{ ticks: { beginAtZero: true, precision: 0 } }],
+          yAxes: [{ ticks: { fontSize: 12 } }]
+        },
+        tooltips: {
+          callbacks: {
+            label: function (item, d) {
+              var idx = item.index;
+              return ` ${valores[idx]} docentes (${pcts[idx]}% participación)`;
+            }
+          }
+        },
+        legend: { display: false },
+      }
+    });
+  }
+
+  function cargarResumen() {
+    fetch('{{ route("dashboard.resumen-modulos") }}', {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) { renderCards(data); })
+    .catch(function (err) {
+      document.getElementById('resumen-cards').innerHTML =
+        '<div class="col-12"><div class="alert alert-warning"><i class="fas fa-exclamation-triangle mr-1"></i>No se pudo cargar el resumen de módulos.</div></div>';
+      console.error('resumenModulos error:', err);
+    });
+  }
+
+  // El script está al final del body: el DOM ya está listo, llamar directamente.
+  // Se usa setTimeout(0) para asegurar que jQuery/AdminLTE terminaron de iniciar.
+  setTimeout(cargarResumen, 0);
+})();
 </script>
 @stop

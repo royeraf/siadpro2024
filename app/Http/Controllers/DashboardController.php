@@ -902,6 +902,184 @@ class DashboardController extends Controller
 
         return view('dashboard.index', compact('docentesEnAgendas', 'docentesEnEvidencias', 'docentesEnInformes'));*/
     }
+
+    public function resumenModulos(): \Illuminate\Http\JsonResponse
+    {
+        $user = Auth::user();
+
+        // ── Determinar scope ──────────────────────────────────────────────
+        $scope        = 'DRE';
+        $scopeLabel   = 'DRE';
+        $filterByUser = null; // null = sin filtro adicional
+
+        if (
+            $user->hasRole('EspecUGEL') &&
+            !$user->hasRole('Admin') &&
+            !$user->hasRole('EspecDRE')
+        ) {
+            $scope      = 'ugel';
+            $scopeLabel = 'UGEL: ' . $user->ugel;
+        } elseif (
+            $user->hasRole('Director') &&
+            !$user->hasRole('Admin') &&
+            !$user->hasRole('EspecDRE') &&
+            !$user->hasRole('EspecUGEL')
+        ) {
+            $scope      = 'institucion';
+            $scopeLabel = 'Institución: ' . $user->institucion;
+        } elseif (
+            !$user->hasRole('Admin') &&
+            !$user->hasRole('EspecDRE') &&
+            !$user->hasRole('EspecUGEL') &&
+            !$user->hasRole('Director')
+        ) {
+            $scope        = 'propio';
+            $scopeLabel   = 'Propio';
+            $filterByUser = $user->id;
+        }
+        // else: Admin o EspecDRE → scope = 'DRE', ve todo
+
+        // ── Total de docentes en el scope ─────────────────────────────────
+        $cargosDocentes = ['Docente', 'Director', 'Profesor Coordinador'];
+
+        $qDocentes = User::where('users.estado', '1')
+            ->whereIn('users.cargo', $cargosDocentes);
+
+        if ($scope === 'ugel') {
+            $qDocentes->where('users.ugel', $user->ugel);
+        } elseif ($scope === 'institucion') {
+            $qDocentes->where('users.institucion', $user->institucion);
+        } elseif ($scope === 'propio') {
+            $qDocentes->where('users.id', $filterByUser);
+        }
+
+        $totalDocentes = $qDocentes->count();
+
+        // ── Helper: aplicar filtro de scope a un builder que ya tiene join('users') ──
+        $applyScope = function ($query) use ($scope, $user, $filterByUser) {
+            if ($scope === 'ugel') {
+                $query->where('users.ugel', $user->ugel);
+            } elseif ($scope === 'institucion') {
+                $query->where('users.institucion', $user->institucion);
+            } elseif ($scope === 'propio') {
+                $query->where('pro_agendas.idUser', $filterByUser); // placeholder; sobreescrito por módulo
+            }
+            return $query;
+        };
+
+        // ── Helper genérico por módulo ────────────────────────────────────
+        $modStats = function (string $table, string $userField = 'idUser') use ($scope, $user, $filterByUser, $totalDocentes) {
+            $base = DB::table($table)
+                ->where("{$table}.estado", '1')
+                ->join('users', "users.id", '=', "{$table}.{$userField}")
+                ->whereIn('users.cargo', ['Docente', 'Director', 'Profesor Coordinador'])
+                ->where('users.estado', '1');
+
+            if ($scope === 'ugel') {
+                $base->where('users.ugel', $user->ugel);
+            } elseif ($scope === 'institucion') {
+                $base->where('users.institucion', $user->institucion);
+            } elseif ($scope === 'propio') {
+                $base->where("{$table}.{$userField}", $filterByUser);
+            }
+
+            $registros = (clone $base)->count();
+            $docentesCon = (clone $base)->distinct("{$table}.{$userField}")->count("{$table}.{$userField}");
+            $porcentaje  = round($docentesCon / max($totalDocentes, 1) * 100, 1);
+
+            return compact('registros', 'docentesCon', 'porcentaje');
+        };
+
+        // Módulo especial Acción con filtro tipo
+        $accionStats = function (string $tipo) use ($scope, $user, $filterByUser, $totalDocentes) {
+            $base = DB::table('pro_accions')
+                ->where('pro_accions.estado', '1')
+                ->where('pro_accions.tipo', $tipo)
+                ->join('users', 'users.id', '=', 'pro_accions.idUser')
+                ->whereIn('users.cargo', ['Docente', 'Director', 'Profesor Coordinador'])
+                ->where('users.estado', '1');
+
+            if ($scope === 'ugel') {
+                $base->where('users.ugel', $user->ugel);
+            } elseif ($scope === 'institucion') {
+                $base->where('users.institucion', $user->institucion);
+            } elseif ($scope === 'propio') {
+                $base->where('pro_accions.idUser', $filterByUser);
+            }
+
+            $registros   = (clone $base)->count();
+            $docentesCon = (clone $base)->distinct('pro_accions.idUser')->count('pro_accions.idUser');
+            $porcentaje  = round($docentesCon / max($totalDocentes, 1) * 100, 1);
+
+            return compact('registros', 'docentesCon', 'porcentaje');
+        };
+
+        // ── Estadísticas por módulo ───────────────────────────────────────
+        $agenda     = $modStats('pro_agendas');
+        $accion     = $accionStats('sensibilizacion');
+        $difusion   = $accionStats('difusion');
+        $evidencia  = $modStats('pro_evidencias');
+        $plan       = $modStats('pro_plans');
+        $produccion = $modStats('pro_produccions');
+        $informe    = $modStats('pro_informes');
+
+        return response()->json([
+            'scope'         => $scopeLabel,
+            'totalDocentes' => $totalDocentes,
+            'modulos'       => [
+                [
+                    'nombre'               => 'Agenda de Lectura',
+                    'key'                  => 'agenda',
+                    'registros'            => $agenda['registros'],
+                    'docentes_con_registro' => $agenda['docentesCon'],
+                    'porcentaje'           => $agenda['porcentaje'],
+                ],
+                [
+                    'nombre'               => 'Acciones de Sensibilización',
+                    'key'                  => 'accion',
+                    'registros'            => $accion['registros'],
+                    'docentes_con_registro' => $accion['docentesCon'],
+                    'porcentaje'           => $accion['porcentaje'],
+                ],
+                [
+                    'nombre'               => 'Acciones de Difusión',
+                    'key'                  => 'difusion',
+                    'registros'            => $difusion['registros'],
+                    'docentes_con_registro' => $difusion['docentesCon'],
+                    'porcentaje'           => $difusion['porcentaje'],
+                ],
+                [
+                    'nombre'               => 'Evidencias de Asistencia Técnica',
+                    'key'                  => 'evidencia',
+                    'registros'            => $evidencia['registros'],
+                    'docentes_con_registro' => $evidencia['docentesCon'],
+                    'porcentaje'           => $evidencia['porcentaje'],
+                ],
+                [
+                    'nombre'               => 'Espacio de Lectura en el Hogar',
+                    'key'                  => 'plan',
+                    'registros'            => $plan['registros'],
+                    'docentes_con_registro' => $plan['docentesCon'],
+                    'porcentaje'           => $plan['porcentaje'],
+                ],
+                [
+                    'nombre'               => 'Producción de Textos Infantiles',
+                    'key'                  => 'produccion',
+                    'registros'            => $produccion['registros'],
+                    'docentes_con_registro' => $produccion['docentesCon'],
+                    'porcentaje'           => $produccion['porcentaje'],
+                ],
+                [
+                    'nombre'               => 'Biblioteca del Aula (Informes)',
+                    'key'                  => 'informe',
+                    'registros'            => $informe['registros'],
+                    'docentes_con_registro' => $informe['docentesCon'],
+                    'porcentaje'           => $informe['porcentaje'],
+                ],
+            ],
+        ]);
+    }
+
     public function ugel()
     {
         return "ugel";        
