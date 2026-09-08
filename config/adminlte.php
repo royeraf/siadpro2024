@@ -342,11 +342,6 @@ return [
             'can' => 'institucions.index',
         ],
         [
-            'text' => 'Internet/Instituciones',
-            'url'  => 'interInstitucion',
-            'icon' => 'fas fa-building',
-        ],
-        [
             'text' => 'USUARIOS',
             'url'  => 'users',
             'icon' => 'users',
