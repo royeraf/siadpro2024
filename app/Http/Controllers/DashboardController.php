@@ -32,7 +32,23 @@ class DashboardController extends Controller
     }
     public function index()
     {
-        $data = DB::select('CALL prdwebregistros()');/* 187 Ambo */
+        try {
+            $data = DB::select('CALL prdwebregistros()');
+        } catch (\Throwable $e) {
+            $data = [
+                (object) [
+                    'totaldocentes'      => User::where('estado', '1')->whereIn('cargo', ['Director', 'Docente', 'Profesor Coordinador'])->count(),
+                    'totalinstituciones' => Institucion::where('estado', '1')->count(),
+                    'totalacciones'      => Accion::where('estado', '1')->where('tipo', 'sensibilizacion')->count(),
+                    'totaldifusiones'    => Accion::where('estado', '1')->where('tipo', 'difusion')->count(),
+                    'totalevidencias'    => Evidencia::where('estado', '1')->count(),
+                    'totalinformes'      => Informe::where('estado', '1')->count(),
+                    'totalplans'         => Plan::where('estado', '1')->count(),
+                    'totalproducciones'  => Produccion::where('estado', '1')->count(),
+                    'totalagendas'       => Agenda::where('estado', '1')->count(),
+                ]
+            ];
+        }
     // Esta consulta es para el total de docentes, directores y pofesor coordinador de cada ugel
         $totaluserByUgel = User::select(
             DB::raw('COUNT(DISTINCT users.id) as totaldocentes'),
