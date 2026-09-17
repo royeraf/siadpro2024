@@ -14,6 +14,11 @@ const SHEET_EXTS = ['xlsx', 'xls', 'csv'];
 // que la página se estire de borde a borde, dejando márgenes a los costados
 // como en el visor nativo de PDF de Chrome.
 const MAX_READING_WIDTH = 900;
+// Al navegar a una página se deja un pequeño espacio arriba para que no quede
+// pegada al borde. El detector de página actual debe tolerar ese espacio (y el
+// redondeo de scrollTop), de lo contrario revierte el cambio apenas ocurre.
+const PAGE_SCROLL_GAP = 8;
+const PAGE_NAV_TOLERANCE = 16;
 
 let current = null;
 let goToPage = null;
@@ -163,7 +168,7 @@ async function openPdf(url, name) {
         els().next.disabled = n >= numPages;
         if (scrollTo) {
             const p = state.pages[n - 1];
-            if (p) els().content.scrollTop = p.wrap.offsetTop - 8;
+            if (p) els().content.scrollTop = p.wrap.offsetTop - PAGE_SCROLL_GAP;
         }
     };
 
@@ -176,10 +181,16 @@ async function openPdf(url, name) {
     let scrollRAF = null;
     const updateCurrentPageFromScroll = () => {
         scrollRAF = null;
-        const top = els().content.scrollTop;
+        const content = els().content;
+        const top = content.scrollTop;
         let idx = 0;
         for (let i = 0; i < state.pages.length; i++) {
-            if (state.pages[i].wrap.offsetTop <= top + 4) idx = i; else break;
+            if (state.pages[i].wrap.offsetTop <= top + PAGE_NAV_TOLERANCE) idx = i; else break;
+        }
+        // La última página puede no alcanzar nunca el borde superior (el scroll
+        // se topa con el final del contenido): si ya estamos abajo, es ella.
+        if (top + content.clientHeight >= content.scrollHeight - 2) {
+            idx = state.pages.length - 1;
         }
         setCurrentPage(idx + 1, false);
     };
@@ -364,7 +375,7 @@ async function openDocx(url, name) {
 
     const scrollToPage = (n) => {
         const s = state.baseScale * state.zoom;
-        els().content.scrollTop = host.offsetTop + pageTops[n - 1] * s - 8;
+        els().content.scrollTop = host.offsetTop + pageTops[n - 1] * s - PAGE_SCROLL_GAP;
     };
 
     const setCurrentPage = (n, scrollTo) => {
@@ -383,11 +394,15 @@ async function openDocx(url, name) {
     let scrollRAF = null;
     const updateCurrentPageFromScroll = () => {
         scrollRAF = null;
+        const content = els().content;
         const s = state.baseScale * state.zoom;
-        const top = els().content.scrollTop;
+        const top = content.scrollTop;
         let idx = 0;
         for (let i = 0; i < pages.length; i++) {
-            if (host.offsetTop + pageTops[i] * s <= top + 4) idx = i; else break;
+            if (host.offsetTop + pageTops[i] * s <= top + PAGE_NAV_TOLERANCE) idx = i; else break;
+        }
+        if (top + content.clientHeight >= content.scrollHeight - 2) {
+            idx = pages.length - 1;
         }
         setCurrentPage(idx + 1, false);
     };
@@ -678,7 +693,34 @@ export function initFileViewer() {
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !els().root.classList.contains('hidden')) close();
+        if (els().root.classList.contains('hidden')) return;
+
+        if (e.key === 'Escape') { close(); return; }
+
+        // No interferir mientras se escribe en el campo de página u otro control.
+        const target = e.target;
+        const tag = (target && target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (target && target.isContentEditable)) return;
+
+        // Navegación con flechas (solo en visores que tienen páginas).
+        if (!goToPage) return;
+
+        const max = parseInt(els().pageTotal.textContent, 10) || 1;
+        const cur = parseInt(els().pageInput.value, 10) || 1;
+
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+            e.preventDefault();
+            goToPage(Math.min(cur + 1, max));
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+            e.preventDefault();
+            goToPage(Math.max(cur - 1, 1));
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            goToPage(1);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            goToPage(max);
+        }
     });
 
     els().pageInput.addEventListener('keydown', (e) => {
