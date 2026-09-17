@@ -214,6 +214,8 @@ Route::get('sectores/{id}/download', ['App\Http\Controllers\SectorController'::c
 
 Route::get('/visor/stream', ['App\Http\Controllers\FileViewerController'::class, 'stream'])->middleware('auth')->name('visor.stream');
 
+Route::get('/visor/pdf', ['App\Http\Controllers\FileViewerController'::class, 'pdf'])->middleware('auth')->name('visor.pdf');
+
 Route::get('informes/{id}/download', ['App\Http\Controllers\InformeController'::class, 'download'])->name('informes.download');
 Route::get('plans/{id}/download', ['App\Http\Controllers\PlanController'::class, 'download'])->name('plans.download');
 

@@ -7,7 +7,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const IMG_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
 const PDF_EXTS = ['pdf'];
-const DOC_EXTS = ['docx'];
+const WORD_EXTS = ['doc', 'docx'];
 const SHEET_EXTS = ['xlsx', 'xls', 'csv'];
 // Ancho máximo de "hoja" al ajustar al ancho disponible (PDF/Word). En pantallas
 // angostas nunca se activa (el ancho disponible ya es menor); en desktop evita
@@ -455,6 +455,51 @@ async function openDocx(url, name) {
     setCurrentPage(1, false);
 }
 
+/* --------------------------- Word (conversión a PDF) --------------------------- */
+// El visor nativo docx-preview no puede dibujar imágenes en formatos que el
+// navegador no soporta (EMF/WMF/TIFF) ni siempre respeta la paginación real de
+// Word. Por eso se intenta primero la conversión a PDF en el servidor
+// (LibreOffice headless) y se muestra con el visor PDF; si la conversión no
+// está disponible o falla, se cae al render nativo con docx-preview.
+function convertedPdfUrl(streamUrl) {
+    const root = els().root;
+    const base = root && root.dataset ? root.dataset.pdfRoute : null;
+    if (!base) return null;
+
+    try {
+        const pathParam = new URL(streamUrl, window.location.origin).searchParams.get('path');
+        if (!pathParam) return null;
+        return base + (base.includes('?') ? '&' : '?') + 'path=' + encodeURIComponent(pathParam);
+    } catch (e) {
+        return null;
+    }
+}
+
+function resetAfterFailedOpen() {
+    if (current && current.cleanupExtra) {
+        try { current.cleanupExtra(); } catch (e) { /* noop */ }
+    }
+    if (current && current.pdf) {
+        try { current.pdf.destroy(); } catch (e) { /* noop */ }
+    }
+    els().body.innerHTML = '';
+    els().loading.classList.remove('hidden');
+}
+
+async function openWord(url, name) {
+    const pdfUrl = convertedPdfUrl(url);
+
+    if (pdfUrl) {
+        try {
+            return await openPdf(pdfUrl, name);
+        } catch (e) {
+            resetAfterFailedOpen();
+        }
+    }
+
+    return await openDocx(url, name);
+}
+
 /* --------------------------- Excel / CSV --------------------------- */
 function sheetToTable(ws) {
     const html = XLSX.utils.sheet_to_html(ws, { header: '', footer: '' });
@@ -619,7 +664,7 @@ function close() {
     const fallback = setTimeout(finish, 220);
 }
 
-const KNOWN_EXTS = [...PDF_EXTS, ...IMG_EXTS, ...DOC_EXTS, ...SHEET_EXTS, 'txt'];
+const KNOWN_EXTS = [...PDF_EXTS, ...IMG_EXTS, ...WORD_EXTS, ...SHEET_EXTS, 'txt'];
 
 // El nombre visible (basename del registro en la base de datos) a veces llega
 // vacío o mal formado para ciertos registros, aunque la URL del archivo sea
@@ -663,7 +708,7 @@ function open(payload) {
         try {
             if (PDF_EXTS.includes(ext)) return await openPdf(url, name);
             if (IMG_EXTS.includes(ext)) return openImage(url, name);
-            if (DOC_EXTS.includes(ext)) return await openDocx(url, name);
+            if (WORD_EXTS.includes(ext)) return await openWord(url, name);
             if (SHEET_EXTS.includes(ext)) return await openSheet(url, name);
             if (ext === 'txt') return await openText(url, name);
             openUnsupported(name);

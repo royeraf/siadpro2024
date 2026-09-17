@@ -2,7 +2,7 @@
 {{-- El estilo inline es una salvaguarda: si por lo que sea el CSS de Tailwind
      no carga, este div igual debe quedar oculto y fuera del flujo normal de
      la página en vez de mostrarse permanentemente como contenido inline. --}}
-<div id="file-viewer" class="fixed inset-0 z-[9999] hidden" style="display:none; position:fixed; inset:0; z-index:9999;" role="dialog" aria-modal="true" aria-label="Visualizador de archivos">
+<div id="file-viewer" class="fixed inset-0 z-[9999] hidden" style="display:none; position:fixed; inset:0; z-index:9999;" role="dialog" aria-modal="true" aria-label="Visualizador de archivos" data-pdf-route="{{ route('visor.pdf', [], false) }}">
     {{-- Backdrop --}}
     <div id="fv-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
 
