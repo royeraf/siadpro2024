@@ -36,7 +36,7 @@ class PlanController extends Controller
     {
         $usuario = Auth::user()->id;
 
-        $query = Plan::where('estado', '1')->where('idUser', $usuario);
+        $query = Plan::where('estado', '1')->where('idUser', $usuario)->with('getUser');
 
         if ($request->filled('texto')) {
             $query->where('nombrePlan', 'LIKE', '%' . $request->input('texto') . '%');
@@ -371,60 +371,6 @@ class PlanController extends Controller
         $plans = new Plan;
         $plans->enlace = $route . '/' . $fileContent;
         $plans->nombrePlan = $request->get('nombrePlan');
-        switch($extension){
-            case 'doc':
-                $plans->documento = 'fas fa-file-word';
-                $plans->color = 'blue';
-                break;
-            case 'docx':
-                $plans->documento = 'fas fa-file-word';
-                $plans->color = 'blue';
-                break;
-            case 'png':
-                $plans->documento = 'fas fa-file-image';
-                $plans->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $plans->documento = 'fas fa-file-image';
-                $plans->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $plans->documento = 'fas fa-file-image';
-                $plans->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $plans->documento = 'fas fa-file-pdf';
-                $plans->color = 'red';
-                break;
-            case 'ppt':
-                $plans->documento = 'fas fa-file-powerpoint';
-                $plans->color = 'orange';
-                break;
-            case 'pptm':
-                $plans->documento = 'fas fa-file-powerpoint';
-                $plans->color = 'orange';
-                break;
-            case 'pptx':
-                $plans->documento = 'fas fa-file-powerpoint';
-                $plans->color = 'orange';
-                break;
-            case 'xlm':
-                $plans->documento = 'fas fa-file-excel';
-                $plans->color = 'green';
-                break;
-            case 'xls':
-                $plans->documento = 'fas fa-file-excel';
-                $plans->color = 'green';
-                break;   
-            case 'xlsm':
-                $plans->documento = 'fas fa-file-excel';
-                $plans->color = 'green';
-                break;
-            case 'xlsx':
-                $plans->documento = 'fas fa-file-excel';
-                $plans->color = 'green';
-                break;
-        }
         $plans->fecha = $request->get('fecha');
         $plans->descripcion = $request->get('descripcion');
         $plans->idUser = Auth::user()->id;
@@ -450,90 +396,41 @@ class PlanController extends Controller
     public function update(Request $request, Plan $plan)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
+            'documento' => 'nullable|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
         ], [
-            'documento.max' => 'Archivo superior a 2MB', 
+            'documento.max' => 'Archivo superior a 10MB', 
         ]);
         
-        $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
-        $extension = $file->getClientOriginalExtension();
-        $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombrePlan').' '.$dateTimeNow.'.'. $extension;
-        $route = 'planA';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
-        Storage::makeDirectory('public/' . $route);
-        Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
-        Storage::putFileAs('public/' . $route, $file, $fileContent);
-         // Eliminar el archivo antiguo
-        Storage::delete('public/'.$plan->enlace);
+        if ($request->hasFile('documento')) {
+            $file = $request->file('documento');
+            $extension = $file->getClientOriginalExtension();
+            $dateTimeNow = now()->format('Ymd_His_u');
+            $fileContent = $request->get('nombrePlan').' '.$dateTimeNow.'.'. $extension;
+            $route = 'planA';
+            
+            // Asegurarse de que la carpeta existe y tiene los permisos correctos
+            Storage::makeDirectory('public/' . $route);
+            Storage::disk('public')->setVisibility($route, 'public');
+            
+            // Almacenar el archivo con la función storeAs()
+            Storage::putFileAs('public/' . $route, $file, $fileContent);
 
-        $plan->enlace = $route . '/' . $fileContent;
-        $plan->nombrePlan = $request->get('nombrePlan');
-        switch($extension){
-            case 'doc':
-                $plan->documento = 'fas fa-file-word';
-                $plan->color = 'blue';
-                break;
-            case 'docx':
-                $plan->documento = 'fas fa-file-word';
-                $plan->color = 'blue';
-                break;
-            case 'png':
-                $plan->documento = 'fas fa-file-image';
-                $plan->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $plan->documento = 'fas fa-file-image';
-                $plan->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $plan->documento = 'fas fa-file-image';
-                $plan->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $plan->documento = 'fas fa-file-pdf';
-                $plan->color = 'red';
-                break;
-            case 'ppt':
-                $plan->documento = 'fas fa-file-powerpoint';
-                $plan->color = 'orange';
-                break;
-            case 'pptm':
-                $plan->documento = 'fas fa-file-powerpoint';
-                $plan->color = 'orange';
-                break;
-            case 'pptx':
-                $plan->documento = 'fas fa-file-powerpoint';
-                $plan->color = 'orange';
-                break;
-            case 'xlm':
-                $plan->documento = 'fas fa-file-excel';
-                $plan->color = 'green';
-                break;
-            case 'xls':
-                $plan->documento = 'fas fa-file-excel';
-                $plan->color = 'green';
-                break;   
-            case 'xlsm':
-                $plan->documento = 'fas fa-file-excel';
-                $plan->color = 'green';
-                break;
-            case 'xlsx':
-                $plan->documento = 'fas fa-file-excel';
-                $plan->color = 'green';
-                break;
+            // Eliminar el archivo antiguo si existía
+            if (!empty($plan->enlace)) {
+                Storage::delete('public/'.$plan->enlace);
+            }
+
+            $plan->enlace = $route . '/' . $fileContent;
         }
+
+        $plan->nombrePlan = $request->get('nombrePlan');
         $plan->fecha = $request->get('fecha');
         $plan->descripcion = $request->get('descripcion');
         $plan->idUser = Auth::user()->id;
         $plan->estado = 1;
         $plan->save();
         
-        return redirect('/plans');
+        return redirect('/plans')->with('success', '¡Registro actualizado con éxito!');
     }
 
    
