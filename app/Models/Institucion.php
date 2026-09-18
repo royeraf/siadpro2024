@@ -9,5 +9,5 @@ class Institucion extends Model
 {
     use HasFactory;
     protected $table = 'institucions';
-    public $timestamps = false;
+    public $timestamps = true;
 }

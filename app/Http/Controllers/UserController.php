@@ -89,6 +89,12 @@ class UserController extends Controller
             $usersQuery->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
         }
 
+        if ($request->filled('institucion')) {
+            // Coincidencia exacta: el filtro es un combo con valores exactos.
+            // Con LIKE, filtrar "066" tambien traia "32066" ("066" es subcadena).
+            $usersQuery->where('institucion', trim($request->input('institucion')));
+        }
+
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
             $usersQuery->where(function ($q) use ($buscar) {
@@ -105,6 +111,7 @@ class UserController extends Controller
                             ->withQueryString();
 
         $listaUgels = $this->listaUgels($estado);
+        $listaInstituciones = $this->listaInstituciones($estado, $request->input('ugel'));
 
         if ($request->ajax()) {
             return response()->json([
@@ -122,7 +129,7 @@ class UserController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
-        return view('user.index', compact('users', 'listaUgels', 'estado', 'conteos'));
+        return view('user.index', compact('users', 'listaUgels', 'listaInstituciones', 'estado', 'conteos'));
     }
 
     public function create()
@@ -151,6 +158,21 @@ class UserController extends Controller
             ->distinct()
             ->orderBy('ugel')
             ->pluck('ugel');
+    }
+
+    private function listaInstituciones(string $estado, ?string $ugelFiltrada = null)
+    {
+        $query = User::where('estado', $estado)
+            ->whereNotNull('institucion')
+            ->where('institucion', '!=', '');
+
+        if (!empty($ugelFiltrada)) {
+            $query->where('ugel', 'LIKE', "%{$ugelFiltrada}%");
+        }
+
+        return $query->distinct()
+            ->orderBy('institucion')
+            ->pluck('institucion');
     }
 
     public function checkDni(Request $request, string $dni, ReniecService $reniecService)
@@ -416,6 +438,11 @@ class UserController extends Controller
 
         if ($request->filled('ugel')) {
             $query->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
+        }
+
+        if ($request->filled('institucion')) {
+            // Coincidencia exacta, igual que en index (evita que "066" traiga "32066").
+            $query->where('institucion', trim($request->input('institucion')));
         }
 
         $users = $query->orderBy('id', 'desc')->get();

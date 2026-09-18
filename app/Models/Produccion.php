@@ -9,7 +9,7 @@ class Produccion extends Model
 {
     use HasFactory;
     protected $table = 'pro_produccions';
-    public $timestamps = false;
+    public $timestamps = true;
 
     public function getUser(){
         return $this->hasOne(User::class,'id','idUser');

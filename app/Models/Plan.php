@@ -9,7 +9,7 @@ class Plan extends Model
 {
     use HasFactory;
     protected $table = 'pro_plans';
-    public $timestamps = false;
+    public $timestamps = true;
 
     public function getUser(){
         return $this->hasOne(User::class,'id','idUser');

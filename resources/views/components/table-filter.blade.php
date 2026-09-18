@@ -41,11 +41,26 @@
                     this.selected = '';
                     this.query = '';
                     this.open = false;
+                },
+                syncFromQuery() {
+                    // Lo que se ve es lo que se filtra: si el texto coincide
+                    // (sin importar mayusculas) con una opcion, se usa el valor
+                    // canonico; si no, se envia el texto tal cual se escribio.
+                    // Sin esto, escribir y pulsar Buscar sin clicar enviaba
+                    // el valor anterior (o vacio = sin filtro).
+                    const q = (this.query || '').trim();
+                    if (!q) {
+                        this.selected = '';
+                        return;
+                    }
+                    const match = this.options.find(o => o.trim().toLowerCase() === q.toLowerCase());
+                    this.selected = match !== undefined ? match : q;
                 }
-             }" class="relative" @click.outside="open = false">
+             }" class="relative" @click.outside="open = false"
+             x-init="$el.closest('form')?.addEventListener('submit', () => syncFromQuery())">
             <input type="hidden" name="{{ $name }}" :value="selected">
             <input type="text" id="{{ $name }}" x-model="query" autocomplete="off"
-                   @focus="open = true" @click="open = true" @input="open = true; if (query === '') selected = ''"
+                   @focus="open = true" @click="open = true" @input="open = true; syncFromQuery()"
                    placeholder="{{ $placeholder ?: '-- Todos --' }}"
                    class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 pl-2.5 pr-8">
             <button type="button" x-show="query.length > 0" @click="clear()"

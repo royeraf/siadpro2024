@@ -23,7 +23,7 @@
 @endif
 
 @php
-    $filtrosActuales = request()->only(['texto', 'cargos', 'ugel', 'buscar']);
+    $filtrosActuales = request()->only(['texto', 'cargos', 'ugel', 'institucion', 'buscar']);
 @endphp
 
 <!-- Tabs Activos / Inhabilitados Destacadas -->
@@ -83,6 +83,7 @@
         <x-table-filter name="texto" label="DNI" icon="id-card" placeholder="Ingrese DNI" />
         <x-table-filter name="cargos" label="Cargo" icon="briefcase" placeholder="Ingrese el Cargo" />
         <x-table-filter name="ugel" label="UGEL" icon="map-pin" :options="$listaUgels" placeholder="-- Todas las UGEL --" />
+        <x-table-filter name="institucion" label="Institución" icon="school" :options="$listaInstituciones" :searchable="true" placeholder="Buscar institución..." />
     </x-slot>
     <x-slot name="header">
         <tr>

@@ -94,7 +94,7 @@
                                 <select id="ugel" name="ugel" class="form-control @error('ugel') is-invalid @enderror">
                                     <option value="">----Seleccione UGEL-----</option>
                                     @foreach(['Ugel Huánuco', 'Ugel Ambo', 'Ugel Dos de Mayo', 'Ugel Lauricocha', 'Ugel Leoncio Prado', 'Ugel Huacaybamba', 'Ugel Huamalies', 'Ugel Marañon', 'Ugel Pachitea', 'Ugel Puerto Inca', 'Ugel Yarowilca'] as $ug)
-                                        <option value="{{ $ug }}" {{ old('ugel', $user->ugel) == $ug ? 'selected' : '' }}>{{ $ug }}</option>
+                                        <option value="{{ $ug }}" {{ mb_strtoupper(trim((string) old('ugel', $user->ugel))) === mb_strtoupper(trim($ug)) ? 'selected' : '' }}>{{ $ug }}</option>
                                     @endforeach
                                 </select>
                                 @error('ugel')
