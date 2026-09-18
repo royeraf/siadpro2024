@@ -23,24 +23,11 @@ class Agenda extends Model
         'idUser',
         'estado',
         'ugel',
-        'nomDocente',
     ];
 
-    /**
-     * Evento al guardar para asegurar que nomDocente siempre referencie
-     * los datos del docente desde la tabla users.
-     */
-    protected static function booted()
-    {
-        static::saving(function ($agenda) {
-            if ($agenda->idUser && (empty($agenda->nomDocente) || $agenda->isDirty('idUser'))) {
-                $user = $agenda->user ?: User::find($agenda->idUser);
-                if ($user) {
-                    $agenda->nomDocente = $user->name;
-                }
-            }
-        });
-    }
+    protected $appends = [
+        'nomDocente',
+    ];
 
     /**
      * Relación con el usuario (docente) que registró la agenda.
@@ -59,15 +46,11 @@ class Agenda extends Model
     }
 
     /**
-     * Accesor para nomDocente: si tiene valor lo devuelve; si no,
-     * lo obtiene directamente de la relación con users.
+     * Accesor para nomDocente: obtiene dinámicamente el nombre desde la tabla users (a través de la relación)
+     * o respeta el alias si ya viene seleccionado en la consulta (ej. users.name as nomDocente).
      */
     public function getNomDocenteAttribute($value = null)
     {
-        if (!empty($value)) {
-            return $value;
-        }
-
-        return $this->user ? $this->user->name : null;
+        return $this->user ? $this->user->name : $value;
     }
 }

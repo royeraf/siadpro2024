@@ -67,7 +67,6 @@ class AgendaController extends Controller
     {
         $agenda = new Agenda();
         $agenda->title = $request->title;
-        $agenda->nomDocente = Auth::user()->name;
         $agenda->evento = $request->evento;
         $agenda->color = $request->color;
         $agenda->institucion = Auth::user()->institucion;
@@ -94,7 +93,6 @@ class AgendaController extends Controller
             }
             else{
                 $agenda->title = $request->get('title');
-                $agenda->nomDocente = Auth::user()->name;
                 $agenda->evento = $request->get('evento');
                 $agenda->color = $request->get('color');
                 $agenda->start = $request->get('start');
