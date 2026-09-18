@@ -35,7 +35,7 @@ class SectorController extends Controller
     {
         $usuario = Auth::user()->id;
 
-        $sectoresQuery = Sector::where('estado', '1')->where('idUser', $usuario);
+        $sectoresQuery = Sector::with('getUser')->where('estado', '1')->where('idUser', $usuario);
 
         if ($request->filled('texto')) {
             $sectoresQuery->where('nombreSector', 'LIKE', '%' . $request->input('texto') . '%');
@@ -374,107 +374,22 @@ class SectorController extends Controller
     
     public function buscar(Request $request)
     {
-        $usuario = Auth::user()->id;
-        $texto = trim($request->get('texto'));
-        $fecha = trim($request->get('fecha'));
-        $selectedYear = $request->get('year', 2026);
-        
-        $sectores = Sector::where("nombreSector", "LIKE", "%" . $texto . "%")
-            ->where("fecha", "LIKE", "%" . $fecha . "%")
-            ->where('estado', '1')
-            ->where('idUser', $usuario)
-            ->whereYear('fecha', $selectedYear)
-            ->orderBy('fecha', 'desc')
-            ->paginate(10);
-            
-        return view('sector.index')->with(['sectores' => $sectores, 'selectedYear' => $selectedYear]);
+        return $this->index($request);
     }
 
     public function buscarGeneral(Request $request)
     {
-        if (empty($request->get('ugels')) && empty($request->get('instituciones')) && empty($request->get('docentes')) && empty($request->get('texto')) && empty($request->get('year'))) {
-            return redirect('/sector-general');
-        } else {
-            $dni = trim($request->get('texto'));
-            $name = trim($request->get('docentes'));
-            $ugel = trim($request->get('ugels'));
-            $nominstitucion = trim($request->get('instituciones'));
-            $selectedYear = $request->get('year', 2026);
-
-            $query = Sector::select(
-                "pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento",
-                "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha",
-                "pro_sectores.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_sectores.idUser")
-            ->where('pro_sectores.estado', '1')
-            ->whereYear('pro_sectores.fecha', $selectedYear);
-
-            // Aplicar cada filtro independientemente
-            if (!empty($ugel)) {
-                $query->where("users.ugel", "LIKE", "%$ugel%");
-            }
-            
-            if (!empty($dni)) {
-                $query->where("users.dni", "LIKE", "%$dni%");
-            }
-            
-            if (!empty($name)) {
-                $query->where("users.name", "LIKE", "%$name%");
-            }
-            
-            if (!empty($nominstitucion)) {
-                $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-            }
-
-            $sectores = $query->orderBy('pro_sectores.fecha', 'desc')->paginate(10);
-
-            return view('sector.view')->with(['sectores' => $sectores, 'selectedYear' => $selectedYear]);
-        }
+        return $this->general($request);
     }
 
     public function buscarUgel(Request $request)
     {
-        $ugel = Auth::user()->ugel;
-        $dni = trim($request->get('texto'));
-        $nivel = trim($request->get('nivel'));
-        $nominstitucion = trim($request->get('nombinstitucion'));
-        $selectedYear = $request->get('year', 2026);
-        
-        $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.descripcion", "pro_sectores.fecha", "pro_sectores.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.nivelinstitucion", "users.cargo", "users.ugel")
-            ->join("users", "users.id", "=", "pro_sectores.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_sectores.estado', '1')
-            ->where("users.dni", "LIKE", "%" . $dni . "%")
-            ->where('users.nivelinstitucion', "LIKE", "%" . $nivel . "%")
-            ->where("users.institucion", "LIKE", "%" . $nominstitucion . "%")
-            ->whereYear('pro_sectores.fecha', $selectedYear)
-            ->orderBy('pro_sectores.fecha', 'desc')
-            ->paginate(10);
-            
-        return view('sector.ugel')->with(['sectores' => $sectores, 'selectedYear' => $selectedYear]);
+        return $this->ugel($request);
     }
 
     public function buscarDirector(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-        $texto = trim($request->get('texto'));
-        $fecha = trim($request->get('fecha'));
-        $selectedYear = $request->get('year', 2026);
-        
-        $sectores = Sector::select("pro_sectores.id", "pro_sectores.nombreSector", "pro_sectores.documento", "pro_sectores.color", "pro_sectores.tiposector", "pro_sectores.updated_at", "pro_sectores.lugar", "pro_sectores.enlace", "users.name", "users.institucion", "users.provincia", "users.distrito", "users.cargo", "users.ugel")
-            ->join("users", "users.id", "=", "pro_sectores.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_sectores.estado', '1')
-            ->where("pro_sectores.nombreSector", "LIKE", "%" . $texto . "%")
-            ->where("pro_sectores.fecha", "LIKE", "%" . $fecha . "%")
-            ->whereYear('pro_sectores.fecha', $selectedYear)
-            ->orderBy('pro_sectores.fecha', 'desc')
-            ->paginate(10);
-            
-        return view('sector.director')->with(['sectores' => $sectores, 'selectedYear' => $selectedYear]);
+        return $this->director($request);
     }
 
 
@@ -488,9 +403,10 @@ class SectorController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
-        ], [
-            'documento.max' => 'Archivo superior a 2MB', 
+            'nombreSector' => 'required|string|max:191',
+            'descripcion' => 'required|string',
+            'fecha' => 'required|date',
+            'documento' => 'required|file|max:10240',
         ]);
         $file = $request->file('documento');
         $filename = $file->getClientOriginalName();
@@ -509,60 +425,6 @@ class SectorController extends Controller
         $sectores = new Sector;
         $sectores->enlace = $route . '/' . $fileContent;
         $sectores->nombreSector = $request->get('nombreSector');
-        switch($extension){
-            case 'doc':
-                $sectores->documento = 'fas fa-file-word';
-                $sectores->color = 'blue';
-                break;
-            case 'docx':
-                $sectores->documento = 'fas fa-file-word';
-                $sectores->color = 'blue';
-                break;
-            case 'png':
-                $sectores->documento = 'fas fa-file-image';
-                $sectores->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $sectores->documento = 'fas fa-file-image';
-                $sectores->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $sectores->documento = 'fas fa-file-image';
-                $sectores->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $sectores->documento = 'fas fa-file-pdf';
-                $sectores->color = 'red';
-                break;
-            case 'ppt':
-                $sectores->documento = 'fas fa-file-powerpoint';
-                $sectores->color = 'orange';
-                break;
-            case 'pptm':
-                $sectores->documento = 'fas fa-file-powerpoint';
-                $sectores->color = 'orange';
-                break;
-            case 'pptx':
-                $sectores->documento = 'fas fa-file-powerpoint';
-                $sectores->color = 'orange';
-                break;
-            case 'xlm':
-                $sectores->documento = 'fas fa-file-excel';
-                $sectores->color = 'green';
-                break;
-            case 'xls':
-                $sectores->documento = 'fas fa-file-excel';
-                $sectores->color = 'green';
-                break;   
-            case 'xlsm':
-                $sectores->documento = 'fas fa-file-excel';
-                $sectores->color = 'green';
-                break;
-            case 'xlsx':
-                $sectores->documento = 'fas fa-file-excel';
-                $sectores->color = 'green';
-                break;
-        }
         $sectores->descripcion = $request->get('descripcion');
         $sectores->fecha = $request->get('fecha');
         $sectores->idUser = Auth::user()->id;
@@ -588,88 +450,42 @@ class SectorController extends Controller
     public function update(Request $request, Sector $sector)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
+            'nombreSector' => 'required|string|max:191',
+            'descripcion' => 'required|string',
+            'fecha' => 'required|date',
+            'documento' => 'nullable|file|max:10240',
         ]);
         
-        $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
-        $extension = $file->getClientOriginalExtension();
-        $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreSector').' '.$dateTimeNow.'.'. $extension;
-        $route = 'sector';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
-        Storage::makeDirectory('public/' . $route);
-        Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
-        Storage::putFileAs('public/' . $route, $file, $fileContent);
-         // Eliminar el archivo antiguo
-        Storage::delete('public/'.$sector->enlace);
+        if ($request->hasFile('documento')) {
+            $file = $request->file('documento');
+            $extension = $file->getClientOriginalExtension();
+            $dateTimeNow = now()->format('Ymd_His_u');
+            $fileContent = $request->get('nombreSector').' '.$dateTimeNow.'.'. $extension;
+            $route = 'sector';
+            
+            // Asegurarse de que la carpeta existe y tiene los permisos correctos
+            Storage::makeDirectory('public/' . $route);
+            Storage::disk('public')->setVisibility($route, 'public');
+            
+            // Almacenar el archivo con la función storeAs()
+            Storage::putFileAs('public/' . $route, $file, $fileContent);
 
-        $sector->enlace = $route . '/' . $fileContent;
-        $sector->nombreSector = $request->get('nombreSector');
-        switch($extension){
-            case 'doc':
-                $sector->documento = 'fas fa-file-word';
-                $sector->color = 'blue';
-                break;
-            case 'docx':
-                $sector->documento = 'fas fa-file-word';
-                $sector->color = 'blue';
-                break;
-            case 'png':
-                $sector->documento = 'fas fa-file-image';
-                $sector->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $sector->documento = 'fas fa-file-image';
-                $sector->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $sector->documento = 'fas fa-file-image';
-                $sector->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $sector->documento = 'fas fa-file-pdf';
-                $sector->color = 'red';
-                break;
-            case 'ppt':
-                $sector->documento = 'fas fa-file-powerpoint';
-                $sector->color = 'orange';
-                break;
-            case 'pptm':
-                $sector->documento = 'fas fa-file-powerpoint';
-                $sector->color = 'orange';
-                break;
-            case 'pptx':
-                $sector->documento = 'fas fa-file-powerpoint';
-                $sector->color = 'orange';
-                break;
-            case 'xlm':
-                $sector->documento = 'fas fa-file-excel';
-                $sector->color = 'green';
-                break;
-            case 'xls':
-                $sector->documento = 'fas fa-file-excel';
-                $sector->color = 'green';
-                break;   
-            case 'xlsm':
-                $sector->documento = 'fas fa-file-excel';
-                $sector->color = 'green';
-                break;
-            case 'xlsx':
-                $sector->documento = 'fas fa-file-excel';
-                $sector->color = 'green';
-                break;
+            // Eliminar el archivo antiguo si existía
+            if (!empty($sector->enlace)) {
+                Storage::delete('public/'.$sector->enlace);
+            }
+
+            $sector->enlace = $route . '/' . $fileContent;
         }
+
+        $sector->nombreSector = $request->get('nombreSector');
         $sector->descripcion = $request->get('descripcion');
         $sector->fecha = $request->get('fecha');
         $sector->idUser = Auth::user()->id;
         $sector->estado = 1;
         $sector->save();
         
-        return redirect('/sectores');
+        return redirect('/sectores')->with('success', '¡Registro actualizado con éxito!');
     }
 
    
