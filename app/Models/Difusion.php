@@ -5,20 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Accion extends Model
+class Difusion extends Model
 {
     use HasFactory;
 
-    protected $table = 'pro_accions';
+    protected $table = 'pro_difusions';
     public $timestamps = true;
 
     protected $fillable = [
         'nombreAccion',
         'enlace',
         'descripcion',
-        'lugar',
         'fecha',
-        'tipo',
         'idUser',
         'estado',
     ];

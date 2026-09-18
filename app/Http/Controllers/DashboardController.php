@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Institucion;
 use App\Models\Accion;
+use App\Models\Difusion;
 use App\Models\Evidencia;
 use App\Models\Informe;
 use App\Models\Plan;
@@ -39,8 +40,8 @@ class DashboardController extends Controller
                 (object) [
                     'totaldocentes'      => User::where('estado', '1')->whereIn('cargo', ['Director', 'Docente', 'Profesor Coordinador'])->count(),
                     'totalinstituciones' => Institucion::where('estado', '1')->count(),
-                    'totalacciones'      => Accion::where('estado', '1')->where('tipo', 'sensibilizacion')->count(),
-                    'totaldifusiones'    => Accion::where('estado', '1')->where('tipo', 'difusion')->count(),
+                    'totalacciones'      => Accion::where('estado', '1')->count(),
+                    'totaldifusiones'    => Difusion::where('estado', '1')->count(),
                     'totalevidencias'    => Evidencia::where('estado', '1')->count(),
                     'totalinformes'      => Informe::where('estado', '1')->count(),
                     'totalplans'         => Plan::where('estado', '1')->count(),
@@ -351,8 +352,8 @@ class DashboardController extends Controller
         $totaldocXaccionHuacaybambaCount = $totalsdocXAcc['Ugel Huacaybamba'] ?? 0;
 
     // Esta consulta es para el total de difusiones de cada ugel
-        $totaldifucionByUgel = Accion::select(
-            DB::raw('COUNT(DISTINCT pro_accions.id) as totaldifuciones'),
+        $totaldifucionByUgel = Difusion::select(
+            DB::raw('COUNT(DISTINCT pro_difusions.id) as totaldifuciones'),
             DB::raw('CASE 
                 WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
                 WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
@@ -368,9 +369,8 @@ class DashboardController extends Controller
                 ELSE "Otra UGEL"
             END as ugel')
         )
-        ->join('users', 'pro_accions.idUser', '=', 'users.id')
-        ->where('pro_accions.estado', '1')
-        ->where('pro_accions.tipo', 'difusion')
+        ->join('users', 'pro_difusions.idUser', '=', 'users.id')
+        ->where('pro_difusions.estado', '1')
         ->groupBy('ugel')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
@@ -379,8 +379,8 @@ class DashboardController extends Controller
             $totalsDif[$total->ugel] = $total->totaldifuciones;
         }
     // Esta consulta es para el total de docentes que registraron difusiones de cada ugel
-        $totaldocXdifucionByUgel = Accion::select(
-            DB::raw('COUNT(DISTINCT pro_accions.idUser) as totaldocdifuciones'),
+        $totaldocXdifucionByUgel = Difusion::select(
+            DB::raw('COUNT(DISTINCT pro_difusions.idUser) as totaldocdifuciones'),
             DB::raw('CASE 
                 WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
                 WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
@@ -396,9 +396,8 @@ class DashboardController extends Controller
                 ELSE "Otra UGEL"
             END as ugel')
         )
-        ->join('users', 'pro_accions.idUser', '=', 'users.id')
-        ->where('pro_accions.estado', '1')
-        ->where('pro_accions.tipo', 'difusion')
+        ->join('users', 'pro_difusions.idUser', '=', 'users.id')
+        ->where('pro_difusions.estado', '1')
         ->groupBy('ugel')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
@@ -1032,8 +1031,8 @@ class DashboardController extends Controller
 
         // ── Estadísticas por módulo ───────────────────────────────────────
         $agenda     = $modStats('pro_agendas');
-        $accion     = $accionStats('sensibilizacion');
-        $difusion   = $accionStats('difusion');
+        $accion     = $modStats('pro_accions');
+        $difusion   = $modStats('pro_difusions');
         $evidencia  = $modStats('pro_evidencias');
         $plan       = $modStats('pro_plans');
         $produccion = $modStats('pro_produccions');
@@ -1223,11 +1222,10 @@ class DataExport implements FromCollection{
             break;
 
             case 'difusion':
-                return Accion::select('pro_accions.nombreAccion', 'pro_accions.descripcion', 'pro_accions.fecha', 'users.name' ,'users.cargo', 'users.institucion')
-                            ->join('users','users.id','=','pro_accions.idUser')
-                            ->where('pro_accions.tipo', 'difusion')
-                            ->where('pro_accions.estado', 1)
-                            ->whereBetween('pro_accions.fecha', [$this->start_date, $this->end_date])->get();
+                return Difusion::select('pro_difusions.nombreAccion', 'pro_difusions.descripcion', 'pro_difusions.fecha', 'users.name' ,'users.cargo', 'users.institucion')
+                            ->join('users','users.id','=','pro_difusions.idUser')
+                            ->where('pro_difusions.estado', 1)
+                            ->whereBetween('pro_difusions.fecha', [$this->start_date, $this->end_date])->get();
             break;
 
             case 'agenda':

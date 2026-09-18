@@ -4,10 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use Illuminate\Http\Request;
-use App\Models\Accion;
+use App\Models\Difusion;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
@@ -17,9 +16,7 @@ class DifusionController extends Controller
 
     public function __construct(){
         $this->middleware('auth');
-        // Difusión tenía permisos prestados de Sensibilización (accions.*). Ahora
-        // tiene su propio set difusions.* (ver DifusionPermissionSeeder), con el
-        // mismo reparto de roles que tenían de facto los prestados.
+        // Difusión tiene su propio set difusions.* (ver DifusionPermissionSeeder)
         $this->middleware('can:difusions.index')->only('index');
         $this->middleware('can:difusions.create')->only('create', 'store');
         $this->middleware('can:difusions.edit')->only('edit', 'update');
@@ -28,13 +25,7 @@ class DifusionController extends Controller
         $this->middleware('can:difusions.ugel')->only('ugel', 'exportDifusionUgel');
         $this->middleware('can:difusions.director')->only('director', 'exportDifusionDirector');
         $this->middleware('can:accions.dre')->only('dre');
-        // Los endpoints legacy de abajo (buscarGeneral/exportarTodos) ya no se usan desde
-        // la vista migrada, pero seguían alcanzables por URL directa sin control de acceso
-        // propio: exportarTodos en particular no aplicaba NINGÚN alcance por cargo (cualquier
-        // usuario autenticado podía descargar todas las acciones de difusión de todo el
-        // sistema). Se cierran con el mismo permiso que protege la vista general.
         $this->middleware('can:difusions.view')->only('buscarGeneral', 'exportarTodos');
-        // buscar() (ruta /buscar-difusion) tampoco tenía permiso propio.
         $this->middleware('can:difusions.index')->only('buscar');
     }
 
@@ -42,9 +33,9 @@ class DifusionController extends Controller
     {
         $usuario = Auth::user()->id;
 
-        $accionsQuery = Accion::where('estado', '1')
-            ->where('idUser', $usuario)
-            ->where('tipo', 'difusion');
+        $accionsQuery = Difusion::with('getUser')
+            ->where('estado', '1')
+            ->where('idUser', $usuario);
 
         if ($request->filled('texto')) {
             $accionsQuery->where('nombreAccion', 'LIKE', '%' . $request->input('texto') . '%');
@@ -95,11 +86,7 @@ class DifusionController extends Controller
     }
 
     /**
-     * Punto de entrada del menú. difusions.index (Mis registros) no incluye a
-     * EspecDRE/EspecUGEL/Director — solo tienen .view/.ugel/.director
-     * respectivamente — así que la entrada de menú no puede apuntar fijo a
-     * /difusions o esos roles se quedan sin poder llegar a nada. Redirige a la
-     * primera pestaña a la que el usuario realmente tenga acceso.
+     * Punto de entrada del menú. Redirige a la primera pestaña autorizada.
      */
     public function landing()
     {
@@ -110,33 +97,22 @@ class DifusionController extends Controller
     }
 
     /**
-     * Consulta base compartida por los tres alcances agregados, igual criterio
-     * que AccionController::accionsGeneralQuery(): sin parámetros devuelve todo
-     * (General); $forceUgel/$forceInstitucion acotan el resultado (UGEL/Director).
-     * El alcance lo decide el permiso que habilitó la ruta, no el cargo del
-     * usuario.
-     *
-     * La versión anterior de general() para estas mismas ramas llamaba literalmente a
-     * Accion::select(/* ... *\/)->paginate(10) sin join, sin where de tipo/estado y sin
-     * ningún alcance: un Director o Docente veía TODAS las acciones del sistema (de
-     * cualquier institución, sensibilización incluida). Se corrigió al migrar a esta
-     * consulta compartida.
+     * Consulta base compartida por los tres alcances agregados.
      */
     private function difusionGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
     {
         $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
-        $query = Accion::select(
-                'pro_accions.id', 'pro_accions.nombreAccion', 'pro_accions.descripcion',
-                'pro_accions.documento', 'pro_accions.color', 'pro_accions.fecha',
-                'pro_accions.enlace',
+        $query = Difusion::select(
+                'pro_difusions.id', 'pro_difusions.nombreAccion', 'pro_difusions.descripcion',
+                'pro_difusions.documento', 'pro_difusions.color', 'pro_difusions.fecha',
+                'pro_difusions.enlace',
                 'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
                 'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
             )
-            ->join('users', 'users.id', '=', 'pro_accions.idUser')
-            ->where('pro_accions.estado', '1')
-            ->where('pro_accions.tipo', 'difusion')
-            ->whereYear('pro_accions.fecha', $anio);
+            ->join('users', 'users.id', '=', 'pro_difusions.idUser')
+            ->where('pro_difusions.estado', '1')
+            ->whereYear('pro_difusions.fecha', $anio);
 
         $showFullFilters = $forceUgel === null && $forceInstitucion === null;
 
@@ -164,8 +140,8 @@ class DifusionController extends Controller
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
             $query->where(function ($q) use ($buscar) {
-                $q->where('pro_accions.nombreAccion', 'LIKE', "%{$buscar}%")
-                  ->orWhere('pro_accions.descripcion', 'LIKE', "%{$buscar}%");
+                $q->where('pro_difusions.nombreAccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_difusions.descripcion', 'LIKE', "%{$buscar}%");
             });
         }
 
@@ -184,15 +160,12 @@ class DifusionController extends Controller
             }
         }
 
-        return $query->orderBy('pro_accions.fecha', 'desc')->paginate($perPage)->withQueryString();
+        return $query->orderBy('pro_difusions.fecha', 'desc')->paginate($perPage)->withQueryString();
     }
 
     private function listaAniosDifusion(string $anio): \Illuminate\Support\Collection
     {
-        // Mismo saneo que en AccionController: hay registros con la fecha mal digitada
-        // (p. ej. "0024-07-12" en vez de "2024-07-12") que ensuciarían el selector de año.
-        $listaAnios = Accion::where('tipo', 'difusion')
-            ->whereYear('fecha', '>=', 2010)
+        $listaAnios = Difusion::whereYear('fecha', '>=', 2010)
             ->selectRaw('DISTINCT YEAR(fecha) as anio')
             ->orderByDesc('anio')
             ->pluck('anio');
@@ -283,7 +256,7 @@ class DifusionController extends Controller
 
     private function streamDifusionExport($query, string $filenamePrefix)
     {
-        $accions = $query->orderBy('pro_accions.fecha', 'desc')->get();
+        $accions = $query->orderBy('pro_difusions.fecha', 'desc')->get();
 
         $filename = $filenamePrefix . '_' . date('Y-m-d') . '.xls';
 
@@ -328,8 +301,7 @@ class DifusionController extends Controller
             }
 
             $html .= '</tbody></table></body></html>';
-
-            fwrite($file, $html);
+            echo $html;
             fclose($file);
         };
 
@@ -357,136 +329,38 @@ class DifusionController extends Controller
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;
-        $anioActual = request()->get('anio', '2026'); // Por defecto 2025
+        $anioActual = request()->get('anio', date('Y'));
         
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.updated_at","pro_accions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
-            ->join("users","users.id","=","pro_accions.idUser")
+        $accions = Difusion::select("pro_difusions.id","pro_difusions.nombreAccion","pro_difusions.documento","pro_difusions.color","pro_difusions.descripcion","pro_difusions.updated_at","pro_difusions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
+            ->join("users","users.id","=","pro_difusions.idUser")
             ->where("users.institucion", $institucion)
-            ->where('pro_accions.estado', '1')
-            ->where('pro_accions.tipo', 'difusion')
-            ->orderby('pro_accions.fecha','desc')
+            ->where('pro_difusions.estado', '1')
+            ->orderby('pro_difusions.fecha','desc')
             ->whereYear('fecha', $anioActual)
             ->paginate(10);
-            return view("difusion.view",compact('accions'));
+            
+        return view("difusion.view", compact('accions'));
     }
 
-    public function buscar(Request $request){
-        $usuario = Auth::user()->id;
-        $texto = trim($request->get('texto'));
-        $fecha = trim($request->get('fecha'));
-        $anio = trim($request->get('anio', date('Y'))); // Por defecto el año actual
-        
-        $accions = Accion::where("nombreAccion","LIKE","%".$texto."%")
-        ->where("fecha","LIKE","%".$fecha."%")
-        ->where('estado', '1')
-        ->whereYear('fecha', $anio)
-        ->where('idUser', $usuario)
-        ->where('tipo', 'difusion')
-        ->orderby('fecha','desc')
-        ->paginate(10);
-        return view('difusion.index')->with('accions',$accions);
+    public function buscar(Request $request)
+    {
+        return $this->index($request);
     }
 
     public function buscarGeneral(Request $request)
     {
-        $cargo = Auth::user()->cargo;
-        $anio = $request->get('anio', '2026'); // Por defecto 2025
-
-        if ($cargo == 'Especialista DRE') {
-            if (empty($request->get('ugels')) && empty($request->get('instituciones')) && empty($request->get('docentes')) && empty($request->get('texto')) && empty($request->get('nivel')) && empty($request->get('anio'))) {
-                return redirect('/difusion-general');
-            } else {
-                $dni = trim($request->get('texto'));
-                $docente = trim($request->get('docentes'));
-                $ugel = trim($request->get('ugels'));
-                $nominstitucion = trim($request->get('instituciones'));
-                $nivel = trim($request->get('nivel')); // Obtener el valor del nivel
-
-                $query = Accion::select(
-                    "pro_accions.id", "pro_accions.nombreAccion", "pro_accions.documento", "pro_accions.color",
-                    "pro_accions.descripcion", "pro_accions.fecha", "pro_accions.lugar", "pro_accions.enlace",
-                    "users.name", "users.cargo",
-                    "users.nivelinstitucion", "users.institucion", "users.provincia", "users.distrito", "users.ugel",
-                    "users.dni"
-                )
-                ->join("users", "users.id", "=", "pro_accions.idUser")
-                ->where("pro_accions.tipo", "difusion") // Tipo de acción
-                ->whereYear('pro_accions.fecha', $anio) // Filtro de año aplicado aquí
-                ->where('pro_accions.estado', '1');    // Estado activo
-
-                // Aplicar los filtros que se hayan especificado
-                if (!empty($ugel)) {
-                    $query->where("users.ugel", "LIKE", "%$ugel%");
-                }
-                
-                if (!empty($dni)) {
-                    $query->where("users.dni", "LIKE", "%$dni%");
-                }
-                
-                if (!empty($docente)) {
-                    $query->where("users.name", "LIKE", "%$docente%");
-                }
-                
-                if (!empty($nominstitucion)) {
-                    $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-                }
-                
-                // Aplicar el filtro de nivel de institución
-                if (!empty($nivel)) {
-                    $query->where("users.nivelinstitucion", "LIKE", "%$nivel%");
-                }
-
-                $accions = $query->orderBy('pro_accions.fecha', 'desc')->paginate(1000);
-
-                return view('difusion.dre')->with('accions', $accions);
-            }  
-        }
-        else {
-            if (empty($request->get('nomdocente')) && empty($request->get('nominstitucion')) && empty($request->get('nivel')) && empty($request->get('texto')) && empty($request->get('anio'))) {
-                return redirect('/difusion-general');
-            }
-            else {
-                $cargo = Auth::user()->cargo;
-
-                if ($cargo == 'Director') {
-                    //$nivel = Auth::user()->nivelinstitucion;//Para filtrar por nivel (Escolarizado o Pronoei) segun quien esta ingresando
-                    $dni = trim($request->get('texto'));
-                    $nomdocente = trim($request->get('nomdocente'));
-                    $ugel = trim($request->get('ugel'));
-                    $nivel = trim($request->get('nivel')); // Agregar el nuevo filtro
-                    
-                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar","pro_accions.enlace","users.name","users.cargo","users.nivelinstitucion","users.institucion","users.provincia","users.distrito","users.ugel")
-                    ->join("users","users.id","=","pro_accions.idUser")
-                    ->where("users.dni","LIKE","%".$dni."%")
-                    ->where("users.name","LIKE","%".$nomdocente."%")
-                    ->where('pro_accions.estado', '1')
-                    ->whereYear('fecha', $anio) // Filtro de año
-                    ->where("pro_accions.tipo", "difusion");
-                    
-                    // Aplicar el filtro de nivel si existe
-                    if (!empty($nivel)) {
-                        $accions->where('users.nivelinstitucion', "LIKE", "%".$nivel."%");
-                    }
-                    
-                    $accions = $accions->orderBy('pro_accions.fecha','desc')
-                    ->paginate(10);
-                    
-                    $buscars = [];   
-                    $rols =['1','5'];
-                    return view('difusion.view')->with('accions',$accions)->with('rols',$rols)->with('buscars',$buscars);           
-                }
-                // Continuar con otros roles...
-            }
-        }
+        return $this->general($request);
     }
 
     public function download($id)
     {
-        $accion = Accion::findOrFail($id);
-        $pathToFile = storage_path('app/public/' . $accion->enlace);
-        
-        // Verificar si el archivo existe antes de descargarlo
-        
+        $difusion = Difusion::findOrFail($id);
+        $pathToFile = storage_path('app/public/' . $difusion->enlace);
+
+        if (!file_exists($pathToFile)) {
+            abort(404, 'Archivo no encontrado');
+        }
+
         return response()->download($pathToFile);
     }
 
@@ -495,230 +369,115 @@ class DifusionController extends Controller
         return view('difusion.create');
     }
 
-    
     public function store(Request $request)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
+            'nombreAccion' => 'required|string|max:191',
+            'descripcion'  => 'nullable|string',
+            'fecha'        => 'required|date',
+            'documento'    => 'required|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
+        ], [
+            'documento.required' => 'Debe adjuntar un archivo para el registro.',
+            'documento.max'      => 'El archivo no debe ser superior a 10MB.',
+            'documento.mimes'    => 'El tipo de archivo no es compatible.',
         ]);
 
         $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension();
         $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreAccion').' '.$dateTimeNow.'.'. $extension;
-        $route = 'accion';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
+        $fileContent = $request->get('nombreAccion') . ' ' . $dateTimeNow . '.' . $extension;
+        $route = 'difusion';
+
         Storage::makeDirectory('public/' . $route);
         Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
         Storage::putFileAs('public/' . $route, $file, $fileContent);
-        
-        $difusions = new Accion;
-        $difusions->enlace = $route . '/' . $fileContent;
-        $difusions->nombreAccion = $request->get('nombreAccion');
-        switch($extension){
-            case 'doc':
-                $difusions->documento = 'fas fa-file-word';
-                $difusions->color = 'blue';
-                break;
-            case 'docx':
-                $difusions->documento = 'fas fa-file-word';
-                $difusions->color = 'blue';
-                break;
-            case 'png':
-                $difusions->documento = 'fas fa-file-image';
-                $difusions->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $difusions->documento = 'fas fa-file-image';
-                $difusions->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $difusions->documento = 'fas fa-file-image';
-                $difusions->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $difusions->documento = 'fas fa-file-pdf';
-                $difusions->color = 'red';
-                break;
-            case 'ppt':
-                $difusions->documento = 'fas fa-file-powerpoint';
-                $difusions->color = 'orange';
-                break;
-            case 'pptm':
-                $difusions->documento = 'fas fa-file-powerpoint';
-                $difusions->color = 'orange';
-                break;
-            case 'pptx':
-                $difusions->documento = 'fas fa-file-powerpoint';
-                $difusions->color = 'orange';
-                break;
-            case 'xlm':
-                $difusions->documento = 'fas fa-file-excel';
-                $difusions->color = 'green';
-                break;
-            case 'xls':
-                $difusions->documento = 'fas fa-file-excel';
-                $difusions->color = 'green';
-                break;   
-            case 'xlsm':
-                $difusions->documento = 'fas fa-file-excel';
-                $difusions->color = 'green';
-                break;
-            case 'xlsx':
-                $difusions->documento = 'fas fa-file-excel';
-                $difusions->color = 'green';
-                break;
-        }
-        $difusions->descripcion = $request->get('descripcion');
-        $difusions->fecha = $request->get('fecha');
-        $difusions->idUser = Auth::user()->id;
-        $difusions->tipo = 'difusion';
-        $difusions->estado = 1;
-        $difusions->save();
-        
+
+        $difusion = new Difusion;
+        $difusion->enlace = $route . '/' . $fileContent;
+        $difusion->nombreAccion = $request->get('nombreAccion');
+        $difusion->descripcion = $request->get('descripcion');
+        $difusion->fecha = $request->get('fecha');
+        $difusion->idUser = Auth::user()->id;
+        $difusion->estado = 1;
+        $difusion->save();
+
         return redirect('/difusions')->with('success', '¡Registro guardado con éxito!');
     }
 
     public function show()
     {
-        //
+        return redirect('/difusions');
     }
 
-    
     public function edit($id)
     {
-        $difusion = Accion::findOrFail($id);
+        $difusion = Difusion::findOrFail($id);
         return view('difusion.edit')->with('difusion', $difusion);
     }
 
-    
-    public function update(Request $request, Accion $difusion)
+    public function update(Request $request, Difusion $difusion)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:2048',
+            'nombreAccion' => 'required|string|max:191',
+            'descripcion'  => 'nullable|string',
+            'fecha'        => 'required|date',
+            'documento'    => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
         ], [
-            'documento.max' => 'Archivo superior a 2MB', 
+            'documento.max'   => 'El archivo no debe ser superior a 10MB.',
+            'documento.mimes' => 'El tipo de archivo no es compatible.',
         ]);
-        $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
-        $extension = $file->getClientOriginalExtension();
-        $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreAccion').' '.$dateTimeNow.'.'. $extension;
-        $route = 'accion';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
-        Storage::makeDirectory('public/' . $route);
-        Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
-        Storage::putFileAs('public/' . $route, $file, $fileContent);
-         // Eliminar el archivo antiguo
-        Storage::delete('public/'.$difusion->enlace);
 
-        $difusion->enlace = $route . '/' . $fileContent;
         $difusion->nombreAccion = $request->get('nombreAccion');
-        switch($extension){
-            case 'doc':
-                $difusion->documento = 'fas fa-file-word';
-                $difusion->color = 'blue';
-                break;
-            case 'docx':
-                $difusion->documento = 'fas fa-file-word';
-                $difusion->color = 'blue';
-                break;
-            case 'png':
-                $difusion->documento = 'fas fa-file-image';
-                $difusion->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $difusion->documento = 'fas fa-file-image';
-                $difusion->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $difusion->documento = 'fas fa-file-image';
-                $difusion->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $difusion->documento = 'fas fa-file-pdf';
-                $difusion->color = 'red';
-                break;
-            case 'ppt':
-                $difusion->documento = 'fas fa-file-powerpoint';
-                $difusion->color = 'orange';
-                break;
-            case 'pptm':
-                $difusion->documento = 'fas fa-file-powerpoint';
-                $difusion->color = 'orange';
-                break;
-            case 'pptx':
-                $difusion->documento = 'fas fa-file-powerpoint';
-                $difusion->color = 'orange';
-                break;
-            case 'xlm':
-                $difusion->documento = 'fas fa-file-excel';
-                $difusion->color = 'green';
-                break;
-            case 'xls':
-                $difusion->documento = 'fas fa-file-excel';
-                $difusion->color = 'green';
-                break;   
-            case 'xlsm':
-                $difusion->documento = 'fas fa-file-excel';
-                $difusion->color = 'green';
-                break;
-            case 'xlsx':
-                $difusion->documento = 'fas fa-file-excel';
-                $difusion->color = 'green';
-                break;
-        }
         $difusion->descripcion = $request->get('descripcion');
         $difusion->fecha = $request->get('fecha');
-        $difusion->idUser = Auth::user()->id;
-        $difusion->tipo = 'difusion';
-        $difusion->estado = 1;
+
+        if ($request->hasFile('documento')) {
+            $file = $request->file('documento');
+            $extension = $file->getClientOriginalExtension();
+            $dateTimeNow = now()->format('Ymd_His_u');
+            $fileContent = $request->get('nombreAccion') . ' ' . $dateTimeNow . '.' . $extension;
+            $route = 'difusion';
+
+            Storage::makeDirectory('public/' . $route);
+            Storage::disk('public')->setVisibility($route, 'public');
+            Storage::putFileAs('public/' . $route, $file, $fileContent);
+
+            if ($difusion->enlace && Storage::exists('public/' . $difusion->enlace)) {
+                Storage::delete('public/' . $difusion->enlace);
+            }
+
+            $difusion->enlace = $route . '/' . $fileContent;
+        }
+
         $difusion->save();
-        
-        return redirect('/difusions');
+
+        return redirect('/difusions')->with('success', '¡Registro actualizado con éxito!');
     }
 
-   
-    public function destroy(Accion $difusion)
+    public function destroy(Difusion $difusion)
     {
-        Storage::delete('public/'.$difusion->enlace);
         $difusion->estado = 0;
-        $difusion->idUser = Auth::user()->id;
         $difusion->save();
-        session()->flash('success', 'Registro eliminado!');
-        return redirect('/difusions');
+
+        return redirect('/difusions')->with('success', '¡Registro eliminado con éxito!');
     }
 
     public function obtenerUgels(Request $request)
     {
-        // Obtener el año seleccionado o usar el año actual como valor predeterminado
         $anio = $request->input('anio', date('Y'));
         
-        \Log::info('Obteniendo UGELs para el año: ' . $anio);
-        
         try {
-            $ugels = DB::table('pro_accions')
-                ->select('users.ugel', DB::raw('count(distinct pro_accions.idUser) as docentes_count'))
-                ->join('users', 'pro_accions.idUser', '=', 'users.id')
-                ->where('pro_accions.tipo', 'difusion')
-                ->where('pro_accions.estado', '1')
-                ->whereYear('pro_accions.fecha', $anio)
+            $ugels = DB::table('pro_difusions')
+                ->select('users.ugel', DB::raw('count(distinct pro_difusions.idUser) as docentes_count'))
+                ->join('users', 'pro_difusions.idUser', '=', 'users.id')
+                ->where('pro_difusions.estado', '1')
+                ->whereYear('pro_difusions.fecha', $anio)
                 ->whereRaw("LENGTH(users.ugel) > 0")
                 ->groupBy('users.ugel')
                 ->get();
             
-            \Log::info('UGELs encontradas: ' . $ugels->count());
-            
             return response()->json($ugels);
         } catch (\Exception $e) {
-            \Log::error('Error al obtener UGELs: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -726,29 +485,24 @@ class DifusionController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $anio = $request->input('anio', date('Y')); // Por defecto el año actual si no se proporciona
-        
-        \Log::info('Buscando instituciones para UGEL: ' . $ugelSeleccionada . ' y año: ' . $anio);
+        $anio = $request->input('anio', date('Y'));
         
         try {
-            // Primera consulta: Contar docentes con acciones
             $resultados = DB::table('institucions')
                 ->leftJoin('users', function($join) {
                     $join->on('institucions.nomInstitucion', '=', 'users.institucion')
                         ->on('institucions.ugel', '=', 'users.ugel');
                 })
-                ->leftJoin('pro_accions', function($join) use ($anio) {
-                    $join->on('users.id', '=', 'pro_accions.idUser')
-                        ->where('pro_accions.estado', '=', '1')
-                        ->where('pro_accions.tipo', '=', 'difusion')
-                        ->whereYear('pro_accions.fecha', $anio);
+                ->leftJoin('pro_difusions', function($join) use ($anio) {
+                    $join->on('users.id', '=', 'pro_difusions.idUser')
+                        ->where('pro_difusions.estado', '=', '1')
+                        ->whereYear('pro_difusions.fecha', $anio);
                 })
                 ->where('institucions.ugel', '=', $ugelSeleccionada)
-                ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_accions.idUser) as agendas_count'))
+                ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_difusions.idUser) as agendas_count'))
                 ->groupBy('institucions.nomInstitucion')
                 ->get();
 
-            // Segunda consulta: Contar total de docentes
             $totalDocentes = DB::table('institucions')
                 ->leftJoin('users', function($join) {
                     $join->on('institucions.nomInstitucion', '=', 'users.institucion')
@@ -759,18 +513,14 @@ class DifusionController extends Controller
                 ->groupBy('institucions.nomInstitucion')
                 ->get();
 
-            // Combinar resultados
             $resultados = $resultados->map(function ($item) use ($totalDocentes) {
                 $total = $totalDocentes->firstWhere('nomInstitucion', $item->nomInstitucion);
                 $item->total_docentes = $total ? $total->total_docentes : 0;
                 return $item;
             });
             
-            \Log::info('Instituciones encontradas: ' . $resultados->count());
-            
             return response()->json($resultados);
         } catch (\Exception $e) {
-            \Log::error('Error al buscar instituciones: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -778,36 +528,33 @@ class DifusionController extends Controller
     public function buscadorinstitucion(Request $request)
     {   
         $cargo = Auth::user()->cargo;
-        $anio = $request->input('anio', '2026'); // Por defecto 2025
+        $anio = $request->input('anio', date('Y'));
         
         switch ($cargo) {
             case 'Especialista UGEL':
                 $ugel = Auth::user()->ugel;
                 break;
             case 'Especialista DRE':
-                $ugel = $request->input('ugel'); 
-                break;
             default:
                 $ugel = $request->input('ugel'); 
                 break;
         }
         
-        $term = $request->input('term'); // Obtén el término de búsqueda del formulario
+        $term = $request->input('term');
 
-        // Realiza una consulta para buscar instituciones que coincidan con $term y tengan información sobre docentes y agendas
         $resultados = DB::table('institucions')
             ->leftJoin('users', function($join) {
                 $join->on('institucions.nomInstitucion', '=', 'users.institucion')
                     ->on('institucions.ugel', '=', 'users.ugel');
             })
-            ->leftJoin('pro_accions', function($join) use ($anio) {
-                $join->on('users.id', '=', 'pro_accions.idUser')
-                    ->where('pro_accions.estado', '=', '1')
-                    ->whereYear('pro_accions.fecha', '=', $anio);
+            ->leftJoin('pro_difusions', function($join) use ($anio) {
+                $join->on('users.id', '=', 'pro_difusions.idUser')
+                    ->where('pro_difusions.estado', '=', '1')
+                    ->whereYear('pro_difusions.fecha', '=', $anio);
             })
             ->where('institucions.ugel', '=', $ugel)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
-            ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_accions.idUser) as agendas_count'))
+            ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_difusions.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
@@ -822,7 +569,6 @@ class DifusionController extends Controller
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
-        // Combina los resultados de agendas y docentes por institución
         $resultados = $resultados->map(function ($item) use ($totalDocentes) {
             $total = $totalDocentes->firstWhere('nomInstitucion', $item->nomInstitucion);
             $item->total_docentes = $total ? $total->total_docentes : 0;
@@ -831,10 +577,11 @@ class DifusionController extends Controller
 
         return response()->json($resultados);
     }
+
     public function buscarDocenteporInstitucion(Request $request)
     {
         $cargo = Auth::user()->cargo;
-        $anio = $request->input('anio', date('Y')); // Por defecto el año actual
+        $anio = $request->input('anio', date('Y'));
         
         if ($cargo == "Especialista UGEL") {
             $ugelSeleccionada = Auth::user()->ugel;
@@ -844,126 +591,113 @@ class DifusionController extends Controller
 
         $institucionSeleccionada = $request->input('docente');
         
-        \Log::info('Buscando docentes para institución: ' . $institucionSeleccionada . ', UGEL: ' . $ugelSeleccionada . ' y año: ' . $anio);
-        
         try {
             $docentes = DB::table('users')
-                ->leftJoin('pro_accions', function($join) use ($anio) {
-                    $join->on('users.id', '=', 'pro_accions.idUser')
-                        ->where('pro_accions.estado', '=', '1')
-                        ->where('pro_accions.tipo', '=', 'difusion')
-                        ->whereYear('pro_accions.fecha', $anio);
+                ->leftJoin('pro_difusions', function($join) use ($anio) {
+                    $join->on('users.id', '=', 'pro_difusions.idUser')
+                        ->where('pro_difusions.estado', '=', '1')
+                        ->whereYear('pro_difusions.fecha', $anio);
                 })
                 ->where('users.institucion', '=', $institucionSeleccionada)
                 ->where('users.ugel', 'like', '%' . $ugelSeleccionada . '%')
-                ->select('users.name', DB::raw('count(pro_accions.id) as agendas_count'))
+                ->select('users.name', DB::raw('count(pro_difusions.id) as agendas_count'))
                 ->groupBy('users.name')
                 ->having('agendas_count', '>=', 0)
                 ->get();
             
-            \Log::info('Docentes encontrados: ' . $docentes->count());
-            
             return response()->json($docentes);
         } catch (\Exception $e) {
-            \Log::error('Error al buscar docentes: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
     public function buscadordocente(Request $request)
     {
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
-        $anio = $request->input('anio', '2026'); // Por defecto 2025
+        $anio = $request->input('anio', date('Y'));
         
         $docentes = DB::table('users')
-        ->leftJoin('pro_accions', function($join) use ($anio) {
-            $join->on('users.id', '=', 'pro_accions.idUser')
-                ->where('pro_accions.estado', '=', '1')
-                ->where('pro_accions.tipo', '=', 'difusion')
-                ->whereYear('pro_accions.fecha', '=', $anio);
-        })
-        ->where('users.institucion', '=', $institucion)
-        ->where('users.name', 'like', '%' . $term . '%')
-        ->select('users.name', DB::raw('count(pro_accions.idUser) as agendas_count'))
-        ->groupBy('users.name')
-        ->having('agendas_count', '>=', 0) 
-        ->get();
+            ->leftJoin('pro_difusions', function($join) use ($anio) {
+                $join->on('users.id', '=', 'pro_difusions.idUser')
+                    ->where('pro_difusions.estado', '=', '1')
+                    ->whereYear('pro_difusions.fecha', '=', $anio);
+            })
+            ->where('users.institucion', '=', $institucion)
+            ->where('users.name', 'like', '%' . $term . '%')
+            ->select('users.name', DB::raw('count(pro_difusions.idUser) as agendas_count'))
+            ->groupBy('users.name')
+            ->having('agendas_count', '>=', 0) 
+            ->get();
         
         return response()->json($docentes);
     }
+
     public function obtenerCantidadRegistros(Request $request)
     {
-        $anio = $request->input('anio', '2026'); // Por defecto 2025
+        $anio = $request->input('anio', date('Y'));
         
-        $cantidadRegistros = Accion::whereYear('fecha', '=', $anio)
-                                ->where('tipo', '=', 'difusion')
-                                ->where('estado', '=', '1')
-                                ->count();
-
-        return $cantidadRegistros;
+        return Difusion::whereYear('fecha', '=', $anio)
+            ->where('estado', '=', '1')
+            ->count();
     }
     
     public function exportarTodos(Request $request)
-{
-    $dni = trim($request->get('texto', ''));
-    $name = trim($request->get('docentes', ''));
-    $ugel = trim($request->get('ugels', ''));
-    $nominstitucion = trim($request->get('instituciones', ''));
-    $anio = $request->get('anio', 2026);
+    {
+        $dni = trim($request->get('texto', ''));
+        $name = trim($request->get('docentes', ''));
+        $ugel = trim($request->get('ugels', ''));
+        $nominstitucion = trim($request->get('instituciones', ''));
+        $anio = $request->get('anio', date('Y'));
 
-    $query = Accion::select(
-        "pro_accions.nombreAccion", "pro_accions.descripcion", 
-        "pro_accions.fecha", "users.name", "users.cargo", 
-        "users.nivelinstitucion", "users.institucion", 
-        "users.provincia", "users.distrito", "users.ugel"
-    )
-    ->join("users", "users.id", "=", "pro_accions.idUser")
-    ->where('pro_accions.estado', '1')
-    ->where('pro_accions.tipo', 'difusion')
-    ->whereYear('pro_accions.fecha', $anio);
+        $query = Difusion::select(
+            "pro_difusions.nombreAccion", "pro_difusions.descripcion", 
+            "pro_difusions.fecha", "users.name", "users.cargo", 
+            "users.nivelinstitucion", "users.institucion", 
+            "users.provincia", "users.distrito", "users.ugel"
+        )
+        ->join("users", "users.id", "=", "pro_difusions.idUser")
+        ->where('pro_difusions.estado', '1')
+        ->whereYear('pro_difusions.fecha', $anio);
 
-    if (!empty($ugel)) {
-        $query->where("users.ugel", "LIKE", "%$ugel%");
+        if (!empty($ugel)) {
+            $query->where("users.ugel", "LIKE", "%$ugel%");
+        }
+        if (!empty($dni)) {
+            $query->where("users.dni", "LIKE", "%$dni%");
+        }
+        if (!empty($name)) {
+            $query->where("users.name", "LIKE", "%$name%");
+        }
+        if (!empty($nominstitucion)) {
+            $query->where("users.institucion", "LIKE", "%$nominstitucion%");
+        }
+
+        $accions = $query->orderBy('pro_difusions.fecha', 'desc')->get();
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename=difusion.xls',
+        ];
+
+        $content = '<table border="1">';
+        $content .= '<tr><th>Nombre de la Acción</th><th>Descripción</th><th>Fecha</th><th>Usuario</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE.</th><th>Provincia</th><th>Distrito</th><th>UGEL</th></tr>';
+        foreach ($accions as $item) {
+            $content .= '<tr>';
+            $content .= '<td>' . htmlspecialchars((string) $item->nombreAccion, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->descripcion, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . date('d-m-Y', strtotime($item->fecha)) . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->name, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->cargo, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->institucion, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->nivelinstitucion, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->provincia, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->distrito, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) $item->ugel, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '</tr>';
+        }
+        $content .= '</table>';
+
+        return response($content, 200, $headers);
     }
-    if (!empty($dni)) {
-        $query->where("users.dni", "LIKE", "%$dni%");
-    }
-    if (!empty($name)) {
-        $query->where("users.name", "LIKE", "%$name%");
-    }
-    if (!empty($nominstitucion)) {
-        $query->where("users.institucion", "LIKE", "%$nominstitucion%");
-    }
-
-    $accions = $query->orderBy('pro_accions.fecha', 'desc')->get();
-
-    // Exportar como Excel (HTML interpretado por Excel)
-    $headers = [
-        'Content-Type' => 'application/vnd.ms-excel',
-        'Content-Disposition' => 'attachment; filename=difusion.xls',
-    ];
-
-    $content = '<table border="1">';
-    $content .= '<tr><th>Nombre de la Acción</th><th>Descripción</th><th>Fecha</th><th>Usuario</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE.</th><th>Provincia</th><th>Distrito</th><th>UGEL</th></tr>';
-    foreach ($accions as $item) {
-        $content .= '<tr>';
-        $content .= '<td>' . $item->nombreAccion . '</td>';
-        $content .= '<td>' . $item->descripcion . '</td>';
-        $content .= '<td>' . date('d-m-Y', strtotime($item->fecha)) . '</td>';
-        $content .= '<td>' . $item->name . '</td>';
-        $content .= '<td>' . $item->cargo . '</td>';
-        $content .= '<td>' . $item->institucion . '</td>';
-        $content .= '<td>' . $item->nivelinstitucion . '</td>';
-        $content .= '<td>' . $item->provincia . '</td>';
-        $content .= '<td>' . $item->distrito . '</td>';
-        $content .= '<td>' . $item->ugel . '</td>';
-        $content .= '</tr>';
-    }
-    $content .= '</table>';
-
-    return response($content, 200, $headers);
 }
-
-}
-
-

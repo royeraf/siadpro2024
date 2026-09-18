@@ -37,7 +37,8 @@ class AccionController extends Controller
     {
         $usuario = Auth::user()->id;
 
-        $accionsQuery = Accion::where('estado', '1')
+        $accionsQuery = Accion::with('getUser')
+            ->where('estado', '1')
             ->where('idUser', $usuario)
             ->where('tipo', 'sensibilizacion');
 
@@ -359,135 +360,14 @@ class AccionController extends Controller
             return view("accion.view",compact('accions'));
     }
 
-    public function buscar(Request $request){
-        $usuario = Auth::user()->id;
-        $texto=trim($request->get('texto'));
-        $fecha=trim($request->get('fecha'));
-        $accions = Accion::where("nombreAccion","LIKE","%".$texto."%")
-        ->where("fecha","LIKE","%".$fecha."%")
-        ->where('estado', '1')
-        ->where('idUser', $usuario)
-        ->where("tipo", "sensibilizacion")
-        ->orderby('fecha','desc')
-        ->paginate(10);
-        return view('accion.index')->with('accions',$accions);
+    public function buscar(Request $request)
+    {
+        return $this->index($request);
     }
 
-    public function buscarGeneral(Request $request){
-        $cargo = Auth::user()->cargo;
-        $anio = trim($request->get('anio')) ?: '2026'; // Capturar el año para todos los roles
-        
-        if ($cargo == 'Especialista DRE') {
-            if (empty($request->get('ugels')) && empty($request->get('instituciones')) && 
-                empty($request->get('docentes')) && empty($request->get('texto')) && 
-                empty($request->get('anio'))) {
-                return redirect('/accion-general');
-            }
-            else {    
-                $dni = trim($request->get('texto'));
-                $docente = trim($request->get('docentes'));
-                $ugel = trim($request->get('ugels'));
-                $nominstitucion = trim($request->get('instituciones'));
-    
-                $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                           "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                           "pro_accions.enlace",
-                           "users.name","users.cargo","users.nivelinstitucion","users.institucion",
-                           "users.provincia","users.distrito","users.ugel","users.dni")
-                ->join("users","users.id","=","pro_accions.idUser")
-                ->where("users.dni","LIKE","%".$dni."%")
-                ->where('users.name',"LIKE","%".$docente."%")
-                ->where("users.ugel","LIKE","%".$ugel."%")
-                ->where("users.institucion","LIKE","%".$nominstitucion."%")
-                ->where("pro_accions.tipo", "sensibilizacion")
-                ->whereYear('fecha', $anio)
-                ->where('pro_accions.estado', '1');
-                
-                // Aplicar filtro por año si está seleccionado
-                if (!empty($anio)) {
-                    $accions = $accions->whereYear('fecha', $anio);
-                }
-                
-                $accions = $accions->orderBy('pro_accions.fecha','desc')
-                ->paginate(10);
-                
-                return view('accion.dre')->with('accions',$accions); 
-            }  
-        } 
-        else {
-            if (empty($request->get('nomdocente')) && empty($request->get('nominstitucion')) && 
-                empty($request->get('nivel')) && empty($request->get('texto')) && 
-                empty($request->get('anio'))) {
-                return redirect('/accion-general');
-            }
-            else {
-                $cargo = Auth::user()->cargo;
-    
-                if ($cargo == 'Director') {
-                    //$nivel = Auth::user()->nivelinstitucion;
-                    $dni = trim($request->get('texto'));
-                    $nomdocente = trim($request->get('nomdocente'));
-                    $ugel = trim($request->get('ugel'));
-                    
-                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                               "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                               "pro_accions.enlace",
-                               "users.name","users.cargo","users.nivelinstitucion","users.institucion",
-                               "users.provincia","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_accions.idUser")
-                    ->where("users.dni","LIKE","%".$dni."%")
-                    ->where("users.name","LIKE","%".$nomdocente."%")
-                    ->where('pro_accions.estado', '1')
-                    ->where("pro_accions.tipo", "sensibilizacion");
-                    
-                    // Aplicar filtro por año si está seleccionado
-                    if (!empty($anio)) {
-                        $accions = $accions->whereYear('fecha', $anio);
-                    }
-                    
-                    $accions = $accions->orderBy('pro_accions.fecha','desc')
-                    ->paginate(10);
-                    
-                    $buscars = [];   
-                    $rols = ['1','5'];
-                    return view('accion.view')->with('accions',$accions)->with('rols',$rols)->with('buscars',$buscars);
-                }     
-                
-                if ($cargo == 'Especialista UGEL') {
-                    $dni = trim($request->get('texto'));
-                    $nomdocente = trim($request->get('nomdocente'));
-                    $nominstitucion = trim($request->get('nominstitucion'));
-                    $ugeluser = Auth::user()->ugel;
-                    $nivel = trim($request->get('nivel'));
-                    
-                    $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento",
-                               "pro_accions.color","pro_accions.descripcion","pro_accions.fecha","pro_accions.lugar",
-                               "pro_accions.enlace",
-                               "users.name","users.cargo","users.nivelinstitucion","users.institucion",
-                               "users.provincia","users.distrito","users.ugel","users.dni")
-                    ->join("users","users.id","=","pro_accions.idUser")
-                    ->where("users.dni","LIKE","%".$dni."%")
-                    ->where("users.name","LIKE","%".$nomdocente."%")
-                    ->where("users.institucion","LIKE","%".$nominstitucion."%")
-                    ->where("users.ugel", $ugeluser)
-                    ->where('pro_accions.estado', '1')
-                    ->where("pro_accions.tipo", "sensibilizacion")
-                    ->where('users.nivelinstitucion',"LIKE","%".$nivel."%");
-                    
-                    // Aplicar filtro por año si está seleccionado
-                    if (!empty($anio)) {
-                        $accions = $accions->whereYear('fecha', $anio);
-                    }
-                    
-                    $accions = $accions->orderBy('pro_accions.fecha','desc')
-                    ->paginate(10);
-                    
-                    $rols = ['1','5'];
-                    $buscars = ['1'];
-                    return view('accion.view')->with('accions',$accions)->with('rols',$rols)->with('buscars',$buscars);               
-                }
-            }
-        }
+    public function buscarGeneral(Request $request)
+    {
+        return $this->general($request);
     }
 
     public function download($id)
@@ -509,202 +389,95 @@ class AccionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:2048',
+            'nombreAccion' => 'required|string|max:191',
+            'lugar'        => 'required|string|max:191',
+            'fecha'        => 'required|date',
+            'documento'    => 'required|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
         ], [
-            'documento.max' => 'Archivo superior a 2MB', 
+            'documento.required' => 'Debe adjuntar un archivo para el registro.',
+            'documento.max'      => 'El archivo no debe ser superior a 10MB.',
+            'documento.mimes'    => 'El tipo de archivo no es compatible.',
         ]);
 
         $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension();
         $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreAccion').' '.$dateTimeNow.'.'. $extension;
+        $fileContent = $request->get('nombreAccion') . ' ' . $dateTimeNow . '.' . $extension;
         $route = 'accion';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
+
         Storage::makeDirectory('public/' . $route);
         Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
         Storage::putFileAs('public/' . $route, $file, $fileContent);
-        
+
         $accions = new Accion;
         $accions->enlace = $route . '/' . $fileContent;
         $accions->nombreAccion = $request->get('nombreAccion');
-        switch($extension){
-            case 'doc':
-                $accions->documento = 'fas fa-file-word';
-                $accions->color = 'blue';
-                break;
-            case 'docx':
-                $accions->documento = 'fas fa-file-word';
-                $accions->color = 'blue';
-                break;
-            case 'png':
-                $accions->documento = 'fas fa-file-image';
-                $accions->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $accions->documento = 'fas fa-file-image';
-                $accions->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $accions->documento = 'fas fa-file-image';
-                $accions->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $accions->documento = 'fas fa-file-pdf';
-                $accions->color = 'red';
-                break;
-            case 'ppt':
-                $accions->documento = 'fas fa-file-powerpoint';
-                $accions->color = 'orange';
-                break;
-            case 'pptm':
-                $accions->documento = 'fas fa-file-powerpoint';
-                $accions->color = 'orange';
-                break;
-            case 'pptx':
-                $accions->documento = 'fas fa-file-powerpoint';
-                $accions->color = 'orange';
-                break;
-            case 'xlm':
-                $accions->documento = 'fas fa-file-excel';
-                $accions->color = 'green';
-                break;
-            case 'xls':
-                $accions->documento = 'fas fa-file-excel';
-                $accions->color = 'green';
-                break;   
-            case 'xlsm':
-                $accions->documento = 'fas fa-file-excel';
-                $accions->color = 'green';
-                break;
-            case 'xlsx':
-                $accions->documento = 'fas fa-file-excel';
-                $accions->color = 'green';
-                break;
-        }
         $accions->lugar = $request->get('lugar');
         $accions->fecha = $request->get('fecha');
         $accions->idUser = Auth::user()->id;
         $accions->tipo = 'sensibilizacion';
         $accions->estado = 1;
         $accions->save();
-        
+
         return redirect('/accions')->with('success', '¡Registro guardado con éxito!');
     }
 
     public function show()
     {
-        //
+        return redirect('/accions');
     }
 
-    
     public function edit($id)
     {
         $accion = Accion::findOrFail($id);
         return view('accion.edit')->with('accion', $accion);
     }
 
-    
     public function update(Request $request, Accion $accion)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:22048',
+            'nombreAccion' => 'required|string|max:191',
+            'lugar'        => 'required|string|max:191',
+            'fecha'        => 'required|date',
+            'documento'    => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
+        ], [
+            'documento.max'   => 'El archivo no debe ser superior a 10MB.',
+            'documento.mimes' => 'El tipo de archivo no es compatible.',
         ]);
-        $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
-        $extension = $file->getClientOriginalExtension();
-        $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreAccion').' '.$dateTimeNow.'.'. $extension;
-        $route = 'accion';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
-        Storage::makeDirectory('public/' . $route);
-        Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
-        Storage::putFileAs('public/' . $route, $file, $fileContent);
-         // Eliminar el archivo antiguo
-        Storage::delete('public/'.$accion->enlace);
 
-        $accion->enlace = $route . '/' . $fileContent;
         $accion->nombreAccion = $request->get('nombreAccion');
-        switch($extension){
-            case 'doc':
-                $accion->documento = 'fas fa-file-word';
-                $accion->color = 'blue';
-                break;
-            case 'docx':
-                $accion->documento = 'fas fa-file-word';
-                $accion->color = 'blue';
-                break;
-            case 'png':
-                $accion->documento = 'fas fa-file-image';
-                $accion->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $accion->documento = 'fas fa-file-image';
-                $accion->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $accion->documento = 'fas fa-file-image';
-                $accion->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $accion->documento = 'fas fa-file-pdf';
-                $accion->color = 'red';
-                break;
-            case 'ppt':
-                $accion->documento = 'fas fa-file-powerpoint';
-                $accion->color = 'orange';
-                break;
-            case 'pptm':
-                $accion->documento = 'fas fa-file-powerpoint';
-                $accion->color = 'orange';
-                break;
-            case 'pptx':
-                $accion->documento = 'fas fa-file-powerpoint';
-                $accion->color = 'orange';
-                break;
-            case 'xlm':
-                $accion->documento = 'fas fa-file-excel';
-                $accion->color = 'green';
-                break;
-            case 'xls':
-                $accion->documento = 'fas fa-file-excel';
-                $accion->color = 'green';
-                break;   
-            case 'xlsm':
-                $accion->documento = 'fas fa-file-excel';
-                $accion->color = 'green';
-                break;
-            case 'xlsx':
-                $accion->documento = 'fas fa-file-excel';
-                $accion->color = 'green';
-                break;
-        }
-       
         $accion->lugar = $request->get('lugar');
         $accion->fecha = $request->get('fecha');
-        $accion->idUser = Auth::user()->id;
-        $accion->tipo = 'sensibilizacion';
-        $accion->estado = 1;
+
+        if ($request->hasFile('documento')) {
+            $file = $request->file('documento');
+            $extension = $file->getClientOriginalExtension();
+            $dateTimeNow = now()->format('Ymd_His_u');
+            $fileContent = $request->get('nombreAccion') . ' ' . $dateTimeNow . '.' . $extension;
+            $route = 'accion';
+
+            Storage::makeDirectory('public/' . $route);
+            Storage::disk('public')->setVisibility($route, 'public');
+            Storage::putFileAs('public/' . $route, $file, $fileContent);
+
+            if ($accion->enlace && Storage::exists('public/' . $accion->enlace)) {
+                Storage::delete('public/' . $accion->enlace);
+            }
+
+            $accion->enlace = $route . '/' . $fileContent;
+        }
+
         $accion->save();
-        
-        return redirect('/accions');
+
+        return redirect('/accions')->with('success', '¡Registro actualizado con éxito!');
     }
 
-   
     public function destroy(Accion $accion)
     {
-        Storage::delete('public/'.$accion->enlace);
         $accion->estado = 0;
-        $accion->idUser = Auth::user()->id;
         $accion->save();
-        session()->flash('success', '¡Registro eliminado!');
-        return redirect('/accions');
+
+        return redirect('/accions')->with('success', '¡Registro eliminado con éxito!');
     }
 
     public function obtenerUgels(Request $request)

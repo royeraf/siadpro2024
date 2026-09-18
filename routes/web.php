@@ -206,6 +206,7 @@ Route::get("/buscar-agenda-ugel",['App\Http\Controllers\AgendaViewController'::c
 
 Route::get('produccions/{id}/download', ['App\Http\Controllers\ProduccionController'::class, 'download'])->name('produccions.download');
 Route::get('accions/{id}/download', ['App\Http\Controllers\AccionController'::class, 'download'])->name('accions.download');
+Route::get('difusions/{id}/download', ['App\Http\Controllers\DifusionController'::class, 'download'])->name('difusions.download');
 Route::get('evidencias/{id}/download', ['App\Http\Controllers\EvidenciaController'::class, 'download'])->name('evidencias.download');
 
 # nuevo sector
