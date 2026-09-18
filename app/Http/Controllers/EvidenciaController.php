@@ -38,7 +38,7 @@ class EvidenciaController extends Controller
     {
         $usuario = Auth::user()->id;
 
-        $evidenciasQuery = Evidencia::where('estado', '1')->where('idUser', $usuario);
+        $evidenciasQuery = Evidencia::with('getUser')->where('estado', '1')->where('idUser', $usuario);
 
         if ($request->filled('texto')) {
             $evidenciasQuery->where('nombreEvidencia', 'LIKE', '%' . $request->input('texto') . '%');
@@ -369,9 +369,10 @@ class EvidenciaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
-        ], [
-            'documento.max' => 'Archivo superior a 2MB', 
+            'nombreEvidencia' => 'required|string|max:191',
+            'descripcion' => 'required|string',
+            'fecha' => 'required|date',
+            'documento' => 'required|file|max:10240',
         ]);
         $file = $request->file('documento');
         $filename = $file->getClientOriginalName();
@@ -390,60 +391,6 @@ class EvidenciaController extends Controller
         $evidencias = new Evidencia;
         $evidencias->enlace = $route . '/' . $fileContent;
         $evidencias->nombreEvidencia = $request->get('nombreEvidencia');
-        switch($extension){
-            case 'doc':
-                $evidencias->documento = 'fas fa-file-word';
-                $evidencias->color = 'blue';
-                break;
-            case 'docx':
-                $evidencias->documento = 'fas fa-file-word';
-                $evidencias->color = 'blue';
-                break;
-            case 'png':
-                $evidencias->documento = 'fas fa-file-image';
-                $evidencias->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $evidencias->documento = 'fas fa-file-image';
-                $evidencias->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $evidencias->documento = 'fas fa-file-image';
-                $evidencias->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $evidencias->documento = 'fas fa-file-pdf';
-                $evidencias->color = 'red';
-                break;
-            case 'ppt':
-                $evidencias->documento = 'fas fa-file-powerpoint';
-                $evidencias->color = 'orange';
-                break;
-            case 'pptm':
-                $evidencias->documento = 'fas fa-file-powerpoint';
-                $evidencias->color = 'orange';
-                break;
-            case 'pptx':
-                $evidencias->documento = 'fas fa-file-powerpoint';
-                $evidencias->color = 'orange';
-                break;
-            case 'xlm':
-                $evidencias->documento = 'fas fa-file-excel';
-                $evidencias->color = 'green';
-                break;
-            case 'xls':
-                $evidencias->documento = 'fas fa-file-excel';
-                $evidencias->color = 'green';
-                break;   
-            case 'xlsm':
-                $evidencias->documento = 'fas fa-file-excel';
-                $evidencias->color = 'green';
-                break;
-            case 'xlsx':
-                $evidencias->documento = 'fas fa-file-excel';
-                $evidencias->color = 'green';
-                break;
-        }
         $evidencias->descripcion = $request->get('descripcion');
         $evidencias->fecha = $request->get('fecha');
         $evidencias->idUser = Auth::user()->id;
@@ -469,88 +416,42 @@ class EvidenciaController extends Controller
     public function update(Request $request, Evidencia $evidencia)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
+            'nombreEvidencia' => 'required|string|max:191',
+            'descripcion' => 'required|string',
+            'fecha' => 'required|date',
+            'documento' => 'nullable|file|max:10240',
         ]);
         
-        $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
-        $extension = $file->getClientOriginalExtension();
-        $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreEvidencia').' '.$dateTimeNow.'.'. $extension;
-        $route = 'evidencia';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
-        Storage::makeDirectory('public/' . $route);
-        Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
-        Storage::putFileAs('public/' . $route, $file, $fileContent);
-         // Eliminar el archivo antiguo
-        Storage::delete('public/'.$evidencia->enlace);
+        if ($request->hasFile('documento')) {
+            $file = $request->file('documento');
+            $extension = $file->getClientOriginalExtension();
+            $dateTimeNow = now()->format('Ymd_His_u');
+            $fileContent = $request->get('nombreEvidencia').' '.$dateTimeNow.'.'. $extension;
+            $route = 'evidencia';
+            
+            // Asegurarse de que la carpeta existe y tiene los permisos correctos
+            Storage::makeDirectory('public/' . $route);
+            Storage::disk('public')->setVisibility($route, 'public');
+            
+            // Almacenar el archivo con la función storeAs()
+            Storage::putFileAs('public/' . $route, $file, $fileContent);
 
-        $evidencia->enlace = $route . '/' . $fileContent;
-        $evidencia->nombreEvidencia = $request->get('nombreEvidencia');
-        switch($extension){
-            case 'doc':
-                $evidencia->documento = 'fas fa-file-word';
-                $evidencia->color = 'blue';
-                break;
-            case 'docx':
-                $evidencia->documento = 'fas fa-file-word';
-                $evidencia->color = 'blue';
-                break;
-            case 'png':
-                $evidencia->documento = 'fas fa-file-image';
-                $evidencia->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $evidencia->documento = 'fas fa-file-image';
-                $evidencia->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $evidencia->documento = 'fas fa-file-image';
-                $evidencia->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $evidencia->documento = 'fas fa-file-pdf';
-                $evidencia->color = 'red';
-                break;
-            case 'ppt':
-                $evidencia->documento = 'fas fa-file-powerpoint';
-                $evidencia->color = 'orange';
-                break;
-            case 'pptm':
-                $evidencia->documento = 'fas fa-file-powerpoint';
-                $evidencia->color = 'orange';
-                break;
-            case 'pptx':
-                $evidencia->documento = 'fas fa-file-powerpoint';
-                $evidencia->color = 'orange';
-                break;
-            case 'xlm':
-                $evidencia->documento = 'fas fa-file-excel';
-                $evidencia->color = 'green';
-                break;
-            case 'xls':
-                $evidencia->documento = 'fas fa-file-excel';
-                $evidencia->color = 'green';
-                break;   
-            case 'xlsm':
-                $evidencia->documento = 'fas fa-file-excel';
-                $evidencia->color = 'green';
-                break;
-            case 'xlsx':
-                $evidencia->documento = 'fas fa-file-excel';
-                $evidencia->color = 'green';
-                break;
+            // Eliminar el archivo antiguo si existía
+            if (!empty($evidencia->enlace)) {
+                Storage::delete('public/'.$evidencia->enlace);
+            }
+
+            $evidencia->enlace = $route . '/' . $fileContent;
         }
+
+        $evidencia->nombreEvidencia = $request->get('nombreEvidencia');
         $evidencia->descripcion = $request->get('descripcion');
         $evidencia->fecha = $request->get('fecha');
         $evidencia->idUser = Auth::user()->id;
         $evidencia->estado = 1;
         $evidencia->save();
         
-        return redirect('/evidencias');
+        return redirect('/evidencias')->with('success', '¡Registro actualizado con éxito!');
     }
 
    

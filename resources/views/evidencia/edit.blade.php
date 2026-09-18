@@ -18,7 +18,7 @@
                             <label for="nombreEvidencia" class="col-md-4 col-form-label text-md-right">{{ __('Nombre de la Asistencia') }}</label>
 
                             <div class="col-md-6">
-                                <input id="nombreEvidencia" type="text" class="form-control @error('nombreEvidencia') is-invalid @enderror" name="nombreEvidencia" value="{{ $evidencia->nombreEvidencia }}" required autocomplete="nombreInforme" autofocus>
+                                <input id="nombreEvidencia" type="text" class="form-control @error('nombreEvidencia') is-invalid @enderror" name="nombreEvidencia" value="{{ $evidencia->nombreEvidencia }}" required autocomplete="nombreEvidencia" autofocus>
 
                                 @error('nombreEvidencia')
                                     <span class="invalid-feedback" role="alert">
@@ -32,7 +32,7 @@
                             <label for="descripcion" class="col-md-4 col-form-label text-md-right">{{ __('Descripción') }}</label>
 
                             <div class="col-md-6">
-                            <textarea id="descripcion" type="text" class="form-control @error('descripcion') is-invalid @enderror" name="descripcion" required autocomplete="descripcion" required>{{ $evidencia->descripcion }}</textarea>
+                            <textarea id="descripcion" type="text" class="form-control @error('descripcion') is-invalid @enderror" name="descripcion" required autocomplete="descripcion">{{ $evidencia->descripcion }}</textarea>
 
                                 @error('descripcion')
                                     <span class="invalid-feedback" role="alert">
@@ -60,10 +60,23 @@
                             <label for="documento" class="col-md-4 col-form-label text-md-right">{{ __('Documento') }}</label>
 
                             <div class="col-md-6">
-                                <input id="documento" type="file" class="form-control-file @error('documento') is-invalid @enderror" name="documento" value="{{ old('documento') }}" autocomplete="documento" required>
+                                @if(!empty($evidencia->enlace))
+                                    <div class="mb-2 p-2 bg-light border rounded d-flex align-items-center justify-content-between">
+                                        <div class="text-truncate mr-2">
+                                            <i class="{{ $evidencia->documento }} mr-1" style="font-size: 18px; color: {{ $evidencia->color }}"></i>
+                                            <span class="text-muted small">Actual:</span>
+                                            <span class="font-weight-bold small" title="{{ basename($evidencia->enlace) }}">{{ basename($evidencia->enlace) }}</span>
+                                        </div>
+                                        <a href="{{ route('evidencias.download', $evidencia->id) }}" class="btn btn-xs btn-outline-primary" title="Descargar actual">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    </div>
+                                @endif
+                                <input id="documento" type="file" class="form-control-file @error('documento') is-invalid @enderror" name="documento" autocomplete="documento">
+                                <small class="form-text text-muted">Dejar vacío para conservar el archivo actual (máx. 10MB).</small>
 
                                 @error('documento')
-                                    <span class="invalid-feedback" role="alert">
+                                    <span class="invalid-feedback d-block" role="alert">
                                         <strong>{{ $message }}</strong>
                                     </span>
                                 @enderror
