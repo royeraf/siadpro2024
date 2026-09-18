@@ -14,7 +14,6 @@ class Agenda extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'institucion',
         'title',
         'evento',
         'color',
@@ -27,6 +26,7 @@ class Agenda extends Model
 
     protected $appends = [
         'nomDocente',
+        'institucion',
     ];
 
     /**
@@ -52,5 +52,14 @@ class Agenda extends Model
     public function getNomDocenteAttribute($value = null)
     {
         return $this->user ? $this->user->name : $value;
+    }
+
+    /**
+     * Accesor para institucion: obtiene dinámicamente la institución desde la tabla users (a través de la relación)
+     * o respeta el alias si ya viene seleccionado en la consulta (ej. users.institucion as institucion).
+     */
+    public function getInstitucionAttribute($value = null)
+    {
+        return $this->user ? $this->user->institucion : $value;
     }
 }

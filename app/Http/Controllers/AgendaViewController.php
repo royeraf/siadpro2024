@@ -23,9 +23,11 @@ class AgendaViewController extends Controller
     public function index()
     {
         $institucion = Auth::user()->institucion;
-        $events = Agenda::with('user')
-            ->where("institucion", $institucion)
-            ->where('estado', '1')
+        $events = Agenda::select('pro_agendas.*')
+            ->join('users', 'users.id', '=', 'pro_agendas.idUser')
+            ->where('users.institucion', $institucion)
+            ->where('pro_agendas.estado', '1')
+            ->with('user')
             ->get();
 
         $tabs = $this->tabsAgenda('view');
@@ -57,7 +59,7 @@ class AgendaViewController extends Controller
         $query = Agenda::select(
                 "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
                 "pro_agendas.evento", "pro_agendas.start", "pro_agendas.end",
-                "pro_agendas.institucion", "users.nivelinstitucion", "users.provincia",
+                "users.institucion as institucion", "users.nivelinstitucion", "users.provincia",
                 "users.distrito", "users.ugel"
             )
             ->join("users", "users.id", "=", "pro_agendas.idUser")
@@ -67,7 +69,7 @@ class AgendaViewController extends Controller
             ->whereYear('pro_agendas.end', $anio);
 
         if ($request->filled('instituciones')) {
-            $query->where('pro_agendas.institucion', $request->input('instituciones'));
+            $query->where('users.institucion', $request->input('instituciones'));
         }
         if ($request->filled('docentes')) {
             $query->where('users.name', $request->input('docentes'));
@@ -127,7 +129,7 @@ class AgendaViewController extends Controller
         $query = Agenda::select(
                 "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
                 "pro_agendas.evento", "pro_agendas.start", "pro_agendas.end",
-                "pro_agendas.institucion", "users.nivelinstitucion", "users.provincia",
+                "users.institucion as institucion", "users.nivelinstitucion", "users.provincia",
                 "users.distrito", "users.ugel"
             )
             ->join("users", "users.id", "=", "pro_agendas.idUser")
@@ -139,7 +141,7 @@ class AgendaViewController extends Controller
             $query->where('users.ugel', $request->input('ugels'));
         }
         if ($request->filled('instituciones')) {
-            $query->where('pro_agendas.institucion', $request->input('instituciones'));
+            $query->where('users.institucion', $request->input('instituciones'));
         }
         if ($request->filled('docentes')) {
             $query->where('users.name', $request->input('docentes'));
@@ -441,7 +443,7 @@ class AgendaViewController extends Controller
         // Construir la consulta
         $query = Agenda::select(
             "users.name as nomDocente", "pro_agendas.title", "pro_agendas.evento",
-            "pro_agendas.start", "pro_agendas.end", "pro_agendas.institucion", 
+            "pro_agendas.start", "pro_agendas.end", "users.institucion as institucion", 
             "users.provincia", "users.distrito", "users.ugel", "users.nivelinstitucion"
         )
         ->join("users", "users.id", "=", "pro_agendas.idUser")
@@ -455,7 +457,7 @@ class AgendaViewController extends Controller
         }
         
         if (!empty($instituciones)) {
-            $query->where("pro_agendas.institucion", $instituciones);
+            $query->where("users.institucion", $instituciones);
         }
         
         if (!empty($docentes)) {
