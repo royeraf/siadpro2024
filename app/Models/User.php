@@ -74,4 +74,18 @@ class User extends Authenticatable
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function agendas()
+    {
+        return $this->hasMany(Agenda::class, 'idUser');
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($user) {
+            if ($user->wasChanged('name')) {
+                Agenda::where('idUser', $user->id)->update(['nomDocente' => $user->name]);
+            }
+        });
+    }
 }

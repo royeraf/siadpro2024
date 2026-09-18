@@ -23,10 +23,10 @@ class AgendaViewController extends Controller
     public function index()
     {
         $institucion = Auth::user()->institucion;
-        $events = Agenda::all()
-        ->where("institucion", $institucion)
-        ->where('estado', '1')
-        ;
+        $events = Agenda::with('user')
+            ->where("institucion", $institucion)
+            ->where('estado', '1')
+            ->get();
 
         $tabs = $this->tabsAgenda('view');
 
@@ -55,7 +55,7 @@ class AgendaViewController extends Controller
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
         $query = Agenda::select(
-                "pro_agendas.id", "pro_agendas.nomDocente", "pro_agendas.title",
+                "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
                 "pro_agendas.evento", "pro_agendas.start", "pro_agendas.end",
                 "pro_agendas.institucion", "users.nivelinstitucion", "users.provincia",
                 "users.distrito", "users.ugel"
@@ -63,8 +63,8 @@ class AgendaViewController extends Controller
             ->join("users", "users.id", "=", "pro_agendas.idUser")
             ->where("users.ugel", $ugel)
             ->where('pro_agendas.estado', '1')
-            ->whereYear('start', $anio)
-            ->whereYear('end', $anio);
+            ->whereYear('pro_agendas.start', $anio)
+            ->whereYear('pro_agendas.end', $anio);
 
         if ($request->filled('instituciones')) {
             $query->where('pro_agendas.institucion', $request->input('instituciones'));
@@ -80,7 +80,7 @@ class AgendaViewController extends Controller
             $query->where(function ($q) use ($buscar) {
                 $q->where('pro_agendas.title', 'LIKE', "%{$buscar}%")
                   ->orWhere('pro_agendas.evento', 'LIKE', "%{$buscar}%")
-                  ->orWhere('pro_agendas.nomDocente', 'LIKE', "%{$buscar}%");
+                  ->orWhere('users.name', 'LIKE', "%{$buscar}%");
             });
         }
 
@@ -125,7 +125,7 @@ class AgendaViewController extends Controller
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
         $query = Agenda::select(
-                "pro_agendas.id", "pro_agendas.nomDocente", "pro_agendas.title",
+                "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
                 "pro_agendas.evento", "pro_agendas.start", "pro_agendas.end",
                 "pro_agendas.institucion", "users.nivelinstitucion", "users.provincia",
                 "users.distrito", "users.ugel"
@@ -152,7 +152,7 @@ class AgendaViewController extends Controller
             $query->where(function ($q) use ($buscar) {
                 $q->where('pro_agendas.title', 'LIKE', "%{$buscar}%")
                   ->orWhere('pro_agendas.evento', 'LIKE', "%{$buscar}%")
-                  ->orWhere('pro_agendas.nomDocente', 'LIKE', "%{$buscar}%");
+                  ->orWhere('users.name', 'LIKE', "%{$buscar}%");
             });
         }
 
@@ -440,7 +440,7 @@ class AgendaViewController extends Controller
 
         // Construir la consulta
         $query = Agenda::select(
-            "pro_agendas.nomDocente", "pro_agendas.title", "pro_agendas.evento",
+            "users.name as nomDocente", "pro_agendas.title", "pro_agendas.evento",
             "pro_agendas.start", "pro_agendas.end", "pro_agendas.institucion", 
             "users.provincia", "users.distrito", "users.ugel", "users.nivelinstitucion"
         )

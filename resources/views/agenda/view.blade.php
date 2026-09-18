@@ -108,7 +108,7 @@
                         </div>							
                         <div class="form-group col-md-12" >
                             <label for="nomDocente" class="col-sm-3 control-label">Docente</label>
-                            <input type="text" name="nomDocente" class="form-control" id="nomDocente" placeholder="nomDocente" readonly>
+                            <input type="text" name="nomDocente" class="form-control" id="nomDocente" placeholder="Docente" readonly>
                         </div>
                         <div class="form-group col-md-12">
                             <label for="start" class="col-sm-5 control-label">Fecha Inicial</label>
@@ -182,7 +182,7 @@
 					$jsEvents[] = [
 						'id' => $event['id'],
 						'title' => $event['title'],
-						'nomDocente' => $event['nomDocente'],
+						'nomDocente' => $event->nomDocente ?? ($event->user->name ?? ($event['nomDocente'] ?? '')),
 						'evento' => $event['evento'],
 						'color' => $event['color'],
 						'start' => $start,
