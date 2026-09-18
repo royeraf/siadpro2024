@@ -70,7 +70,7 @@
                                 <input id="documento" type="file" class="form-control-file @error('documento') is-invalid @enderror" name="documento"  autocomplete="documento" required>
 
                                 <div id="error-message" class="alert alert-danger" style="display: none;">
-                                    <strong>Registro no guardado: El archivo es superior a 2MB.</strong>
+                                    <strong>Registro no guardado: El archivo es superior a 10MB.</strong>
                                 </div>
                             </div>
                         </div>
@@ -99,15 +99,15 @@
 @section('js')
 <script>
     
-    // A�0�9adir un evento 'click' al bot��n de guardar
+    // Añadir un evento 'click' al botón de guardar
     document.getElementById('guardarBtn').addEventListener('click', function(event) {
         var archivo = document.getElementById('documento').files[0];
-        var maxSize = 2 * 1024 * 1024; // 2MB en bytes
+        var maxSize = 10 * 1024 * 1024; // 10MB en bytes
         var errorMessage = document.getElementById('error-message');
 
-        // Verificar si el archivo es mayor a 2MB
+        // Verificar si el archivo es mayor a 10MB
         if (archivo && archivo.size > maxSize) {
-            // Evitar que el formulario se env��e
+            // Evitar que el formulario se envíe
             event.preventDefault();
 
             // Mostrar el mensaje de error

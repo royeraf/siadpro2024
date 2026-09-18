@@ -36,7 +36,7 @@ class InformeController extends Controller
     {
         $usuario = Auth::user()->id;
 
-        $query = Informe::where('estado', '1')->where('idUser', $usuario);
+        $query = Informe::with('getUser')->where('estado', '1')->where('idUser', $usuario);
 
         if ($request->filled('texto')) {
             $query->where('nombreInforme', 'LIKE', '%' . $request->input('texto') . '%');
@@ -368,67 +368,13 @@ class InformeController extends Controller
         $informes = new Informe;
         $informes->enlace = $route . '/' . $fileContent;
         $informes->nombreInforme = $request->get('nombreInforme');
-        switch($extension){
-            case 'doc':
-                $informes->documento = 'fas fa-file-word';
-                $informes->color = 'blue';
-                break;
-            case 'docx':
-                $informes->documento = 'fas fa-file-word';
-                $informes->color = 'blue';
-                break;
-            case 'png':
-                $informes->documento = 'fas fa-file-image';
-                $informes->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $informes->documento = 'fas fa-file-image';
-                $informes->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $informes->documento = 'fas fa-file-image';
-                $informes->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $informes->documento = 'fas fa-file-pdf';
-                $informes->color = 'red';
-                break;
-            case 'ppt':
-                $informes->documento = 'fas fa-file-powerpoint';
-                $informes->color = 'orange';
-                break;
-            case 'pptm':
-                $informes->documento = 'fas fa-file-powerpoint';
-                $informes->color = 'orange';
-                break;
-            case 'pptx':
-                $informes->documento = 'fas fa-file-powerpoint';
-                $informes->color = 'orange';
-                break;
-            case 'xlm':
-                $informes->documento = 'fas fa-file-excel';
-                $informes->color = 'green';
-                break;
-            case 'xls':
-                $informes->documento = 'fas fa-file-excel';
-                $informes->color = 'green';
-                break;   
-            case 'xlsm':
-                $informes->documento = 'fas fa-file-excel';
-                $informes->color = 'green';
-                break;
-            case 'xlsx':
-                $informes->documento = 'fas fa-file-excel';
-                $informes->color = 'green';
-                break;
-        }
         $informes->fecha = $request->get('fecha');
         $informes->descripcion = $request->get('descripcion');
         $informes->idUser = Auth::user()->id;
         $informes->estado = 1;
         $informes->save();
         
-        return redirect('/informes')->with('success', '¡Registro guardado con éxito!');;
+        return redirect('/informes')->with('success', '¡Registro guardado con éxito!');
     }
 
     public function show()
@@ -447,88 +393,42 @@ class InformeController extends Controller
     public function update(Request $request, Informe $informe)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
+            'nombreInforme' => 'required|string|max:191',
+            'descripcion' => 'required|string',
+            'fecha' => 'required|date',
+            'documento' => 'nullable|file|max:10240',
         ]);
         
-        $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
-        $extension = $file->getClientOriginalExtension();
-        $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreInforme').' '.$dateTimeNow.'.'. $extension;
-        $route = 'informe';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
-        Storage::makeDirectory('public/' . $route);
-        Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la función storeAs()
-        Storage::putFileAs('public/' . $route, $file, $fileContent);
-         // Eliminar el archivo antiguo
-        Storage::delete('public/'.$informe->enlace);
+        if ($request->hasFile('documento')) {
+            $file = $request->file('documento');
+            $extension = $file->getClientOriginalExtension();
+            $dateTimeNow = now()->format('Ymd_His_u');
+            $fileContent = $request->get('nombreInforme').' '.$dateTimeNow.'.'. $extension;
+            $route = 'informe';
+            
+            // Asegurarse de que la carpeta existe y tiene los permisos correctos
+            Storage::makeDirectory('public/' . $route);
+            Storage::disk('public')->setVisibility($route, 'public');
+            
+            // Almacenar el archivo
+            Storage::putFileAs('public/' . $route, $file, $fileContent);
 
-        $informe->enlace = $route . '/' . $fileContent;
-        $informe->nombreInforme = $request->get('nombreInforme');
-        switch($extension){
-            case 'doc':
-                $informe->documento = 'fas fa-file-word';
-                $informe->color = 'blue';
-                break;
-            case 'docx':
-                $informe->documento = 'fas fa-file-word';
-                $informe->color = 'blue';
-                break;
-            case 'png':
-                $informe->documento = 'fas fa-file-image';
-                $informe->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $informe->documento = 'fas fa-file-image';
-                $informe->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $informe->documento = 'fas fa-file-image';
-                $informe->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $informe->documento = 'fas fa-file-pdf';
-                $informe->color = 'red';
-                break;
-            case 'ppt':
-                $informe->documento = 'fas fa-file-powerpoint';
-                $informe->color = 'orange';
-                break;
-            case 'pptm':
-                $informe->documento = 'fas fa-file-powerpoint';
-                $informe->color = 'orange';
-                break;
-            case 'pptx':
-                $informe->documento = 'fas fa-file-powerpoint';
-                $informe->color = 'orange';
-                break;
-            case 'xlm':
-                $informe->documento = 'fas fa-file-excel';
-                $informe->color = 'green';
-                break;
-            case 'xls':
-                $informe->documento = 'fas fa-file-excel';
-                $informe->color = 'green';
-                break;   
-            case 'xlsm':
-                $informe->documento = 'fas fa-file-excel';
-                $informe->color = 'green';
-                break;
-            case 'xlsx':
-                $informe->documento = 'fas fa-file-excel';
-                $informe->color = 'green';
-                break;
+            // Eliminar el archivo antiguo si existía
+            if (!empty($informe->enlace)) {
+                Storage::delete('public/'.$informe->enlace);
+            }
+
+            $informe->enlace = $route . '/' . $fileContent;
         }
+
+        $informe->nombreInforme = $request->get('nombreInforme');
         $informe->fecha = $request->get('fecha');
         $informe->descripcion = $request->get('descripcion');
         $informe->idUser = Auth::user()->id;
         $informe->estado = 1;
         $informe->save();
         
-        return redirect('/informes');
+        return redirect('/informes')->with('success', '¡Registro actualizado con éxito!');
     }
 
    
