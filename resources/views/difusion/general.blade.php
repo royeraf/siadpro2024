@@ -198,37 +198,37 @@
             </th>
             <th @click="sortBy(1)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>Descripción</span>
+                    <span>Lugar</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 1 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 1 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
                     </span>
                 </div>
             </th>
-            <th @click="sortBy(2)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 120px;">
+            <th @click="sortBy(2)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>Fecha</span>
+                    <span>Descripción</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 2 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 2 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
                     </span>
                 </div>
             </th>
-            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
-                Documento
-            </th>
-            <th @click="sortBy(4)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+            <th @click="sortBy(3)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition" style="width: 120px;">
                 <div class="flex items-center justify-between">
-                    <span>Docente</span>
+                    <span>Fecha</span>
                     <span class="flex items-center gap-1">
-                        <span x-show="sortCol === 4 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
-                        <span x-show="sortCol === 4 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 3 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 3 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
                     </span>
                 </div>
             </th>
+            <th class="px-4 py-3 text-center no-export" style="width: 100px;">
+                Documento
+            </th>
             <th @click="sortBy(5)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>Cargo</span>
+                    <span>Docente</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 5 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 5 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
@@ -237,7 +237,7 @@
             </th>
             <th @click="sortBy(6)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>Institución</span>
+                    <span>Cargo</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 6 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 6 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
@@ -246,7 +246,7 @@
             </th>
             <th @click="sortBy(7)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>Tipo de II.EE</span>
+                    <span>Institución</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 7 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 7 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
@@ -255,7 +255,7 @@
             </th>
             <th @click="sortBy(8)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>Provincia</span>
+                    <span>Tipo de II.EE</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 8 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 8 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
@@ -264,7 +264,7 @@
             </th>
             <th @click="sortBy(9)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>Distrito</span>
+                    <span>Provincia</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 9 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 9 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
@@ -273,10 +273,19 @@
             </th>
             <th @click="sortBy(10)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
                 <div class="flex items-center justify-between">
-                    <span>UGEL</span>
+                    <span>Distrito</span>
                     <span class="flex items-center gap-1">
                         <span x-show="sortCol === 10 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
                         <span x-show="sortCol === 10 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
+                    </span>
+                </div>
+            </th>
+            <th @click="sortBy(11)" class="px-4 py-3 cursor-pointer hover:bg-blue-700 transition">
+                <div class="flex items-center justify-between">
+                    <span>UGEL</span>
+                    <span class="flex items-center gap-1">
+                        <span x-show="sortCol === 11 && sortAsc"><i data-lucide="arrow-up-narrow-wide" class="w-3.5 h-3.5"></i></span>
+                        <span x-show="sortCol === 11 && !sortAsc"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i></span>
                     </span>
                 </div>
             </th>

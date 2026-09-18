@@ -41,6 +41,10 @@ class DifusionController extends Controller
             $accionsQuery->where('nombreAccion', 'LIKE', '%' . $request->input('texto') . '%');
         }
 
+        if ($request->filled('lugar')) {
+            $accionsQuery->where('lugar', 'LIKE', '%' . $request->input('lugar') . '%');
+        }
+
         if ($request->filled('fecha')) {
             $accionsQuery->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
         }
@@ -49,7 +53,8 @@ class DifusionController extends Controller
             $buscar = trim($request->input('buscar'));
             $accionsQuery->where(function ($q) use ($buscar) {
                 $q->where('nombreAccion', 'LIKE', "%{$buscar}%")
-                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%");
+                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('lugar', 'LIKE', "%{$buscar}%");
             });
         }
 
@@ -104,9 +109,9 @@ class DifusionController extends Controller
         $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
         $query = Difusion::select(
-                'pro_difusions.id', 'pro_difusions.nombreAccion', 'pro_difusions.descripcion',
-                'pro_difusions.documento', 'pro_difusions.color', 'pro_difusions.fecha',
-                'pro_difusions.enlace',
+                'pro_difusions.id', 'pro_difusions.nombreAccion', 'pro_difusions.lugar',
+                'pro_difusions.descripcion', 'pro_difusions.documento', 'pro_difusions.color',
+                'pro_difusions.fecha', 'pro_difusions.enlace',
                 'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
                 'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
             )
@@ -137,11 +142,16 @@ class DifusionController extends Controller
             $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
         }
 
+        if ($request->filled('lugar')) {
+            $query->where('pro_difusions.lugar', 'LIKE', '%' . $request->input('lugar') . '%');
+        }
+
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
             $query->where(function ($q) use ($buscar) {
                 $q->where('pro_difusions.nombreAccion', 'LIKE', "%{$buscar}%")
-                  ->orWhere('pro_difusions.descripcion', 'LIKE', "%{$buscar}%");
+                  ->orWhere('pro_difusions.descripcion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_difusions.lugar', 'LIKE', "%{$buscar}%");
             });
         }
 
@@ -281,12 +291,13 @@ class DifusionController extends Controller
                 tr:nth-child(even) td { background-color: #F9FAFB; }
             </style></head><body>';
             $html .= '<table><thead><tr>';
-            $html .= '<th>Nombre de la Acción</th><th>Descripción</th><th>Fecha</th><th>Docente</th><th>DNI</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE</th><th>Provincia</th><th>Distrito</th><th>UGEL</th>';
+            $html .= '<th>Nombre de la Acción</th><th>Lugar</th><th>Descripción</th><th>Fecha</th><th>Docente</th><th>DNI</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE</th><th>Provincia</th><th>Distrito</th><th>UGEL</th>';
             $html .= '</tr></thead><tbody>';
 
             foreach ($accions as $accion) {
                 $html .= '<tr>';
                 $html .= '<td>' . htmlspecialchars((string) $accion->nombreAccion, ENT_QUOTES, 'UTF-8') . '</td>';
+                $html .= '<td>' . htmlspecialchars((string) ($accion->lugar ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
                 $html .= '<td>' . htmlspecialchars((string) ($accion->descripcion ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
                 $html .= '<td>' . htmlspecialchars(date('d-m-Y', strtotime($accion->fecha)), ENT_QUOTES, 'UTF-8') . '</td>';
                 $html .= '<td>' . htmlspecialchars((string) ($accion->name ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
@@ -331,7 +342,7 @@ class DifusionController extends Controller
         $institucion = Auth::user()->institucion;
         $anioActual = request()->get('anio', date('Y'));
         
-        $accions = Difusion::select("pro_difusions.id","pro_difusions.nombreAccion","pro_difusions.documento","pro_difusions.color","pro_difusions.descripcion","pro_difusions.updated_at","pro_difusions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
+        $accions = Difusion::select("pro_difusions.id","pro_difusions.nombreAccion","pro_difusions.lugar","pro_difusions.documento","pro_difusions.color","pro_difusions.descripcion","pro_difusions.updated_at","pro_difusions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_difusions.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_difusions.estado', '1')
@@ -373,6 +384,7 @@ class DifusionController extends Controller
     {
         $request->validate([
             'nombreAccion' => 'required|string|max:191',
+            'lugar'        => 'required|string|max:191',
             'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
             'documento'    => 'required|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
@@ -395,6 +407,7 @@ class DifusionController extends Controller
         $difusion = new Difusion;
         $difusion->enlace = $route . '/' . $fileContent;
         $difusion->nombreAccion = $request->get('nombreAccion');
+        $difusion->lugar = $request->get('lugar');
         $difusion->descripcion = $request->get('descripcion');
         $difusion->fecha = $request->get('fecha');
         $difusion->idUser = Auth::user()->id;
@@ -419,6 +432,7 @@ class DifusionController extends Controller
     {
         $request->validate([
             'nombreAccion' => 'required|string|max:191',
+            'lugar'        => 'required|string|max:191',
             'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
             'documento'    => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
@@ -428,6 +442,7 @@ class DifusionController extends Controller
         ]);
 
         $difusion->nombreAccion = $request->get('nombreAccion');
+        $difusion->lugar = $request->get('lugar');
         $difusion->descripcion = $request->get('descripcion');
         $difusion->fecha = $request->get('fecha');
 
@@ -651,7 +666,7 @@ class DifusionController extends Controller
         $anio = $request->get('anio', date('Y'));
 
         $query = Difusion::select(
-            "pro_difusions.nombreAccion", "pro_difusions.descripcion", 
+            "pro_difusions.nombreAccion", "pro_difusions.lugar", "pro_difusions.descripcion", 
             "pro_difusions.fecha", "users.name", "users.cargo", 
             "users.nivelinstitucion", "users.institucion", 
             "users.provincia", "users.distrito", "users.ugel"
@@ -681,10 +696,11 @@ class DifusionController extends Controller
         ];
 
         $content = '<table border="1">';
-        $content .= '<tr><th>Nombre de la Acción</th><th>Descripción</th><th>Fecha</th><th>Usuario</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE.</th><th>Provincia</th><th>Distrito</th><th>UGEL</th></tr>';
+        $content .= '<tr><th>Nombre de la Acción</th><th>Lugar</th><th>Descripción</th><th>Fecha</th><th>Usuario</th><th>Cargo</th><th>Institución</th><th>Tipo de II.EE.</th><th>Provincia</th><th>Distrito</th><th>UGEL</th></tr>';
         foreach ($accions as $item) {
             $content .= '<tr>';
             $content .= '<td>' . htmlspecialchars((string) $item->nombreAccion, ENT_QUOTES, 'UTF-8') . '</td>';
+            $content .= '<td>' . htmlspecialchars((string) ($item->lugar ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
             $content .= '<td>' . htmlspecialchars((string) $item->descripcion, ENT_QUOTES, 'UTF-8') . '</td>';
             $content .= '<td>' . date('d-m-Y', strtotime($item->fecha)) . '</td>';
             $content .= '<td>' . htmlspecialchars((string) $item->name, ENT_QUOTES, 'UTF-8') . '</td>';

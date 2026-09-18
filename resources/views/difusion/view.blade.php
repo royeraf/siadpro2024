@@ -112,12 +112,13 @@
                     <th scope="col">Provincia</th>
                     <th scope="col">Distrito</th>
                     <th scope="col">UGEL</th>
+                    <th scope="col">Lugar</th>
                     </tr>
                     </thead>
                     <tbody>
                             @if(count($accions)<=0)
                             <tr>
-                                <td colspan="11">No hay Acciones de Difusión para el año seleccionado</td>
+                                <td colspan="12">No hay Acciones de Difusión para el año seleccionado</td>
                             </tr>
                             @else
                                 @if (count($rols) == 2) <!-- Esto es para Director -->
@@ -134,6 +135,7 @@
                                     <td>{{$accion->provincia}}</td>
                                     <td>{{$accion->distrito}}</td>
                                     <td>{{$accion->ugel}}</td>
+                                    <td>{{$accion->lugar}}</td>
                                 </tr>
                                 @endforeach
                                 @else  <!-- Esto es para DRE-->
@@ -150,6 +152,7 @@
                                     <td>{{$accion->getUser->provincia}}</td>
                                     <td>{{$accion->getUser->distrito}}</td>
                                     <td>{{$accion->getUser->ugel}}</td>
+                                    <td>{{$accion->lugar}}</td>
                                 </tr>
                                 @endforeach
                                 @endif

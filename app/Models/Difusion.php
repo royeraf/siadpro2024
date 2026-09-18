@@ -14,6 +14,7 @@ class Difusion extends Model
 
     protected $fillable = [
         'nombreAccion',
+        'lugar',
         'enlace',
         'descripcion',
         'fecha',
