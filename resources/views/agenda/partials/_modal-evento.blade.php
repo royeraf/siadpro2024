@@ -36,20 +36,11 @@
                                 <span id="colorBadge" style="display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ced4da; background-color: transparent; transition: all 0.2s ease;"></span>
                             </span>
                         </div>
-                        <select name="color" class="form-control" id="color" required>
+                        <select name="seccion" class="form-control" id="color" required>
                             <option value="">Seleccionar</option>
-                            <option style="color:#FF0085; font-weight: 600;" value="#FF0085">Lila</option>
-                            <option style="color:#0071c5; font-weight: 600;" value="#0071c5">Azul oscuro</option>
-                            <option style="color:#40E0D0; font-weight: 600;" value="#40E0D0">Turquesa</option>
-                            <option style="color:#008000; font-weight: 600;" value="#008000">Verde</option>
-                            <option style="color:#FFD700; font-weight: 600;" value="#FFD700">Amarillo</option>
-                            <option style="color:#FF8C00; font-weight: 600;" value="#FF8C00">Naranja</option>
-                            <option style="color:#FF0000; font-weight: 600;" value="#FF0000">Rojo</option>
-                            <option style="color:#9D00FF; font-weight: 600;" value="#9D00FF">Violeta</option>
-                            <option style="color:#BA4A00; font-weight: 600;" value="#BA4A00">Marron</option>
-                            <option style="color:#99A3A4; font-weight: 600;" value="#99A3A4">Gris</option>
-                            <option style="color:#21618C; font-weight: 600;" value="#21618C">Acero</option>
-                            <option style="color:#000000; font-weight: 600;" value="#000000">Negro</option>
+                            @foreach(\App\Models\Agenda::SECCIONES as $clave => $datos)
+                                <option style="color:{{ $datos['hex'] }}; font-weight: 600;" value="{{ $clave }}" data-color="{{ $datos['hex'] }}">{{ $datos['label'] }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>

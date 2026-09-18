@@ -182,8 +182,9 @@
 
 		// Refleja visualmente el color seleccionado en el texto del select y en la muestra previa
 		function actualizarColorSeccion() {
-			var val = $('#color').val();
-			if (val) {
+			var opt = $('#color option:selected');
+			var val = opt.data('color') || opt.val();
+			if (val && val.toString().startsWith('#')) {
 				$('#color').css({
 					'color': val,
 					'-webkit-text-fill-color': val,
@@ -217,7 +218,10 @@
 			$('#color').val(color);
 			if (!$('#color').val()) {
 				$('#color option').each(function() {
-					if ($(this).val().toLowerCase() === color.toLowerCase()) {
+					var optVal = $(this).val().toLowerCase();
+					var optColor = ($(this).data('color') || '').toString().toLowerCase();
+					var search = color.toLowerCase();
+					if (optVal === search || optColor === search) {
 						$('#color').val($(this).val());
 						return false;
 					}
@@ -233,7 +237,7 @@
 			$('#id').val(event.id);
 			$('#title').val(event.title);
 			$('#evento').val(event.evento);
-			setColorValue(event.color);
+			setColorValue(event.seccion || event.color);
 			$('#start').val(moment(event.start).format(formato));
 			$('#end').val(moment(event.end).format(formato));
 		}
@@ -343,6 +347,7 @@
                         title: <?php echo json_encode($event['title']); ?>,
                         evento: <?php echo json_encode($event['evento']); ?>,						
                         color: <?php echo json_encode($event['color']); ?>,
+                        seccion: <?php echo json_encode($event['seccion'] ?? ''); ?>,
                         start: <?php echo json_encode($start); ?>,
                         end: <?php echo json_encode($end); ?>,
                     },
