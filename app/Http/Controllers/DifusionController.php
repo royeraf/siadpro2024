@@ -110,7 +110,7 @@ class DifusionController extends Controller
 
         $query = Difusion::select(
                 'pro_difusions.id', 'pro_difusions.nombreAccion', 'pro_difusions.lugar',
-                'pro_difusions.descripcion', 'pro_difusions.documento', 'pro_difusions.color',
+                'pro_difusions.descripcion',
                 'pro_difusions.fecha', 'pro_difusions.enlace',
                 'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
                 'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
@@ -342,7 +342,7 @@ class DifusionController extends Controller
         $institucion = Auth::user()->institucion;
         $anioActual = request()->get('anio', date('Y'));
         
-        $accions = Difusion::select("pro_difusions.id","pro_difusions.nombreAccion","pro_difusions.lugar","pro_difusions.documento","pro_difusions.color","pro_difusions.descripcion","pro_difusions.updated_at","pro_difusions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
+        $accions = Difusion::select("pro_difusions.id","pro_difusions.nombreAccion","pro_difusions.lugar","pro_difusions.enlace","pro_difusions.descripcion","pro_difusions.updated_at","pro_difusions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
             ->join("users","users.id","=","pro_difusions.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_difusions.estado', '1')

@@ -109,7 +109,7 @@ class Accion extends Model
      * Accessor dinámico para el icono del documento.
      * Infiere la clase FontAwesome según la extensión de 'enlace' (o fallback histórico).
      */
-    public function getDocumentoAttribute($value): string
+    public function getDocumentoAttribute($value = null): string
     {
         return self::getInfoArchivo($this->enlace)['icono'] ?? ($value ?: self::DEFAULT_ARCHIVO['icono']);
     }
@@ -118,7 +118,7 @@ class Accion extends Model
      * Accessor dinámico para el color del icono.
      * Infiere el color según la extensión de 'enlace' (o fallback histórico).
      */
-    public function getColorAttribute($value): string
+    public function getColorAttribute($value = null): string
     {
         return self::getInfoArchivo($this->enlace)['color'] ?? ($value ?: self::DEFAULT_ARCHIVO['color']);
     }

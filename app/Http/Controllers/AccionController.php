@@ -124,7 +124,7 @@ class AccionController extends Controller
 
         $query = Accion::select(
                 'pro_accions.id', 'pro_accions.nombreAccion', 'pro_accions.descripcion',
-                'pro_accions.documento', 'pro_accions.color', 'pro_accions.fecha', 'pro_accions.lugar',
+                'pro_accions.fecha', 'pro_accions.lugar',
                 'pro_accions.enlace',
                 'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
                 'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
@@ -360,7 +360,7 @@ class AccionController extends Controller
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.descripcion","pro_accions.documento","pro_accions.color","pro_accions.fecha","pro_accions.lugar","users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
+        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.descripcion","pro_accions.enlace","pro_accions.fecha","pro_accions.lugar","users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
             ->join("users","users.id","=","pro_accions.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_accions.estado', '1')
@@ -707,8 +707,8 @@ class AccionController extends Controller
         
         // Construir la consulta base
         $query = Accion::select(
-            "pro_accions.id", "pro_accions.nombreAccion", "pro_accions.documento",
-            "pro_accions.color", "pro_accions.descripcion", "pro_accions.fecha", 
+            "pro_accions.id", "pro_accions.nombreAccion",
+            "pro_accions.descripcion", "pro_accions.fecha", 
             "pro_accions.lugar", "users.name", "users.institucion", "users.provincia", 
             "users.cargo", "users.nivelinstitucion", "users.distrito", "users.ugel", "users.dni"
         )
