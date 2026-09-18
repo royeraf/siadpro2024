@@ -58,7 +58,7 @@ class AgendaViewController extends Controller
 
         $query = Agenda::select(
                 "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
-                "pro_agendas.evento", "pro_agendas.seccion", "pro_agendas.start", "pro_agendas.end",
+                "pro_agendas.evento", "pro_agendas.color", "pro_agendas.start", "pro_agendas.end",
                 "users.institucion as institucion", "users.nivelinstitucion", "users.provincia",
                 "users.distrito", "users.ugel"
             )
@@ -128,7 +128,7 @@ class AgendaViewController extends Controller
 
         $query = Agenda::select(
                 "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
-                "pro_agendas.evento", "pro_agendas.seccion", "pro_agendas.start", "pro_agendas.end",
+                "pro_agendas.evento", "pro_agendas.color", "pro_agendas.start", "pro_agendas.end",
                 "users.institucion as institucion", "users.nivelinstitucion", "users.provincia",
                 "users.distrito", "users.ugel"
             )
@@ -442,7 +442,7 @@ class AgendaViewController extends Controller
 
         // Construir la consulta
         $query = Agenda::select(
-            "users.name as nomDocente", "pro_agendas.title", "pro_agendas.evento", "pro_agendas.seccion",
+            "users.name as nomDocente", "pro_agendas.title", "pro_agendas.evento", "pro_agendas.color",
             "pro_agendas.start", "pro_agendas.end", "users.institucion as institucion", 
             "users.provincia", "users.distrito", "users.ugel", "users.nivelinstitucion"
         )

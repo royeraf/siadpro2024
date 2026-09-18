@@ -150,7 +150,7 @@ class ProduccionController extends Controller
         $query = Produccion::select(
                 "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.descripcion",
                 "pro_produccions.documento", "pro_produccions.color", "pro_produccions.fecha",
-                "pro_produccions.lugar", "pro_produccions.enlace", "users.name", "users.cargo", "users.nivelinstitucion",
+                "pro_produccions.enlace", "users.name", "users.cargo", "users.nivelinstitucion",
                 "users.institucion", "users.provincia", "users.distrito", "users.ugel", "users.dni"
             )
             ->join("users", "users.id", "=", "pro_produccions.idUser")
@@ -379,60 +379,6 @@ class ProduccionController extends Controller
         $produccions = new Produccion;
         $produccions->enlace = $route . '/' . $fileContent;
         $produccions->nombreProduccion = $request->get('nombreProduccion');
-        switch($extension){
-            case 'doc':
-                $produccions->documento = 'fas fa-file-word';
-                $produccions->color = 'blue';
-                break;
-            case 'docx':
-                $produccions->documento = 'fas fa-file-word';
-                $produccions->color = 'blue';
-                break;
-            case 'png':
-                $produccions->documento = 'fas fa-file-image';
-                $produccions->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $produccions->documento = 'fas fa-file-image';
-                $produccions->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $produccions->documento = 'fas fa-file-image';
-                $produccions->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $produccions->documento = 'fas fa-file-pdf';
-                $produccions->color = 'red';
-                break;
-            case 'ppt':
-                $produccions->documento = 'fas fa-file-powerpoint';
-                $produccions->color = 'orange';
-                break;
-            case 'pptm':
-                $produccions->documento = 'fas fa-file-powerpoint';
-                $produccions->color = 'orange';
-                break;
-            case 'pptx':
-                $produccions->documento = 'fas fa-file-powerpoint';
-                $produccions->color = 'orange';
-                break;
-            case 'xlm':
-                $produccions->documento = 'fas fa-file-excel';
-                $produccions->color = 'green';
-                break;
-            case 'xls':
-                $produccions->documento = 'fas fa-file-excel';
-                $produccions->color = 'green';
-                break;   
-            case 'xlsm':
-                $produccions->documento = 'fas fa-file-excel';
-                $produccions->color = 'green';
-                break;
-            case 'xlsx':
-                $produccions->documento = 'fas fa-file-excel';
-                $produccions->color = 'green';
-                break;
-        }
         $produccions->fecha = $request->get('fecha');
         $produccions->descripcion = $request->get('descripcion');
         $produccions->idUser = Auth::user()->id;
@@ -458,88 +404,41 @@ class ProduccionController extends Controller
     public function update(Request $request, Produccion $produccion)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
+            'documento' => 'nullable|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
+        ], [
+            'documento.max' => 'Archivo superior a 10MB',
         ]);
         
-        $file = $request->file('documento');
-        $filename = $file->getClientOriginalName();
-        $extension = $file->getClientOriginalExtension();
-        $dateTimeNow = now()->format('Ymd_His_u');
-        $fileContent = $request->get('nombreProduccion').' '.$dateTimeNow.'.'. $extension;
-        $route = 'produccion';
-        
-        // Asegurarse de que la carpeta existe y tiene los permisos correctos
-        Storage::makeDirectory('public/' . $route);
-        Storage::disk('public')->setVisibility($route, 'public');
-        
-        // Almacenar el archivo con la funci贸n storeAs()
-        Storage::putFileAs('public/' . $route, $file, $fileContent);
-         // Eliminar el archivo antiguo
-        Storage::delete('public/'.$produccion->enlace);
+        if ($request->hasFile('documento')) {
+            $file = $request->file('documento');
+            $extension = $file->getClientOriginalExtension();
+            $dateTimeNow = now()->format('Ymd_His_u');
+            $fileContent = $request->get('nombreProduccion').' '.$dateTimeNow.'.'. $extension;
+            $route = 'produccion';
+            
+            // Asegurarse de que la carpeta existe y tiene los permisos correctos
+            Storage::makeDirectory('public/' . $route);
+            Storage::disk('public')->setVisibility($route, 'public');
+            
+            // Almacenar el nuevo archivo
+            Storage::putFileAs('public/' . $route, $file, $fileContent);
 
-        $produccion->enlace = $route . '/' . $fileContent;
-        $produccion->nombreProduccion = $request->get('nombreProduccion');
-        switch($extension){
-            case 'doc':
-                $produccion->documento = 'fas fa-file-word';
-                $produccion->color = 'blue';
-                break;
-            case 'docx':
-                $produccion->documento = 'fas fa-file-word';
-                $produccion->color = 'blue';
-                break;
-            case 'png':
-                $produccion->documento = 'fas fa-file-image';
-                $produccion->color = 'darkturquoise';
-                break;
-            case 'jpg':
-                $produccion->documento = 'fas fa-file-image';
-                $produccion->color = 'darkturquoise';
-                break;
-            case 'jpeg':
-                $produccion->documento = 'fas fa-file-image';
-                $produccion->color = 'darkturquoise';
-                break;
-            case 'pdf':
-                $produccion->documento = 'fas fa-file-pdf';
-                $produccion->color = 'red';
-                break;
-            case 'ppt':
-                $produccion->documento = 'fas fa-file-powerpoint';
-                $produccion->color = 'orange';
-                break;
-            case 'pptm':
-                $produccion->documento = 'fas fa-file-powerpoint';
-                $produccion->color = 'orange';
-                break;
-            case 'pptx':
-                $produccion->documento = 'fas fa-file-powerpoint';
-                $produccion->color = 'orange';
-                break;
-            case 'xlm':
-                $produccion->documento = 'fas fa-file-excel';
-                $produccion->color = 'green';
-                break;
-            case 'xls':
-                $produccion->documento = 'fas fa-file-excel';
-                $produccion->color = 'green';
-                break;   
-            case 'xlsm':
-                $produccion->documento = 'fas fa-file-excel';
-                $produccion->color = 'green';
-                break;
-            case 'xlsx':
-                $produccion->documento = 'fas fa-file-excel';
-                $produccion->color = 'green';
-                break;
+            // Eliminar el archivo antiguo si existía
+            if (!empty($produccion->enlace)) {
+                Storage::delete('public/' . $produccion->enlace);
+            }
+
+            $produccion->enlace = $route . '/' . $fileContent;
         }
+
+        $produccion->nombreProduccion = $request->get('nombreProduccion');
         $produccion->fecha = $request->get('fecha');
         $produccion->descripcion = $request->get('descripcion');
         $produccion->idUser = Auth::user()->id;
         $produccion->estado = 1;
         $produccion->save();
         
-        return redirect('/produccions');
+        return redirect('/produccions')->with('success', '¡Registro actualizado con éxito!');
     }
 
    

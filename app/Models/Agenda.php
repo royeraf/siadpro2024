@@ -73,52 +73,67 @@ class Agenda extends Model
         'nomDocente',
         'institucion',
         'color',
-        'nombre_seccion',
+        'seccion',
         'nombre_color',
+        'nombre_seccion',
     ];
 
     /**
-     * Mutador para 'seccion': normaliza si llega un hexadecimal o el slug directo.
-     */
-    public function setSeccionAttribute($value)
-    {
-        $valUpper = strtoupper((string) $value);
-        $this->attributes['seccion'] = self::HEX_A_SECCION[$valUpper] ?? (self::HEX_A_SECCION[$value] ?? strtolower((string) $value));
-    }
-
-    /**
-     * Mutador de compatibilidad para 'color': guarda el valor normalizado en 'seccion'.
+     * Mutador para 'color': normaliza si llega un código hexadecimal o el slug directo ('lila', 'verde').
      */
     public function setColorAttribute($value)
     {
-        $this->setSeccionAttribute($value);
+        $valUpper = strtoupper((string) $value);
+        $this->attributes['color'] = self::HEX_A_SECCION[$valUpper] ?? (self::HEX_A_SECCION[$value] ?? strtolower((string) $value));
     }
 
     /**
-     * Accesor dinámico para 'color' (requerido por FullCalendar en el frontend):
-     * resuelve el código hexadecimal a partir de la sección del evento.
+     * Mutador de compatibilidad para 'seccion': guarda el valor normalizado en la columna 'color'.
+     */
+    public function setSeccionAttribute($value)
+    {
+        $this->setColorAttribute($value);
+    }
+
+    /**
+     * Accesor dinámico para 'color' (requerido por FullCalendar para pintar el evento):
+     * resuelve dinámicamente el código hexadecimal (#HEX) a partir del identificador guardado en 'color'.
      */
     public function getColorAttribute(): string
     {
-        $seccion = strtolower((string) ($this->attributes['seccion'] ?? 'lila'));
-        return self::SECCIONES[$seccion]['hex'] ?? '#FF0085';
+        $slug = strtolower((string) ($this->attributes['color'] ?? 'lila'));
+        if (str_starts_with($slug, '#')) {
+            return $slug;
+        }
+        return self::SECCIONES[$slug]['hex'] ?? '#FF0085';
     }
 
     /**
-     * Accesor para el nombre legible de la sección (ej. 'Lila', 'Azul oscuro', 'Verde').
+     * Accesor para 'seccion': retorna el identificador semántico del evento ('lila', 'verde', etc.).
      */
-    public function getNombreSeccionAttribute(): string
+    public function getSeccionAttribute(): string
     {
-        $seccion = strtolower((string) ($this->attributes['seccion'] ?? ''));
-        return self::SECCIONES[$seccion]['label'] ?? ucfirst($seccion ?: 'Sin sección');
+        return strtolower((string) ($this->attributes['color'] ?? 'lila'));
     }
 
     /**
-     * Alias de compatibilidad con 'nombre_color'.
+     * Accesor para el nombre legible del color/sección (ej. 'Lila', 'Azul oscuro', 'Verde').
      */
     public function getNombreColorAttribute(): string
     {
-        return $this->getNombreSeccionAttribute();
+        $slug = strtolower((string) ($this->attributes['color'] ?? ''));
+        if (str_starts_with($slug, '#')) {
+            $slug = self::HEX_A_SECCION[strtoupper($slug)] ?? $slug;
+        }
+        return self::SECCIONES[$slug]['label'] ?? ucfirst($slug ?: 'Sin sección');
+    }
+
+    /**
+     * Alias de compatibilidad con 'nombre_seccion'.
+     */
+    public function getNombreSeccionAttribute(): string
+    {
+        return $this->getNombreColorAttribute();
     }
 
     /**

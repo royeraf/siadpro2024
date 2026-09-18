@@ -36,7 +36,7 @@
                                 <span id="colorBadge" style="display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ced4da; background-color: transparent; transition: all 0.2s ease;"></span>
                             </span>
                         </div>
-                        <select name="seccion" class="form-control" id="color" required>
+                        <select name="color" class="form-control" id="color" required>
                             <option value="">Seleccionar</option>
                             @foreach(\App\Models\Agenda::SECCIONES as $clave => $datos)
                                 <option style="color:{{ $datos['hex'] }}; font-weight: 600;" value="{{ $clave }}" data-color="{{ $datos['hex'] }}">{{ $datos['label'] }}</option>
