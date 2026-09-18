@@ -117,6 +117,7 @@
                     <thead class="bg-primary text-white">
                     <tr>   
                     <th scope="col">Nombre de la Acción</th>
+                    <th scope="col">Descripción</th>
                     <th scope="col">Lugar</th>
                     <th scope="col">Fecha</th>
                     <th scope="col">Documento</th>
@@ -133,13 +134,14 @@
                     <tbody >
                     @if(count($accions)<=0)
                     <tr>
-                        <td colspan="8">No hay Accion de Sensibilización</td>
+                        <td colspan="12">No hay Accion de Sensibilización</td>
                     </tr>
                     @else
                         @if (count($rols)) <!-- Esto es para Director -->
                         @foreach ($accions as $accion)
                         <tr>
                             <td>{{$accion->nombreAccion}}</td>
+                            <td>{{$accion->descripcion ?? '-'}}</td>
                             <td>{{$accion->lugar}}</td>
                             <td>{{date('d-m-Y', strtotime($accion->fecha))}}</td>
                             <td align="center"><a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $accion->enlace]) }}" data-name="{{ basename($accion->enlace) }}" data-download="{{ route('accions.download', $accion->id) }}" title="Ver documento"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>
@@ -156,6 +158,7 @@
                         @foreach ($accions as $accion)
                         <tr>
                             <td>{{$accion->nombreAccion}}</td>
+                            <td>{{$accion->descripcion ?? '-'}}</td>
                             <td>{{$accion->lugar}}</td>
                             <td>{{date('d-m-Y', strtotime($accion->fecha))}}</td>
                             <td align="center"><a href="#" data-file-viewer data-src="{{ route('visor.stream', ['path' => $accion->enlace]) }}" data-name="{{ basename($accion->enlace) }}" data-download="{{ route('accions.download', $accion->id) }}" title="Ver documento"><i class='{{$accion->documento}}' style='font-size:24px;color:{{$accion->color}}' ></i></a></td>

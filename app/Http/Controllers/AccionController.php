@@ -46,6 +46,10 @@ class AccionController extends Controller
             $accionsQuery->where('nombreAccion', 'LIKE', '%' . $request->input('texto') . '%');
         }
 
+        if ($request->filled('lugar')) {
+            $accionsQuery->where('lugar', 'LIKE', '%' . $request->input('lugar') . '%');
+        }
+
         if ($request->filled('fecha')) {
             $accionsQuery->where('fecha', 'LIKE', '%' . $request->input('fecha') . '%');
         }
@@ -54,6 +58,7 @@ class AccionController extends Controller
             $buscar = trim($request->input('buscar'));
             $accionsQuery->where(function ($q) use ($buscar) {
                 $q->where('nombreAccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$buscar}%")
                   ->orWhere('lugar', 'LIKE', "%{$buscar}%");
             });
         }
@@ -152,10 +157,15 @@ class AccionController extends Controller
             $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
         }
 
+        if ($request->filled('lugar')) {
+            $query->where('pro_accions.lugar', 'LIKE', '%' . $request->input('lugar') . '%');
+        }
+
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
             $query->where(function ($q) use ($buscar) {
                 $q->where('pro_accions.nombreAccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_accions.descripcion', 'LIKE', "%{$buscar}%")
                   ->orWhere('pro_accions.lugar', 'LIKE', "%{$buscar}%");
             });
         }
@@ -350,7 +360,7 @@ class AccionController extends Controller
     public function profesorcoordinador()
     {
         $institucion = Auth::user()->institucion;
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.documento","pro_accions.color","pro_accions.fecha","pro_accions.lugar","users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
+        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.descripcion","pro_accions.documento","pro_accions.color","pro_accions.fecha","pro_accions.lugar","users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
             ->join("users","users.id","=","pro_accions.idUser")
             ->where("users.institucion", $institucion)
             ->where('pro_accions.estado', '1')
@@ -391,6 +401,7 @@ class AccionController extends Controller
         $request->validate([
             'nombreAccion' => 'required|string|max:191',
             'lugar'        => 'required|string|max:191',
+            'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
             'documento'    => 'required|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
         ], [
@@ -413,6 +424,7 @@ class AccionController extends Controller
         $accions->enlace = $route . '/' . $fileContent;
         $accions->nombreAccion = $request->get('nombreAccion');
         $accions->lugar = $request->get('lugar');
+        $accions->descripcion = $request->get('descripcion');
         $accions->fecha = $request->get('fecha');
         $accions->idUser = Auth::user()->id;
         $accions->tipo = 'sensibilizacion';
@@ -438,6 +450,7 @@ class AccionController extends Controller
         $request->validate([
             'nombreAccion' => 'required|string|max:191',
             'lugar'        => 'required|string|max:191',
+            'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
             'documento'    => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
         ], [
@@ -447,6 +460,7 @@ class AccionController extends Controller
 
         $accion->nombreAccion = $request->get('nombreAccion');
         $accion->lugar = $request->get('lugar');
+        $accion->descripcion = $request->get('descripcion');
         $accion->fecha = $request->get('fecha');
 
         if ($request->hasFile('documento')) {

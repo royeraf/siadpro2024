@@ -32,9 +32,23 @@
                             <label for="lugar" class="col-md-4 col-form-label text-md-right">{{ __('Lugar') }}</label>
 
                             <div class="col-md-6">
-                                <input id="lugar" type="text" class="form-control @error('lugar') is-invalid @enderror" name="lugar" value="{{ $accion->lugar }}" required autocomplete="lugar">
+                                <input id="lugar" type="text" class="form-control @error('lugar') is-invalid @enderror" name="lugar" value="{{ old('lugar', $accion->lugar) }}" required autocomplete="lugar">
 
                                 @error('lugar')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label for="descripcion" class="col-md-4 col-form-label text-md-right">{{ __('Descripción') }}</label>
+
+                            <div class="col-md-6">
+                                <textarea id="descripcion" class="form-control @error('descripcion') is-invalid @enderror" name="descripcion" required autocomplete="descripcion">{{ old('descripcion', $accion->descripcion) }}</textarea>
+
+                                @error('descripcion')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
                                     </span>

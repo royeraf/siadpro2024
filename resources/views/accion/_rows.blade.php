@@ -1,6 +1,7 @@
 @forelse ($accions as $accion)
     <tr data-table-row class="hover:bg-blue-50 transition border-b border-gray-100">
         <td class="px-4 py-3 font-semibold text-blue-600">{{ $accion->nombreAccion }}</td>
+        <td class="px-4 py-3">{{ $accion->descripcion ?? '-' }}</td>
         <td class="px-4 py-3">{{ $accion->lugar }}</td>
         <td class="px-4 py-3 whitespace-nowrap">{{ date('d-m-Y', strtotime($accion->fecha)) }}</td>
         <td class="px-4 py-3 text-center no-export">
