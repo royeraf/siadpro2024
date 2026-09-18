@@ -10,9 +10,8 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * Normaliza los 15 códigos hexadecimales (#HEX) existentes en la columna 'color'
-     * a identificadores semánticos ('lila', 'verde', etc.), manteniendo el nombre
-     * de la columna como 'color'.
+     * Maneja de forma segura tanto si la columna se llama 'seccion' (despliegue previo en producción)
+     * como si aún se llama 'color', asegurando que quede como 'color' VARCHAR(50) con valores normalizados (slugs).
      */
     public function up()
     {
@@ -36,15 +35,26 @@ return new class extends Migration
             '#00FF7F' => 'verde_claro',
         ];
 
-        // Migrar valores hexadecimales a identificadores
-        foreach ($hexASlug as $hex => $slug) {
-            DB::table('pro_agendas')
-                ->where('color', $hex)
-                ->update(['color' => $slug]);
-        }
+        // 1. Si la columna fue renombrada a 'seccion' en producción
+        if (Schema::hasColumn('pro_agendas', 'seccion')) {
+            foreach ($hexASlug as $hex => $slug) {
+                DB::table('pro_agendas')
+                    ->where('seccion', $hex)
+                    ->update(['seccion' => $slug]);
+            }
 
-        // Asegurar que la columna tenga un valor por defecto semántico
-        DB::statement("ALTER TABLE pro_agendas MODIFY color VARCHAR(50) NOT NULL DEFAULT 'lila'");
+            DB::statement("ALTER TABLE pro_agendas CHANGE seccion color VARCHAR(50) NOT NULL DEFAULT 'lila'");
+        } 
+        // 2. Si la columna se llama 'color'
+        elseif (Schema::hasColumn('pro_agendas', 'color')) {
+            foreach ($hexASlug as $hex => $slug) {
+                DB::table('pro_agendas')
+                    ->where('color', $hex)
+                    ->update(['color' => $slug]);
+            }
+
+            DB::statement("ALTER TABLE pro_agendas MODIFY color VARCHAR(50) NOT NULL DEFAULT 'lila'");
+        }
     }
 
     /**
@@ -70,13 +80,14 @@ return new class extends Migration
             'verde_claro'  => '#00FF7F',
         ];
 
-        // Restaurar los valores hexadecimales
-        foreach ($slugAHex as $slug => $hex) {
-            DB::table('pro_agendas')
-                ->where('color', $slug)
-                ->update(['color' => $hex]);
-        }
+        if (Schema::hasColumn('pro_agendas', 'color')) {
+            foreach ($slugAHex as $slug => $hex) {
+                DB::table('pro_agendas')
+                    ->where('color', $slug)
+                    ->update(['color' => $hex]);
+            }
 
-        DB::statement("ALTER TABLE pro_agendas MODIFY color VARCHAR(191) NOT NULL");
+            DB::statement("ALTER TABLE pro_agendas MODIFY color VARCHAR(191) NOT NULL");
+        }
     }
 };
