@@ -4,59 +4,100 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 
 window.Swal = Swal;
 
-import Alpine from 'alpinejs';
-import focus from '@alpinejs/focus';
-import {
-    createIcons,
-    Search, X, FileSpreadsheet, FileText, Printer, Copy, Inbox,
-    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, Landmark, CirclePlus, School, Filter,
-    Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
-    ArrowUpNarrowWide, ArrowDownWideNarrow,
-    Users, UserPlus, IdCard, Briefcase, Shield, Check,
-    UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
-    BookOpen, CalendarCheck, NotebookPen, House,
-    ZoomIn, ZoomOut, Download, Maximize2,
-    FileQuestion, AlertTriangle
-} from 'lucide';
-import { initTableEngine } from './components/datatable-engine';
-import { initFileViewer } from './viewer';
+import { createApp, h } from 'vue';
+import { createInertiaApp } from '@inertiajs/vue3';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 
-window.Alpine = Alpine;
-Alpine.plugin(focus);
+// ── MODO SPA: Si la página tiene el contenedor de Inertia (#app) ──
+const appElement = document.getElementById('app');
 
-// Inicializar motor de tabla nativo
-initTableEngine();
+if (appElement) {
+    createInertiaApp({
+        title: (title) => title ? `${title} - SIADPRO` : 'SIADPRO',
+        resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
+        setup({ el, App, props, plugin }) {
+            createApp({ render: () => h(App, props) })
+                .use(plugin)
+                .mount(el);
+        },
+        progress: {
+            color: '#6366F1',
+            showSpinner: false,
+        },
+    });
+} else {
+    // ── MODO TRADICIONAL (BLADE / ADMINLTE) ──
+    import('alpinejs').then(({ default: Alpine }) => {
+        import('@alpinejs/focus').then(({ default: focus }) => {
+            window.Alpine = Alpine;
+            Alpine.plugin(focus);
 
-// Inicializar visualizador de archivos
-initFileViewer();
+            import('lucide').then((lucideModule) => {
+                window.lucideRefresh = () => lucideModule.createIcons({
+                    icons: {
+                        Search: lucideModule.Search,
+                        X: lucideModule.X,
+                        FileSpreadsheet: lucideModule.FileSpreadsheet,
+                        FileText: lucideModule.FileText,
+                        Printer: lucideModule.Printer,
+                        Copy: lucideModule.Copy,
+                        Inbox: lucideModule.Inbox,
+                        ChevronLeft: lucideModule.ChevronLeft,
+                        ChevronRight: lucideModule.ChevronRight,
+                        ChevronsLeft: lucideModule.ChevronsLeft,
+                        ChevronsRight: lucideModule.ChevronsRight,
+                        ChevronUp: lucideModule.ChevronUp,
+                        ChevronDown: lucideModule.ChevronDown,
+                        Landmark: lucideModule.Landmark,
+                        CirclePlus: lucideModule.CirclePlus,
+                        School: lucideModule.School,
+                        Filter: lucideModule.Filter,
+                        Barcode: lucideModule.Barcode,
+                        MapPin: lucideModule.MapPin,
+                        Layers: lucideModule.Layers,
+                        Eraser: lucideModule.Eraser,
+                        Pencil: lucideModule.Pencil,
+                        Trash2: lucideModule.Trash2,
+                        ArrowUpNarrowWide: lucideModule.ArrowUpNarrowWide,
+                        ArrowDownWideNarrow: lucideModule.ArrowDownWideNarrow,
+                        Users: lucideModule.Users,
+                        UserPlus: lucideModule.UserPlus,
+                        IdCard: lucideModule.IdCard,
+                        Briefcase: lucideModule.Briefcase,
+                        Shield: lucideModule.Shield,
+                        Check: lucideModule.Check,
+                        UserCheck: lucideModule.UserCheck,
+                        UserX: lucideModule.UserX,
+                        Megaphone: lucideModule.Megaphone,
+                        Calendar: lucideModule.Calendar,
+                        User: lucideModule.User,
+                        Radio: lucideModule.Radio,
+                        LayoutGrid: lucideModule.LayoutGrid,
+                        BookHeart: lucideModule.BookHeart,
+                        BookOpen: lucideModule.BookOpen,
+                        CalendarCheck: lucideModule.CalendarCheck,
+                        NotebookPen: lucideModule.NotebookPen,
+                        House: lucideModule.House,
+                        ZoomIn: lucideModule.ZoomIn,
+                        ZoomOut: lucideModule.ZoomOut,
+                        Download: lucideModule.Download,
+                        Maximize2: lucideModule.Maximize2,
+                        FileQuestion: lucideModule.FileQuestion,
+                        AlertTriangle: lucideModule.AlertTriangle
+                    }
+                });
+                window.lucideRefresh();
+            });
 
-// Inicializar iconos Lucide (genera SVGs para los elementos data-lucide)
-window.lucideRefresh = () => createIcons({
-    icons: {
-        Search, X, FileSpreadsheet, FileText, Printer, Copy, Inbox,
-        ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, Landmark, CirclePlus, School, Filter,
-        Barcode, MapPin, Layers, Eraser, Pencil, Trash2,
-        ArrowUpNarrowWide, ArrowDownWideNarrow,
-        Users, UserPlus, IdCard, Briefcase, Shield, Check,
-        UserCheck, UserX, Megaphone, Calendar, User, Radio, LayoutGrid, BookHeart,
-        BookOpen, CalendarCheck, NotebookPen, House,
-        ZoomIn, ZoomOut, Download, Maximize2,
-        FileQuestion, AlertTriangle
-    }
-});
-window.lucideRefresh();
+            import('./components/datatable-engine').then(({ initTableEngine }) => {
+                initTableEngine();
+            });
 
-// Re-generar iconos Lucide cuando Alpine inyecta <i data-lucide> sin convertir.
-// Se ignora el <svg> generado (que también lleva data-lucide) para evitar bucles.
-let lucideTimer = null;
-new MutationObserver(() => {
-    if (lucideTimer) return;
-    lucideTimer = setTimeout(() => {
-        lucideTimer = null;
-        if (document.querySelector('i[data-lucide]')) {
-            window.lucideRefresh();
-        }
-    }, 50);
-}).observe(document.body, { childList: true, subtree: true });
+            import('./viewer').then(({ initFileViewer }) => {
+                initFileViewer();
+            });
 
-Alpine.start();
+            Alpine.start();
+        });
+    });
+}

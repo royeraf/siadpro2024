@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "vue-jsx-best-practices": {
+      "source": "vuejs-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vue-jsx-best-practices/SKILL.md",
+      "computedHash": "f78720a9904eb748af26cff651aaf8c0c8e6a72f9ee30e6f0626fc45e33cfd9a"
+    }
+  }
+}
