@@ -73,13 +73,23 @@ class HandleInertiaRequests extends Middleware
                         if (! $currentSection) {
                             $currentSection = ['header' => '', 'items' => []];
                         }
-                        $url = $item['url'] ?? $item['href'] ?? '#';
-                        $isSpa = in_array(rtrim($url, '/'), ['/inicio', 'inicio', url('/inicio')]);
+                        $url = $item['href'] ?? $item['url'] ?? '#';
+                        $path = parse_url($url, PHP_URL_PATH) ?: $url;
+
+                        $spaRoutes = [
+                            '/inicio',
+                            '/accions',
+                            '/accion-inicio',
+                            '/accion-general',
+                            '/accion-ugel',
+                            '/accion-director',
+                        ];
+                        $isSpa = in_array(rtrim($path, '/'), $spaRoutes) || in_array(rtrim($url, '/'), $spaRoutes);
 
                         $currentSection['items'][] = [
                             'text'   => $item['text'],
-                            'url'    => $url,
-                            'href'   => $item['href'] ?? $url,
+                            'url'    => $item['url'] ?? $path,
+                            'href'   => $url,
                             'icon'   => $item['icon'] ?? null,
                             'color'  => $item['icon_color'] ?? null,
                             'active' => $item['active'] ?? false,

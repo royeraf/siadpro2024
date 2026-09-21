@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class AccionController extends Controller
 {
@@ -63,9 +64,14 @@ class AccionController extends Controller
             });
         }
 
-        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('accion._rows', ['accions' => $accions])->render(),
                 'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -78,7 +84,17 @@ class AccionController extends Controller
 
         $tabs = $this->tabsAccion('index');
 
-        return view('accion.index', compact('accions', 'tabs'));
+        return Inertia::render('Accion/Index', [
+            'accions' => $accions,
+            'filters' => $request->only(['texto', 'lugar', 'fecha', 'buscar', 'per_page']),
+            'tabs'    => $tabs,
+            'can'     => [
+                'create'  => Auth::user()->can('accions.create'),
+                'edit'    => Auth::user()->can('accions.edit'),
+                'destroy' => Auth::user()->can('accions.destroy'),
+                'view'    => Auth::user()->can('accions.view'),
+            ],
+        ]);
     }
 
     /**
@@ -222,20 +238,25 @@ class AccionController extends Controller
         [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request);
         $accions = $this->paginateAccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxAccionsResponse($request, $accions);
         }
 
-        return view('accion.general', [
+        $tabs = $this->tabsAccion('general');
+        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaAnios = $this->listaAniosAccion($anio);
+
+        return Inertia::render('Accion/General', [
             'accions' => $accions,
-            'anio' => $anio,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
-            'listaAnios' => $this->listaAniosAccion($anio),
+            'listaUgels' => $listaUgels,
+            'listaAnios' => $listaAnios,
             'filterActionRoute' => 'accions.view',
             'exportRoute' => 'exportAccionsGeneral',
-            'tableId' => 'tabla-acciones-general',
-            'tabs' => $this->tabsAccion('general'),
+            'scope' => 'general',
+            'tabs' => $tabs,
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'ugels', 'instituciones', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 
@@ -244,20 +265,24 @@ class AccionController extends Controller
         [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, Auth::user()->ugel);
         $accions = $this->paginateAccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxAccionsResponse($request, $accions);
         }
 
-        return view('accion.general', [
+        $tabs = $this->tabsAccion('ugel');
+        $listaAnios = $this->listaAniosAccion($anio);
+
+        return Inertia::render('Accion/General', [
             'accions' => $accions,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaAnios' => $this->listaAniosAccion($anio),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaAnios' => $listaAnios,
             'filterActionRoute' => 'accions.ugel',
             'exportRoute' => 'exportAccionsUgel',
-            'tableId' => 'tabla-acciones-ugel',
-            'tabs' => $this->tabsAccion('ugel'),
+            'scope' => 'ugel',
+            'tabs' => $tabs,
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 
@@ -266,20 +291,24 @@ class AccionController extends Controller
         [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, null, Auth::user()->institucion);
         $accions = $this->paginateAccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxAccionsResponse($request, $accions);
         }
 
-        return view('accion.general', [
+        $tabs = $this->tabsAccion('director');
+        $listaAnios = $this->listaAniosAccion($anio);
+
+        return Inertia::render('Accion/General', [
             'accions' => $accions,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaAnios' => $this->listaAniosAccion($anio),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaAnios' => $listaAnios,
             'filterActionRoute' => 'accions.director',
             'exportRoute' => 'exportAccionsDirector',
-            'tableId' => 'tabla-acciones-director',
-            'tabs' => $this->tabsAccion('director'),
+            'scope' => 'director',
+            'tabs' => $tabs,
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 

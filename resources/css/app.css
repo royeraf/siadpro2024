@@ -169,6 +169,37 @@ button.close:hover {
 }
 
 
+/* ==========================================================================
+   Tablas Responsivas: Estilo Bootstrap (.table-responsive)
+   Mantiene la estructura tabular intacta (filas, columnas, thead) y añade
+   desplazamiento horizontal fluido en dispositivos móviles.
+   ========================================================================== */
+.table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 9999px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
 @media (max-width: 767px) {
     .table-stacked thead {
         display: none;
@@ -222,3 +253,81 @@ button.close:hover {
         background: #f9fafb;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SweetAlert2 Botones y Acciones de Diálogos
+   Garantiza contraste nítido, padding adecuado y visibilidad total
+   contra el preflight de Tailwind CSS.
+   ══════════════════════════════════════════════════════════════════════ */
+.swal2-popup {
+    border-radius: 1.25rem !important;
+    padding: 1.75rem 1.5rem !important;
+    font-family: inherit !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.swal2-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.875rem !important;
+    margin-top: 1.5rem !important;
+    width: 100% !important;
+}
+
+.swal2-styled {
+    margin: 0 !important;
+    padding: 0.65rem 1.35rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.75rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease-in-out !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 2.6rem !important;
+    text-decoration: none !important;
+}
+
+/* Botón de Confirmación / Eliminación */
+.swal2-styled.swal2-confirm {
+    background-color: #e11d48 !important; /* rose-600 */
+    color: #ffffff !important;
+    border: 1px solid #be123c !important; /* rose-700 */
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35) !important;
+}
+
+.swal2-styled.swal2-confirm:hover {
+    background-color: #be123c !important; /* rose-700 */
+    border-color: #9f1239 !important;
+    box-shadow: 0 6px 16px rgba(225, 29, 72, 0.45) !important;
+    transform: translateY(-1px) !important;
+}
+
+.swal2-styled.swal2-confirm:active {
+    background-color: #9f1239 !important;
+    transform: translateY(0) !important;
+}
+
+/* Botón de Cancelación */
+.swal2-styled.swal2-cancel {
+    background-color: #f1f5f9 !important; /* slate-100 */
+    color: #334155 !important; /* slate-700 */
+    border: 1px solid #cbd5e1 !important; /* slate-300 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.swal2-styled.swal2-cancel:hover {
+    background-color: #e2e8f0 !important; /* slate-200 */
+    color: #0f172a !important; /* slate-900 */
+    border-color: #94a3b8 !important; /* slate-400 */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+    transform: translateY(-1px) !important;
+}
+
+.swal2-styled.swal2-cancel:active {
+    background-color: #cbd5e1 !important;
+    transform: translateY(0) !important;
+}
+

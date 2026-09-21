@@ -1,5 +1,5 @@
 @forelse ($accions as $accion)
-    <tr data-table-row class="hover:bg-blue-50 transition border-b border-gray-100">
+    <tr data-table-row class="hover:bg-blue-100/70 transition border-b border-gray-100 cursor-default">
         <td class="px-4 py-3 font-semibold text-blue-600">{{ $accion->nombreAccion }}</td>
         <td class="px-4 py-3">{{ $accion->descripcion ?? '-' }}</td>
         <td class="px-4 py-3">{{ $accion->lugar }}</td>

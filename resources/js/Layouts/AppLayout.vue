@@ -1,48 +1,46 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { onMounted } from 'vue';
+import { useUiStore } from '@/stores/ui';
 import Sidebar from '@/Components/Navigation/Sidebar.vue';
 import Navbar from '@/Components/Navigation/Navbar.vue';
 
-const sidebarCollapsed = ref(true); // Inicialmente cerrado en móviles
+const uiStore = useUiStore();
 
 onMounted(() => {
-    if (window.innerWidth >= 1024) {
-        sidebarCollapsed.value = false;
-    }
+    uiStore.initWindowListeners();
 });
-
-function toggleSidebar() {
-    sidebarCollapsed.value = !sidebarCollapsed.value;
-}
 </script>
 
 <template>
     <div class="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
-        <!-- Barra lateral -->
-        <Sidebar 
-            :collapsed="sidebarCollapsed" 
-            @close="sidebarCollapsed = true"
-        />
+        <!-- Barra lateral (Sidebar reactivo con Pinia) -->
+        <Sidebar />
 
         <!-- Overlay para móviles cuando el sidebar está abierto -->
-        <div 
-            v-if="!sidebarCollapsed"
-            class="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-xs lg:hidden"
-            @click="sidebarCollapsed = true"
-        ></div>
+        <Transition
+            enter-active-class="transition-opacity duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition-opacity duration-200 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div 
+                v-if="uiStore.sidebarMobileOpen"
+                class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden"
+                @click="uiStore.closeMobileSidebar"
+            ></div>
+        </Transition>
 
-        <!-- Contenedor de contenido principal -->
+        <!-- Contenedor de contenido principal con padding dinámico según colapso -->
         <div 
             class="flex-1 flex flex-col transition-all duration-300 min-w-0"
             :class="[
-                sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+                uiStore.sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
             ]"
         >
             <!-- Cabecera Superior -->
-            <Navbar 
-                :sidebar-collapsed="sidebarCollapsed"
-                @toggle-sidebar="toggleSidebar"
-            />
+            <Navbar />
 
             <!-- Contenido dinámico (Páginas SPA) -->
             <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">

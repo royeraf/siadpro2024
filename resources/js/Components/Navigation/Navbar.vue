@@ -1,19 +1,27 @@
 <script setup>
 import { ref } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
+import { useUiStore } from '@/stores/ui';
+import { Menu, Search, ChevronDown, LogOut } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
     sidebarCollapsed: {
         type: Boolean,
-        default: false,
+        default: undefined,
     },
 });
 
 const emit = defineEmits(['toggleSidebar']);
 
+const uiStore = useUiStore();
 const page = usePage();
 const user = page.props.auth?.user || { name: 'Usuario', role: 'Docente' };
 const dropdownOpen = ref(false);
+
+function handleToggle() {
+    uiStore.toggleSidebar();
+    emit('toggleSidebar');
+}
 
 function logout() {
     router.post('/logout');
@@ -21,21 +29,21 @@ function logout() {
 </script>
 
 <template>
-    <header class="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-sm">
-        <!-- Izquierda: Botón Hamburguesa -->
+    <header class="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-xs">
+        <!-- Izquierda: Botón Hamburguesa y Buscador -->
         <div class="flex items-center space-x-3">
             <button 
                 type="button" 
-                class="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none"
-                @click="emit('toggleSidebar')"
-                title="Alternar barra lateral"
+                class="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors focus:outline-none"
+                @click="handleToggle"
+                :title="uiStore.sidebarCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'"
             >
-                <i class="fas fa-bars text-lg"></i>
+                <Menu class="w-5 h-5 text-slate-600" />
             </button>
 
             <!-- Buscador estilo píldora -->
             <div class="hidden sm:flex items-center bg-slate-100/80 rounded-full px-4 py-1.5 border border-slate-200/60 w-64 lg:w-80">
-                <i class="fas fa-search text-slate-400 text-xs mr-2.5"></i>
+                <Search class="w-3.5 h-3.5 text-slate-400 mr-2.5 shrink-0" />
                 <input 
                     type="text" 
                     placeholder="Buscar módulo o actividad..." 
@@ -53,7 +61,7 @@ function logout() {
                     class="flex items-center space-x-2.5 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none"
                     @click="dropdownOpen = !dropdownOpen"
                 >
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs border border-indigo-200">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs border border-indigo-200 shadow-xs">
                         {{ user.name.charAt(0).toUpperCase() }}
                     </div>
                     <div class="hidden md:block text-left">
@@ -64,7 +72,7 @@ function logout() {
                             {{ user.role }}
                         </div>
                     </div>
-                    <i class="fas fa-chevron-down text-[10px] text-slate-400"></i>
+                    <ChevronDown class="w-3 h-3 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': dropdownOpen }" />
                 </button>
 
                 <!-- Backdrop invisible para cerrar al hacer clic fuera -->
@@ -87,11 +95,11 @@ function logout() {
 
                     <button 
                         type="button"
-                        class="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 font-semibold flex items-center transition-colors"
+                        class="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 font-semibold flex items-center space-x-2 transition-colors"
                         @click="logout"
                     >
-                        <i class="fas fa-sign-out-alt mr-2 text-xs"></i>
-                        Cerrar Sesión
+                        <LogOut class="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span>Cerrar Sesión</span>
                     </button>
                 </div>
             </div>
