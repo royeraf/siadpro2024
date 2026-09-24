@@ -48,7 +48,8 @@ function isSpaUrl(url) {
                path.startsWith('/difusion-director') ||
                path.startsWith('/sector') ||
                path.startsWith('/sectores') ||
-               path.startsWith('/evidencia');
+               path.startsWith('/evidencia') ||
+               path.startsWith('/informe');
     } catch (e) {
         return false;
     }

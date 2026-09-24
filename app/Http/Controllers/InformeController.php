@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class InformeController extends Controller
 {
@@ -55,9 +56,14 @@ class InformeController extends Controller
             });
         }
 
-        $informes = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $informes = $query->orderBy('id', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('informe._rows', ['informes' => $informes])->render(),
                 'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -68,10 +74,18 @@ class InformeController extends Controller
             ]);
         }
 
-        $listaAnios = $this->listaAniosInforme();
-        $tabs = $this->tabsInforme('index');
-
-        return view('informe.index', compact('informes', 'listaAnios', 'tabs'));
+        return Inertia::render('Informe/Index', [
+            'informes' => $informes,
+            'listaAnios' => $this->listaAniosInforme(),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'tabs' => $this->tabsInforme('index'),
+            'can' => [
+                'create'  => Auth::user()->can('informes.create'),
+                'edit'    => Auth::user()->can('informes.edit'),
+                'destroy' => Auth::user()->can('informes.destroy'),
+                'view'    => Auth::user()->can('informes.view'),
+            ],
+        ]);
     }
 
     /**
@@ -123,7 +137,12 @@ class InformeController extends Controller
         return $listaAnios;
     }
 
-    public function general(Request $request)
+    /**
+     * Base común de las tres vistas de alcance (General / UGEL / Director):
+     * mismas columnas, mismo join con users y mismo filtro de año. Cada alcance
+     * añade después su propia condición de ámbito y sus propios filtros.
+     */
+    private function informesScopeBase(Request $request): array
     {
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
@@ -137,6 +156,40 @@ class InformeController extends Controller
             ->join("users", "users.id", "=", "pro_informes.idUser")
             ->where('pro_informes.estado', '1')
             ->whereYear('pro_informes.fecha', $anio);
+
+        return [$query, $anio];
+    }
+
+    private function paginateInformes(Request $request, $query)
+    {
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        return $query->orderBy('pro_informes.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
+
+    private function ajaxInformesResponse(Request $request, $informes)
+    {
+        return response()->json([
+            'rows' => view('informe._rows_general', ['informes' => $informes])->render(),
+            'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+            'total' => $informes->total(),
+            'totalFormatted' => number_format($informes->total()),
+            'from' => $informes->firstItem() ?? 0,
+            'to' => $informes->lastItem() ?? 0,
+        ]);
+    }
+
+    public function general(Request $request)
+    {
+        [$query, $anio] = $this->informesScopeBase($request);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -161,52 +214,33 @@ class InformeController extends Controller
             });
         }
 
-        $perPageRaw = $request->get('per_page', 10);
-        if ($perPageRaw === 'all') {
-            $perPage = 100000;
-        } else {
-            $perPage = (int) $perPageRaw;
-            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
-                $perPage = 10;
-            }
+        $informes = $this->paginateInformes($request, $query);
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxInformesResponse($request, $informes);
         }
 
-        $informes = $query->orderBy('pro_informes.fecha', 'desc')->paginate($perPage)->withQueryString();
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('informe._rows_general', ['informes' => $informes])->render(),
-                'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $informes->total(),
-                'totalFormatted' => number_format($informes->total()),
-                'from' => $informes->firstItem() ?? 0,
-                'to' => $informes->lastItem() ?? 0,
-            ]);
-        }
-
-        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
-        $listaAnios = $this->listaAniosInforme($anio);
-        $tabs = $this->tabsInforme('general');
-
-        return view('informe.view', compact('informes', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
+        return Inertia::render('Informe/General', [
+            'informes' => $informes,
+            'anio' => (string) $anio,
+            'showFullFilters' => true,
+            'listaUgels' => \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaInstituciones' => [],
+            'listaAnios' => $this->listaAniosInforme($anio),
+            'filterActionRoute' => 'informes.view',
+            'exportRoute' => '/exportar-biblioteca',
+            'scope' => 'general',
+            'tabs' => $this->tabsInforme('general'),
+            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
-        $query = Informe::select(
-                "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
-                "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
-                "pro_informes.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_informes.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha', $anio);
+        [$query, $anio] = $this->informesScopeBase($request);
+        $query->where('users.ugel', $ugel);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -225,42 +259,35 @@ class InformeController extends Controller
             });
         }
 
-        $informes = $query->orderBy('pro_informes.fecha', 'desc')->paginate(10)->withQueryString();
+        $informes = $this->paginateInformes($request, $query);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('informe._rows_general', ['informes' => $informes])->render(),
-                'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $informes->total(),
-                'totalFormatted' => number_format($informes->total()),
-                'from' => $informes->firstItem() ?? 0,
-                'to' => $informes->lastItem() ?? 0,
-            ]);
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxInformesResponse($request, $informes);
         }
 
         $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
-        $listaAnios = $this->listaAniosInforme($anio);
-        $tabs = $this->tabsInforme('ugel');
 
-        return view('informe.ugel', compact('informes', 'anio', 'listaInstituciones', 'listaAnios', 'tabs'));
+        return Inertia::render('Informe/General', [
+            'informes' => $informes,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => $listaInstituciones,
+            'listaAnios' => $this->listaAniosInforme($anio),
+            'filterActionRoute' => 'informes.ugel',
+            'exportRoute' => '/exportar-biblioteca',
+            'scope' => 'ugel',
+            'tabs' => $this->tabsInforme('ugel'),
+            'filters' => $request->only(['year', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
-        $query = Informe::select(
-                "pro_informes.id", "pro_informes.nombreInforme", "pro_informes.descripcion",
-                "pro_informes.documento", "pro_informes.color", "pro_informes.fecha",
-                "pro_informes.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_informes.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_informes.estado', '1')
-            ->whereYear('pro_informes.fecha', $anio);
+        [$query, $anio] = $this->informesScopeBase($request);
+        $query->where('users.institucion', $institucion);
 
         if ($request->filled('texto')) {
             $query->where('pro_informes.nombreInforme', 'LIKE', '%' . $request->input('texto') . '%');
@@ -276,23 +303,25 @@ class InformeController extends Controller
             });
         }
 
-        $informes = $query->orderBy('pro_informes.fecha', 'desc')->paginate(10)->withQueryString();
+        $informes = $this->paginateInformes($request, $query);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('informe._rows_general', ['informes' => $informes])->render(),
-                'pagination' => (string) $informes->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $informes->total(),
-                'totalFormatted' => number_format($informes->total()),
-                'from' => $informes->firstItem() ?? 0,
-                'to' => $informes->lastItem() ?? 0,
-            ]);
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxInformesResponse($request, $informes);
         }
 
-        $listaAnios = $this->listaAniosInforme($anio);
-        $tabs = $this->tabsInforme('director');
-
-        return view('informe.director', compact('informes', 'anio', 'listaAnios', 'tabs'));
+        return Inertia::render('Informe/General', [
+            'informes' => $informes,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => [],
+            'listaAnios' => $this->listaAniosInforme($anio),
+            'filterActionRoute' => 'informes.director',
+            'exportRoute' => '/exportar-biblioteca',
+            'scope' => 'director',
+            'tabs' => $this->tabsInforme('director'),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+        ]);
     }
 
     public function profesorcoordinador()
