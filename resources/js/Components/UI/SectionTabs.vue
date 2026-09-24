@@ -47,7 +47,8 @@ function isSpaUrl(url) {
                path.startsWith('/difusion-ugel') ||
                path.startsWith('/difusion-director') ||
                path.startsWith('/sector') ||
-               path.startsWith('/sectores');
+               path.startsWith('/sectores') ||
+               path.startsWith('/evidencia');
     } catch (e) {
         return false;
     }

@@ -71,7 +71,7 @@ const menuSections = computed(() => {
                 { text: 'Acción de Sensibilización', href: '/accion-inicio', icon: 'megaphone', isSpa: true },
                 { text: 'Acción de Difusión', href: '/difusion-inicio', icon: 'radio', isSpa: true },
                 { text: 'Sectores del Aula', href: '/sector-inicio', icon: 'layout-grid', isSpa: true },
-                { text: 'Asistencia Técnica', href: '/evidencia-inicio', icon: 'file-text', isSpa: false },
+                { text: 'Asistencia Técnica', href: '/evidencia-inicio', icon: 'file-text', isSpa: true },
                 { text: 'Biblioteca del Aula', href: '/informe', icon: 'book-open', isSpa: false },
                 { text: 'Espacio de Lectura', href: '/plan-inicio', icon: 'book-heart', isSpa: false },
                 { text: 'Producción de Textos', href: '/produccion-inicio', icon: 'notebook-pen', isSpa: false },

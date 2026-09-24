@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class EvidenciaController extends Controller
 {
@@ -54,9 +55,14 @@ class EvidenciaController extends Controller
             });
         }
 
-        $evidencias = $evidenciasQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $evidencias = $evidenciasQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('evidencia._rows', ['evidencias' => $evidencias])->render(),
                 'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -67,9 +73,17 @@ class EvidenciaController extends Controller
             ]);
         }
 
-        $tabs = $this->tabsEvidencia('index');
-
-        return view('evidencia.index', compact('evidencias', 'tabs'));
+        return Inertia::render('Evidencia/Index', [
+            'evidencias' => $evidencias,
+            'filters' => $request->only(['texto', 'fecha', 'buscar', 'per_page']),
+            'tabs' => $this->tabsEvidencia('index'),
+            'can' => [
+                'create'  => Auth::user()->can('evidencias.create'),
+                'edit'    => Auth::user()->can('evidencias.edit'),
+                'destroy' => Auth::user()->can('evidencias.destroy'),
+                'view'    => Auth::user()->can('evidencias.view'),
+            ],
+        ]);
     }
 
     /**
@@ -120,7 +134,12 @@ class EvidenciaController extends Controller
         return $listaAnios;
     }
 
-    public function general(Request $request)
+    /**
+     * Base común de las tres vistas de alcance (General / UGEL / Director):
+     * mismas columnas, mismo join con users y mismo filtro de año. Cada alcance
+     * añade después su propia condición de ámbito y sus propios filtros.
+     */
+    private function evidenciasScopeBase(Request $request): array
     {
         $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
@@ -134,6 +153,40 @@ class EvidenciaController extends Controller
             ->join("users", "users.id", "=", "pro_evidencias.idUser")
             ->where('pro_evidencias.estado', '1')
             ->whereYear('pro_evidencias.fecha', $anio);
+
+        return [$query, $anio];
+    }
+
+    private function paginateEvidencias(Request $request, $query)
+    {
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        return $query->orderBy('pro_evidencias.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
+
+    private function ajaxEvidenciasResponse(Request $request, $evidencias)
+    {
+        return response()->json([
+            'rows' => view('evidencia._rows_general', ['evidencias' => $evidencias])->render(),
+            'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+            'total' => $evidencias->total(),
+            'totalFormatted' => number_format($evidencias->total()),
+            'from' => $evidencias->firstItem() ?? 0,
+            'to' => $evidencias->lastItem() ?? 0,
+        ]);
+    }
+
+    public function general(Request $request)
+    {
+        [$query, $anio] = $this->evidenciasScopeBase($request);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -158,52 +211,33 @@ class EvidenciaController extends Controller
             });
         }
 
-        $perPageRaw = $request->get('per_page', 10);
-        if ($perPageRaw === 'all') {
-            $perPage = 100000;
-        } else {
-            $perPage = (int) $perPageRaw;
-            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
-                $perPage = 10;
-            }
+        $evidencias = $this->paginateEvidencias($request, $query);
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxEvidenciasResponse($request, $evidencias);
         }
 
-        $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->paginate($perPage)->withQueryString();
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('evidencia._rows_general', ['evidencias' => $evidencias])->render(),
-                'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $evidencias->total(),
-                'totalFormatted' => number_format($evidencias->total()),
-                'from' => $evidencias->firstItem() ?? 0,
-                'to' => $evidencias->lastItem() ?? 0,
-            ]);
-        }
-
-        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
-        $listaAnios = $this->listaAniosEvidencia($anio);
-        $tabs = $this->tabsEvidencia('general');
-
-        return view('evidencia.view', compact('evidencias', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
+        return Inertia::render('Evidencia/General', [
+            'evidencias' => $evidencias,
+            'anio' => (string) $anio,
+            'showFullFilters' => true,
+            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaInstituciones' => [],
+            'listaAnios' => $this->listaAniosEvidencia($anio),
+            'filterActionRoute' => 'evidencias.view',
+            'exportRoute' => '/exportar-evidencias',
+            'scope' => 'general',
+            'tabs' => $this->tabsEvidencia('general'),
+            'filters' => $request->only(['anio', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
-        $query = Evidencia::select(
-                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
-                "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
-                "pro_evidencias.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_evidencias.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_evidencias.estado', '1')
-            ->whereYear('pro_evidencias.fecha', $anio);
+        [$query, $anio] = $this->evidenciasScopeBase($request);
+        $query->where('users.ugel', $ugel);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -222,42 +256,35 @@ class EvidenciaController extends Controller
             });
         }
 
-        $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->paginate(10)->withQueryString();
+        $evidencias = $this->paginateEvidencias($request, $query);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('evidencia._rows_general', ['evidencias' => $evidencias])->render(),
-                'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $evidencias->total(),
-                'totalFormatted' => number_format($evidencias->total()),
-                'from' => $evidencias->firstItem() ?? 0,
-                'to' => $evidencias->lastItem() ?? 0,
-            ]);
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxEvidenciasResponse($request, $evidencias);
         }
 
         $listaInstituciones = User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
-        $listaAnios = $this->listaAniosEvidencia($anio);
-        $tabs = $this->tabsEvidencia('ugel');
 
-        return view('evidencia.ugel', compact('evidencias', 'anio', 'listaInstituciones', 'listaAnios', 'tabs'));
+        return Inertia::render('Evidencia/General', [
+            'evidencias' => $evidencias,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => $listaInstituciones,
+            'listaAnios' => $this->listaAniosEvidencia($anio),
+            'filterActionRoute' => 'evidencias.ugel',
+            'exportRoute' => '/exportar-evidencias',
+            'scope' => 'ugel',
+            'tabs' => $this->tabsEvidencia('ugel'),
+            'filters' => $request->only(['anio', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
-        $query = Evidencia::select(
-                "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
-                "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
-                "pro_evidencias.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_evidencias.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_evidencias.estado', '1')
-            ->whereYear('pro_evidencias.fecha', $anio);
+        [$query, $anio] = $this->evidenciasScopeBase($request);
+        $query->where('users.institucion', $institucion);
 
         if ($request->filled('texto')) {
             $query->where('pro_evidencias.nombreEvidencia', 'LIKE', '%' . $request->input('texto') . '%');
@@ -273,23 +300,25 @@ class EvidenciaController extends Controller
             });
         }
 
-        $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->paginate(10)->withQueryString();
+        $evidencias = $this->paginateEvidencias($request, $query);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('evidencia._rows_general', ['evidencias' => $evidencias])->render(),
-                'pagination' => (string) $evidencias->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $evidencias->total(),
-                'totalFormatted' => number_format($evidencias->total()),
-                'from' => $evidencias->firstItem() ?? 0,
-                'to' => $evidencias->lastItem() ?? 0,
-            ]);
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxEvidenciasResponse($request, $evidencias);
         }
 
-        $listaAnios = $this->listaAniosEvidencia($anio);
-        $tabs = $this->tabsEvidencia('director');
-
-        return view('evidencia.director', compact('evidencias', 'anio', 'listaAnios', 'tabs'));
+        return Inertia::render('Evidencia/General', [
+            'evidencias' => $evidencias,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => [],
+            'listaAnios' => $this->listaAniosEvidencia($anio),
+            'filterActionRoute' => 'evidencias.director',
+            'exportRoute' => '/exportar-evidencias',
+            'scope' => 'director',
+            'tabs' => $this->tabsEvidencia('director'),
+            'filters' => $request->only(['anio', 'texto', 'fecha', 'buscar', 'per_page']),
+        ]);
     }
 
     public function profesorcoordinador()
@@ -319,23 +348,10 @@ class EvidenciaController extends Controller
 
     public function buscar(Request $request)
     {
-        $usuario = Auth::user()->id;
-        $texto = trim($request->get('texto'));
-        $fecha = trim($request->get('fecha'));
-        $anio = trim($request->get('anio')); // Sin valor predeterminado para respetar la búsqueda actual
-        
-        $query = Evidencia::where("nombreEvidencia", "LIKE", "%" . $texto . "%")
-            ->where("fecha", "LIKE", "%" . $fecha . "%")
-            ->where('estado', '1')
-            ->where('idUser', $usuario);
-        
-        if (!empty($anio)) {
-            $query->whereYear('fecha', $anio);
-        }
-        
-        $evidencias = $query->orderBy('fecha', 'desc')->paginate(10);
-        
-        return view('evidencia.index')->with('evidencias', $evidencias);
+        // El `anio` que aplicaba aquí ya no vive en la vista "Mis registros"
+        // (tampoco la filtraba el Blade), y sin $tabs la vista se rompía.
+        // Delegar es el mismo criterio usado en SectorController::buscar().
+        return $this->index($request);
     }
 
     /**

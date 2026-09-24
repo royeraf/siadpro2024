@@ -110,6 +110,10 @@ const palette = {
         badge: 'bg-rose-100 text-rose-600 border border-rose-200',
         submit: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-xs focus:ring-rose-500',
     },
+    red: {
+        badge: 'bg-rose-100 text-rose-600 border border-rose-200',
+        submit: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-xs focus:ring-rose-500',
+    },
     gray: {
         badge: 'bg-slate-100 text-slate-700 border border-slate-200',
         submit: 'bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white shadow-xs focus:ring-slate-500',
