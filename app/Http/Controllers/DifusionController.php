@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class DifusionController extends Controller
 {
@@ -24,7 +25,6 @@ class DifusionController extends Controller
         $this->middleware('can:difusions.view')->only('general', 'exportDifusionGeneral');
         $this->middleware('can:difusions.ugel')->only('ugel', 'exportDifusionUgel');
         $this->middleware('can:difusions.director')->only('director', 'exportDifusionDirector');
-        $this->middleware('can:accions.dre')->only('dre');
         $this->middleware('can:difusions.view')->only('buscarGeneral', 'exportarTodos');
         $this->middleware('can:difusions.index')->only('buscar');
     }
@@ -58,9 +58,14 @@ class DifusionController extends Controller
             });
         }
 
-        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('difusion._rows', ['accions' => $accions])->render(),
                 'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -71,9 +76,17 @@ class DifusionController extends Controller
             ]);
         }
 
-        $tabs = $this->tabsDifusion('index');
-
-        return view('difusion.index', compact('accions', 'tabs'));
+        return Inertia::render('Difusion/Index', [
+            'difusions' => $accions,
+            'filters' => $request->only(['texto', 'lugar', 'fecha', 'buscar', 'per_page']),
+            'tabs' => $this->tabsDifusion('index'),
+            'can' => [
+                'create'  => Auth::user()->can('difusions.create'),
+                'edit'    => Auth::user()->can('difusions.edit'),
+                'destroy' => Auth::user()->can('difusions.destroy'),
+                'view'    => Auth::user()->can('difusions.view'),
+            ],
+        ]);
     }
 
     /**
@@ -203,64 +216,70 @@ class DifusionController extends Controller
         [$query, $anio, $showFullFilters] = $this->difusionGeneralQuery($request);
         $accions = $this->paginateDifusion($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxDifusionResponse($request, $accions);
         }
 
-        return view('difusion.general', [
-            'accions' => $accions,
-            'anio' => $anio,
+        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaAnios = $this->listaAniosDifusion($anio);
+
+        return Inertia::render('Difusion/General', [
+            'difusions' => $accions,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
-            'listaAnios' => $this->listaAniosDifusion($anio),
+            'listaUgels' => $listaUgels,
+            'listaAnios' => $listaAnios,
             'filterActionRoute' => 'difusions.view',
             'exportRoute' => 'exportDifusionGeneral',
-            'tableId' => 'tabla-difusiones-general',
+            'scope' => 'general',
             'tabs' => $this->tabsDifusion('general'),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'ugels', 'instituciones', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 
     public function ugel(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->difusionGeneralQuery($request, Auth::user()->ugel);
+        [$query, $anio] = $this->difusionGeneralQuery($request, Auth::user()->ugel);
         $accions = $this->paginateDifusion($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxDifusionResponse($request, $accions);
         }
 
-        return view('difusion.general', [
-            'accions' => $accions,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
+        return Inertia::render('Difusion/General', [
+            'difusions' => $accions,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
             'listaAnios' => $this->listaAniosDifusion($anio),
             'filterActionRoute' => 'difusions.ugel',
             'exportRoute' => 'exportDifusionUgel',
-            'tableId' => 'tabla-difusiones-ugel',
+            'scope' => 'ugel',
             'tabs' => $this->tabsDifusion('ugel'),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 
     public function director(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion);
+        [$query, $anio] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion);
         $accions = $this->paginateDifusion($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxDifusionResponse($request, $accions);
         }
 
-        return view('difusion.general', [
-            'accions' => $accions,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
+        return Inertia::render('Difusion/General', [
+            'difusions' => $accions,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
             'listaAnios' => $this->listaAniosDifusion($anio),
             'filterActionRoute' => 'difusions.director',
             'exportRoute' => 'exportDifusionDirector',
-            'tableId' => 'tabla-difusiones-director',
+            'scope' => 'director',
             'tabs' => $this->tabsDifusion('director'),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 

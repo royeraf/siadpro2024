@@ -40,7 +40,12 @@ function isSpaUrl(url) {
                path.startsWith('/accion-inicio') ||
                path.startsWith('/accion-general') ||
                path.startsWith('/accion-ugel') ||
-               path.startsWith('/accion-director');
+               path.startsWith('/accion-director') ||
+               path.startsWith('/difusions') ||
+               path.startsWith('/difusion-inicio') ||
+               path.startsWith('/difusion-general') ||
+               path.startsWith('/difusion-ugel') ||
+               path.startsWith('/difusion-director');
     } catch (e) {
         return false;
     }
