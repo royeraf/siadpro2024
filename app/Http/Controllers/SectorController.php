@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class SectorController extends Controller
 {
@@ -53,9 +54,14 @@ class SectorController extends Controller
             });
         }
 
-        $sectores = $sectoresQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $sectores = $sectoresQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('sector._rows', ['sectores' => $sectores])->render(),
                 'pagination' => (string) $sectores->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -66,9 +72,17 @@ class SectorController extends Controller
             ]);
         }
 
-        $tabs = $this->tabsSector('index');
-
-        return view('sector.index', compact('sectores', 'tabs'));
+        return Inertia::render('Sector/Index', [
+            'sectores' => $sectores,
+            'filters' => $request->only(['texto', 'fecha', 'buscar', 'per_page']),
+            'tabs' => $this->tabsSector('index'),
+            'can' => [
+                'create'  => Auth::user()->can('sectores.create'),
+                'edit'    => Auth::user()->can('sectores.edit'),
+                'destroy' => Auth::user()->can('sectores.destroy'),
+                'view'    => Auth::user()->can('sectores.view'),
+            ],
+        ]);
     }
 
     /**
@@ -173,6 +187,27 @@ class SectorController extends Controller
         return $query->orderBy('pro_sectores.fecha', 'desc')->paginate($perPage)->withQueryString();
     }
 
+    /**
+     * Instituciones distintas para el selector del filtro.
+     *
+     * Con $porUgel = true se replica exactamente el criterio de la vista Blade
+     * de UGEL (`where('ugel', Auth::user()->ugel)`): si el usuario no tiene
+     * UGEL la condición cae en `ugel IS NULL` y la lista queda acotada a esos
+     * registros, igual que antes de la migración. General no acota porque el
+     * encadenado UGEL→Institución del Blade se sustituye por selectores
+     * independientes.
+     */
+    private function listaInstitucionesSectores(?string $forceUgel, bool $porUgel)
+    {
+        return User::query()
+            ->when($porUgel, fn ($q) => $q->where('ugel', $forceUgel))
+            ->whereNotNull('institucion')
+            ->where('institucion', '!=', '')
+            ->distinct()
+            ->orderBy('institucion')
+            ->pluck('institucion');
+    }
+
     private function listaAniosSectores($anio)
     {
         // Se descarta cualquier año fuera de un rango plausible por la misma razón
@@ -207,45 +242,46 @@ class SectorController extends Controller
         [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request);
         $sectores = $this->paginateSectores($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxSectoresResponse($request, $sectores);
         }
 
-        return view('sector.general', [
+        return Inertia::render('Sector/General', [
             'sectores' => $sectores,
-            'anio' => $anio,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
             'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaInstituciones' => $this->listaInstitucionesSectores(null, false),
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.view',
             'exportRoute' => 'exportSectoresGeneral',
-            'pageTitle' => 'Sectores del Aula',
-            'tableId' => 'tabla-sectores-general',
+            'scope' => 'general',
             'tabs' => $this->tabsSector('general'),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'ugels', 'instituciones', 'docentes', 'buscar', 'per_page']),
         ]);
     }
 
     public function ugel(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request, Auth::user()->ugel);
+        [$query, $anio] = $this->sectoresGeneralQuery($request, Auth::user()->ugel);
         $sectores = $this->paginateSectores($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxSectoresResponse($request, $sectores);
         }
 
-        return view('sector.general', [
+        return Inertia::render('Sector/General', [
             'sectores' => $sectores,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaInstituciones' => User::where('ugel', Auth::user()->ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion'),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => $this->listaInstitucionesSectores(Auth::user()->ugel, true),
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.ugel',
             'exportRoute' => 'exportSectoresUgel',
-            'pageTitle' => 'Sectores del Aula',
-            'tableId' => 'tabla-sectores-ugel',
+            'scope' => 'ugel',
             'tabs' => $this->tabsSector('ugel'),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'instituciones', 'docentes', 'buscar', 'per_page']),
         ]);
     }
 
@@ -324,25 +360,25 @@ class SectorController extends Controller
 
     public function director(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion);
+        [$query, $anio] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion);
         $sectores = $this->paginateSectores($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxSectoresResponse($request, $sectores);
         }
 
-        return view('sector.general', [
+        return Inertia::render('Sector/General', [
             'sectores' => $sectores,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaInstituciones' => collect(),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => [],
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.director',
             'exportRoute' => 'exportSectoresDirector',
-            'pageTitle' => 'Sectores del Aula',
-            'tableId' => 'tabla-sectores-director',
+            'scope' => 'director',
             'tabs' => $this->tabsSector('director'),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'docentes', 'buscar', 'per_page']),
         ]);
     }
 
