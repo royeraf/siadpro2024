@@ -1,14 +1,10 @@
 <script setup>
-import { onMounted } from 'vue';
 import { useUiStore } from '@/stores/ui';
 import Sidebar from '@/Components/Navigation/Sidebar.vue';
 import Navbar from '@/Components/Navigation/Navbar.vue';
 
+// El store auto-inicializa sus listeners de resize; no se requiere onMounted.
 const uiStore = useUiStore();
-
-onMounted(() => {
-    uiStore.initWindowListeners();
-});
 </script>
 
 <template>

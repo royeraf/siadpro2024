@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onScopeDispose } from 'vue';
 
 const STORAGE_KEY_SIDEBAR = 'siadpro_sidebar_collapsed';
 
@@ -7,7 +7,7 @@ function getStoredSidebarCollapsed() {
     if (typeof window === 'undefined') return false;
     try {
         const stored = localStorage.getItem(STORAGE_KEY_SIDEBAR);
-        return stored !== null ? JSON.parse(stored) === true : false;
+        return stored === 'true';
     } catch (e) {
         console.warn('No se pudo leer el estado del sidebar desde localStorage:', e);
         return false;
@@ -73,21 +73,49 @@ export const useUiStore = defineStore('ui', () => {
         }
     }
 
-    // Inicializador para eventos globales (resize de pantalla)
+    // ── Listeners globales (auto-inicializados, no dependen de AppLayout) ──
+    function handleResize() {
+        windowWidth.value = window.innerWidth;
+        if (window.innerWidth >= 1024 && sidebarMobileOpen.value) {
+            // Al volver a escritorio, cerramos el drawer móvil
+            sidebarMobileOpen.value = false;
+        }
+    }
+
     let listenerAttached = false;
     function initWindowListeners() {
-        if (typeof window === 'undefined' || listenerAttached) return;
-        
-        const handleResize = () => {
-            windowWidth.value = window.innerWidth;
-            if (window.innerWidth >= 1024 && sidebarMobileOpen.value) {
-                // Al volver a escritorio, cerramos el drawer móvil
-                sidebarMobileOpen.value = false;
+        if (typeof window === 'undefined' || listenerAttached) {
+            // Sincroniza el ancho aunque ya esté adjunto (cubre HMR/SSR)
+            if (typeof window !== 'undefined') {
+                windowWidth.value = window.innerWidth;
             }
-        };
+            return;
+        }
 
+        windowWidth.value = window.innerWidth;
         window.addEventListener('resize', handleResize, { passive: true });
         listenerAttached = true;
+    }
+
+    function disposeWindowListeners() {
+        if (typeof window === 'undefined' || !listenerAttached) return;
+        window.removeEventListener('resize', handleResize);
+        listenerAttached = false;
+    }
+
+    // Auto-init al crear el store: funciona en cualquier página que use el
+    // store, sin esperar al onMounted de AppLayout. Se mantiene
+    // initWindowListeners() como API pública idempotente por compatibilidad.
+    initWindowListeners();
+
+    // Limpieza en HMR / unmount de la app: evita listeners duplicados o
+    // colgados referenciando refs viejas.
+    try {
+        onScopeDispose(() => {
+            disposeWindowListeners();
+        });
+    } catch {
+        // Fuera de un scope reactivo (tests unitarios sin Pinia testing): no-op.
     }
 
     return {
@@ -107,5 +135,6 @@ export const useUiStore = defineStore('ui', () => {
         openMobileSidebar,
         closeMobileSidebar,
         initWindowListeners,
+        disposeWindowListeners,
     };
 });

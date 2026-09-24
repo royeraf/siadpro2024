@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { usePage, router } from '@inertiajs/vue3';
 import { useUiStore } from '@/stores/ui';
 import { Menu, Search, ChevronDown, LogOut } from 'lucide-vue-next';
@@ -14,9 +15,17 @@ const props = defineProps({
 const emit = defineEmits(['toggleSidebar']);
 
 const uiStore = useUiStore();
+const { sidebarCollapsed: storeCollapsed, isMobile: storeIsMobile } = storeToRefs(uiStore);
 const page = usePage();
 const user = page.props.auth?.user || { name: 'Usuario', role: 'Docente' };
 const dropdownOpen = ref(false);
+
+// Título correcto según contexto: en móvil abre/cierra drawer, en desktop colapsa/expande.
+const toggleTitle = computed(() => {
+    if (storeIsMobile.value) return 'Abrir / cerrar menú lateral';
+    const collapsed = props.sidebarCollapsed ?? storeCollapsed.value;
+    return collapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral';
+});
 
 function handleToggle() {
     uiStore.toggleSidebar();
@@ -36,7 +45,7 @@ function logout() {
                 type="button" 
                 class="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors focus:outline-none"
                 @click="handleToggle"
-                :title="uiStore.sidebarCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'"
+                :title="toggleTitle"
             >
                 <Menu class="w-5 h-5 text-slate-600" />
             </button>
