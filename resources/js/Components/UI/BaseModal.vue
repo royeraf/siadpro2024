@@ -102,6 +102,10 @@ const palette = {
         badge: 'bg-emerald-100 text-emerald-600 border border-emerald-200',
         submit: 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-xs focus:ring-emerald-500',
     },
+    green: {
+        badge: 'bg-emerald-100 text-emerald-600 border border-emerald-200',
+        submit: 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-xs focus:ring-emerald-500',
+    },
     indigo: {
         badge: 'bg-indigo-100 text-indigo-600 border border-indigo-200',
         submit: 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white shadow-xs focus:ring-indigo-500',

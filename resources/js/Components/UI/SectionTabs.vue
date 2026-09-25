@@ -50,7 +50,8 @@ function isSpaUrl(url) {
                path.startsWith('/sectores') ||
                path.startsWith('/evidencia') ||
                path.startsWith('/informe') ||
-               path.startsWith('/plan');
+               path.startsWith('/plan') ||
+               path.startsWith('/produccion');
     } catch (e) {
         return false;
     }

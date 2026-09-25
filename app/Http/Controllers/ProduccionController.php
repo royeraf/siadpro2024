@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class ProduccionController extends Controller
 {
@@ -36,7 +37,7 @@ class ProduccionController extends Controller
     {
         $usuario = Auth::user()->id;
 
-        $query = Produccion::where('estado', '1')->where('idUser', $usuario);
+        $query = Produccion::with('getUser')->where('estado', '1')->where('idUser', $usuario);
 
         if ($request->filled('texto')) {
             $query->where('nombreProduccion', 'LIKE', '%' . $request->input('texto') . '%');
@@ -55,9 +56,14 @@ class ProduccionController extends Controller
             });
         }
 
-        $produccions = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $produccions = $query->orderBy('id', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('produccion._rows', ['produccions' => $produccions])->render(),
                 'pagination' => (string) $produccions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -68,11 +74,18 @@ class ProduccionController extends Controller
             ]);
         }
 
-        $listaAnios = $this->listaAniosProduccion();
-
-        $tabs = $this->tabsProduccion('index');
-
-        return view('produccion.index', compact('produccions', 'listaAnios', 'tabs'));
+        return Inertia::render('Produccion/Index', [
+            'produccions' => $produccions,
+            'listaAnios' => $this->listaAniosProduccion(),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'tabs' => $this->tabsProduccion('index'),
+            'can' => [
+                'create'  => Auth::user()->can('produccions.create'),
+                'edit'    => Auth::user()->can('produccions.edit'),
+                'destroy' => Auth::user()->can('produccions.destroy'),
+                'view'    => Auth::user()->can('produccions.view'),
+            ],
+        ]);
     }
 
     /**
@@ -224,23 +237,22 @@ class ProduccionController extends Controller
         [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request);
         $produccions = $this->paginateProduccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxProduccionsResponse($request, $produccions);
         }
 
-        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
-        $listaAnios = $this->listaAniosProduccion($anio);
-
-        return view('produccion.view', [
+        return Inertia::render('Produccion/General', [
             'produccions' => $produccions,
-            'anio' => $anio,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => $listaUgels,
-            'listaAnios' => $listaAnios,
+            'listaUgels' => \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaInstituciones' => [],
+            'listaAnios' => $this->listaAniosProduccion($anio),
             'filterActionRoute' => 'produccion.general',
-            'exportRoute' => 'exportar.producciones',
-            'tableId' => 'tabla-produccions-general',
+            'exportRoute' => '/exportar-producciones',
+            'scope' => 'general',
             'tabs' => $this->tabsProduccion('general'),
+            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
         ]);
     }
 
@@ -249,20 +261,22 @@ class ProduccionController extends Controller
         [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, Auth::user()->ugel);
         $produccions = $this->paginateProduccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxProduccionsResponse($request, $produccions);
         }
 
-        return view('produccion.view', [
+        return Inertia::render('Produccion/General', [
             'produccions' => $produccions,
-            'anio' => $anio,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
+            'listaUgels' => [],
+            'listaInstituciones' => [],
             'listaAnios' => $this->listaAniosProduccion($anio),
             'filterActionRoute' => 'produccions.ugel',
-            'exportRoute' => 'exportProduccionesUgel',
-            'tableId' => 'tabla-produccions-ugel',
+            'exportRoute' => '/export-producciones-ugel',
+            'scope' => 'ugel',
             'tabs' => $this->tabsProduccion('ugel'),
+            'filters' => $request->only(['year', 'texto', 'docentes', 'nivel', 'buscar', 'per_page']),
         ]);
     }
 
@@ -271,20 +285,22 @@ class ProduccionController extends Controller
         [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, null, Auth::user()->institucion);
         $produccions = $this->paginateProduccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxProduccionsResponse($request, $produccions);
         }
 
-        return view('produccion.view', [
+        return Inertia::render('Produccion/General', [
             'produccions' => $produccions,
-            'anio' => $anio,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
+            'listaUgels' => [],
+            'listaInstituciones' => [],
             'listaAnios' => $this->listaAniosProduccion($anio),
             'filterActionRoute' => 'produccions.director',
-            'exportRoute' => 'exportProduccionesDirector',
-            'tableId' => 'tabla-produccions-director',
+            'exportRoute' => '/export-producciones-director',
+            'scope' => 'director',
             'tabs' => $this->tabsProduccion('director'),
+            'filters' => $request->only(['year', 'texto', 'docentes', 'nivel', 'buscar', 'per_page']),
         ]);
     }
 
