@@ -51,7 +51,8 @@ function isSpaUrl(url) {
                path.startsWith('/evidencia') ||
                path.startsWith('/informe') ||
                path.startsWith('/plan') ||
-               path.startsWith('/produccion');
+               path.startsWith('/produccion') ||
+               path.startsWith('/agenda');
     } catch (e) {
         return false;
     }

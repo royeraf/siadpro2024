@@ -122,6 +122,10 @@ const palette = {
         badge: 'bg-orange-100 text-orange-600 border border-orange-200',
         submit: 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white shadow-xs focus:ring-orange-500',
     },
+    pink: {
+        badge: 'bg-pink-100 text-pink-600 border border-pink-200',
+        submit: 'bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white shadow-xs focus:ring-pink-500',
+    },
     cyan: {
         badge: 'bg-cyan-100 text-cyan-600 border border-cyan-200',
         submit: 'bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white shadow-xs focus:ring-cyan-500',

@@ -114,6 +114,11 @@ class HandleInertiaRequests extends Middleware
                             '/produccion-general',
                             '/produccion-ugel',
                             '/produccion-director',
+                            '/agendas',
+                            '/agenda-inicio',
+                            '/agenda/view',
+                            '/agenda-general',
+                            '/agenda-ugel',
                         ];
                         $isSpa = in_array(rtrim($path, '/'), $spaRoutes) || in_array(rtrim($url, '/'), $spaRoutes);
 

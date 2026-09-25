@@ -1,13 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { usePage, router } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import { useUiStore } from '@/stores/ui';
 import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
-import { 
-    X, ChevronsLeft, ChevronsRight, Search, LogOut, User as UserIcon 
-} from 'lucide-vue-next';
+import { X, Search } from 'lucide-vue-next';
 
 const props = defineProps({
     collapsed: {
@@ -75,7 +73,7 @@ const menuSections = computed(() => {
                 { text: 'Biblioteca del Aula', href: '/informe', icon: 'book-open', isSpa: true },
                 { text: 'Espacio de Lectura', href: '/plan-inicio', icon: 'book-heart', isSpa: true },
                 { text: 'Producción de Textos', href: '/produccion-inicio', icon: 'notebook-pen', isSpa: true },
-                { text: 'Agenda de Lectura', href: '/agenda-inicio', icon: 'calendar-check', isSpa: false },
+                { text: 'Agenda de Lectura', href: '/agenda-inicio', icon: 'calendar-check', isSpa: true },
             ]
         }
     ];
@@ -123,14 +121,6 @@ function handleItemClick() {
     if (uiStore.isMobile) {
         handleClose();
     }
-}
-
-function handleToggleCollapse() {
-    uiStore.toggleCollapse();
-}
-
-function logout() {
-    router.post('/logout');
 }
 </script>
 
@@ -197,8 +187,9 @@ function logout() {
             </div>
         </div>
 
-        <!-- Menú de navegación con scroll estilizado -->
-        <div class="flex-1 overflow-y-auto px-3 py-3 space-y-4 sidebar-scroll">
+        <!-- Menú de navegación con scroll estilizado (overflow-x-hidden evita
+             la barra horizontal que provocan los tooltips de SidebarItem) -->
+        <div class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-4 sidebar-scroll">
             <template v-for="section in filteredMenuSections" :key="section.header">
                 <SidebarSection 
                     :header="section.header" 
@@ -224,12 +215,12 @@ function logout() {
             </div>
         </div>
 
-        <!-- Footer del Sidebar: Perfil de usuario y botón de colapso -->
-        <div class="p-3 border-t border-white/10 shrink-0 bg-[#16182E]/80 backdrop-blur-xs space-y-2">
+        <!-- Footer del Sidebar: Perfil de usuario -->
+        <div class="p-3 shrink-0 bg-[#16182E]/80 backdrop-blur-xs">
             <!-- Información resumida de usuario -->
             <div 
                 class="flex items-center rounded-xl p-1.5 transition-colors"
-                :class="effectiveCollapsed ? 'justify-center' : 'justify-between hover:bg-white/5'"
+                :class="effectiveCollapsed ? 'justify-center' : 'hover:bg-white/5'"
             >
                 <div class="flex items-center min-w-0">
                     <div 
@@ -247,34 +238,7 @@ function logout() {
                         </p>
                     </div>
                 </div>
-
-                <button
-                    v-show="!effectiveCollapsed"
-                    type="button"
-                    class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                    title="Cerrar sesión"
-                    @click="logout"
-                >
-                    <LogOut class="w-4 h-4" />
-                </button>
             </div>
-
-            <!-- Botón para Colapsar / Expandir en pantallas de escritorio -->
-            <button
-                type="button"
-                class="hidden lg:flex items-center rounded-xl py-2 transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/10 w-full"
-                :class="effectiveCollapsed ? 'justify-center px-0' : 'justify-between px-3 text-xs'"
-                :title="effectiveCollapsed ? 'Expandir barra lateral' : 'Colapsar barra lateral'"
-                @click="handleToggleCollapse"
-            >
-                <span v-show="!effectiveCollapsed" class="font-medium text-[11px] text-slate-300">
-                    Colapsar menú
-                </span>
-                <component 
-                    :is="effectiveCollapsed ? ChevronsRight : ChevronsLeft" 
-                    class="w-4 h-4 shrink-0 transition-transform duration-200"
-                />
-            </button>
         </div>
     </aside>
 </template>

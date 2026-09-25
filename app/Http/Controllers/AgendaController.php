@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class AgendaController extends Controller
 {
@@ -25,9 +26,55 @@ class AgendaController extends Controller
     public function index()
     {
         $usuario = Auth::user()->id;
-        $events = Agenda::all()->where('idUser',$usuario)->where('estado', '1');
+
+        // Antes era Agenda::all() (30k+ filas) filtrado en PHP sobre la
+        // colección; el filtro se hace ahora en SQL.
+        $events = Agenda::where('idUser', $usuario)
+            ->where('estado', '1')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($e) => [
+                'id'      => $e->id,
+                'title'   => $e->title,
+                'evento'  => $e->evento,
+                'color'   => $e->color,
+                'seccion' => $e->seccion,
+                'start'   => $this->isoDateTime($e->start),
+                'end'     => $this->isoDateTime($e->end),
+            ]);
+
         $tabs = $this->tabsAgenda('index');
-        return view('agenda.index')->with('events',$events)->with('tabs', $tabs);
+
+        return Inertia::render('Agenda/Index', [
+            'events'   => $events,
+            'tabs'     => $tabs,
+            'secciones' => Agenda::SECCIONES,
+            'can'      => [
+                'create'  => Auth::user()->can('agendas.create'),
+                'edit'    => Auth::user()->can('agendas.edit'),
+                'destroy' => Auth::user()->can('agendas.destroy'),
+            ],
+        ]);
+    }
+
+    /**
+     * start/end son varchar y guardan lo que emite <input type="datetime-local">
+     * (2026-09-14T00:00). FullCalendar espera ISO 8601, así que se completa con
+     * los segundos; también tolera el formato antiguo "YYYY-MM-DD HH:mm:ss".
+     */
+    private function isoDateTime(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        $value = str_replace(' ', 'T', trim($value));
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $value)) {
+            return $value . ':00';
+        }
+
+        return $value;
     }
 
     /**
@@ -74,7 +121,7 @@ class AgendaController extends Controller
         $agenda->idUser = Auth::user()->id;
         $agenda->estado = 1;
         $agenda->save();
-        return redirect('/agendas');
+        return redirect('/agendas')->with('success', '¡Evento registrado con éxito!');
     }
     public function update(Request $request, agenda $agenda)
     {
@@ -84,11 +131,14 @@ class AgendaController extends Controller
         // modificar o borrar la agenda de cualquier otro, con solo conocer el id.
         abort_unless((int) $agenda->idUser === Auth::id(), 403);
 
+            $mensaje = '¡Evento actualizado con éxito!';
+
             if ($request->get('delete') == 'on') {
                 abort_unless(Auth::user()->can('agendas.destroy'), 403);
                 $agenda->estado = '0';
                 $agenda->idUser = Auth::user()->id;
                 $agenda->save();
+                $mensaje = '¡Evento eliminado con éxito!';
             }
             else{
                 $agenda->title = $request->get('title');
@@ -99,7 +149,7 @@ class AgendaController extends Controller
                 $agenda->idUser = Auth::user()->id;
                 $agenda->save();
             }
-            return redirect('/agendas');
+            return redirect('/agendas')->with('success', $mensaje);
     }
 }
 
