@@ -49,7 +49,8 @@ function isSpaUrl(url) {
                path.startsWith('/sector') ||
                path.startsWith('/sectores') ||
                path.startsWith('/evidencia') ||
-               path.startsWith('/informe');
+               path.startsWith('/informe') ||
+               path.startsWith('/plan');
     } catch (e) {
         return false;
     }

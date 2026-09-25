@@ -118,6 +118,10 @@ const palette = {
         badge: 'bg-orange-100 text-orange-600 border border-orange-200',
         submit: 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white shadow-xs focus:ring-orange-500',
     },
+    cyan: {
+        badge: 'bg-cyan-100 text-cyan-600 border border-cyan-200',
+        submit: 'bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white shadow-xs focus:ring-cyan-500',
+    },
     gray: {
         badge: 'bg-slate-100 text-slate-700 border border-slate-200',
         submit: 'bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white shadow-xs focus:ring-slate-500',

@@ -73,7 +73,7 @@ const menuSections = computed(() => {
                 { text: 'Sectores del Aula', href: '/sector-inicio', icon: 'layout-grid', isSpa: true },
                 { text: 'Asistencia Técnica', href: '/evidencia-inicio', icon: 'file-text', isSpa: true },
                 { text: 'Biblioteca del Aula', href: '/informe', icon: 'book-open', isSpa: true },
-                { text: 'Espacio de Lectura', href: '/plan-inicio', icon: 'book-heart', isSpa: false },
+                { text: 'Espacio de Lectura', href: '/plan-inicio', icon: 'book-heart', isSpa: true },
                 { text: 'Producción de Textos', href: '/produccion-inicio', icon: 'notebook-pen', isSpa: false },
                 { text: 'Agenda de Lectura', href: '/agenda-inicio', icon: 'calendar-check', isSpa: false },
             ]

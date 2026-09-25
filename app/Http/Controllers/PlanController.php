@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Plan;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class PlanController extends Controller
 {
@@ -55,9 +56,14 @@ class PlanController extends Controller
             });
         }
 
-        $plans = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $plans = $query->orderBy('id', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('plan._rows', ['plans' => $plans])->render(),
                 'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -68,10 +74,18 @@ class PlanController extends Controller
             ]);
         }
 
-        $listaAnios = $this->listaAniosPlan();
-        $tabs = $this->tabsPlan('index');
-
-        return view('plan.index', compact('plans', 'listaAnios', 'tabs'));
+        return Inertia::render('Plan/Index', [
+            'plans' => $plans,
+            'listaAnios' => $this->listaAniosPlan(),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'tabs' => $this->tabsPlan('index'),
+            'can' => [
+                'create'  => Auth::user()->can('plans.create'),
+                'edit'    => Auth::user()->can('plans.edit'),
+                'destroy' => Auth::user()->can('plans.destroy'),
+                'view'    => Auth::user()->can('plans.view'),
+            ],
+        ]);
     }
 
     /**
@@ -123,7 +137,12 @@ class PlanController extends Controller
         return $listaAnios;
     }
 
-    public function general(Request $request)
+    /**
+     * Base común de las tres vistas de alcance (General / UGEL / Director):
+     * mismas columnas, mismo join con users y mismo filtro de año. Cada alcance
+     * añade después su propia condición de ámbito y sus propios filtros.
+     */
+    private function plansScopeBase(Request $request): array
     {
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
@@ -137,6 +156,40 @@ class PlanController extends Controller
             ->join("users", "users.id", "=", "pro_plans.idUser")
             ->where('pro_plans.estado', '1')
             ->whereYear('pro_plans.fecha', $anio);
+
+        return [$query, $anio];
+    }
+
+    private function paginatePlans(Request $request, $query)
+    {
+        $perPageRaw = $request->get('per_page', 10);
+        if ($perPageRaw === 'all') {
+            $perPage = 100000;
+        } else {
+            $perPage = (int) $perPageRaw;
+            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+                $perPage = 10;
+            }
+        }
+
+        return $query->orderBy('pro_plans.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
+
+    private function ajaxPlansResponse(Request $request, $plans)
+    {
+        return response()->json([
+            'rows' => view('plan._rows_general', ['plans' => $plans])->render(),
+            'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
+            'total' => $plans->total(),
+            'totalFormatted' => number_format($plans->total()),
+            'from' => $plans->firstItem() ?? 0,
+            'to' => $plans->lastItem() ?? 0,
+        ]);
+    }
+
+    public function general(Request $request)
+    {
+        [$query, $anio] = $this->plansScopeBase($request);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -161,52 +214,33 @@ class PlanController extends Controller
             });
         }
 
-        $perPageRaw = $request->get('per_page', 10);
-        if ($perPageRaw === 'all') {
-            $perPage = 100000;
-        } else {
-            $perPage = (int) $perPageRaw;
-            if (!in_array($perPage, [10, 15, 25, 50, 100])) {
-                $perPage = 10;
-            }
+        $plans = $this->paginatePlans($request, $query);
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxPlansResponse($request, $plans);
         }
 
-        $plans = $query->orderBy('pro_plans.fecha', 'desc')->paginate($perPage)->withQueryString();
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('plan._rows_general', ['plans' => $plans])->render(),
-                'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $plans->total(),
-                'totalFormatted' => number_format($plans->total()),
-                'from' => $plans->firstItem() ?? 0,
-                'to' => $plans->lastItem() ?? 0,
-            ]);
-        }
-
-        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
-        $listaAnios = $this->listaAniosPlan($anio);
-        $tabs = $this->tabsPlan('general');
-
-        return view('plan.view', compact('plans', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
+        return Inertia::render('Plan/General', [
+            'plans' => $plans,
+            'anio' => (string) $anio,
+            'showFullFilters' => true,
+            'listaUgels' => \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaInstituciones' => [],
+            'listaAnios' => $this->listaAniosPlan($anio),
+            'filterActionRoute' => 'plans.view',
+            'exportRoute' => '/exportar-planes',
+            'scope' => 'general',
+            'tabs' => $this->tabsPlan('general'),
+            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function ugel(Request $request)
     {
         $ugel = Auth::user()->ugel;
-        $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
-        $query = Plan::select(
-                "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
-                "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
-                "pro_plans.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_plans.idUser")
-            ->where("users.ugel", $ugel)
-            ->where('pro_plans.estado', '1')
-            ->whereYear('pro_plans.fecha', $anio);
+        [$query, $anio] = $this->plansScopeBase($request);
+        $query->where('users.ugel', $ugel);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -225,42 +259,35 @@ class PlanController extends Controller
             });
         }
 
-        $plans = $query->orderBy('pro_plans.fecha', 'desc')->paginate(10)->withQueryString();
+        $plans = $this->paginatePlans($request, $query);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('plan._rows_general', ['plans' => $plans])->render(),
-                'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $plans->total(),
-                'totalFormatted' => number_format($plans->total()),
-                'from' => $plans->firstItem() ?? 0,
-                'to' => $plans->lastItem() ?? 0,
-            ]);
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxPlansResponse($request, $plans);
         }
 
         $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
-        $listaAnios = $this->listaAniosPlan($anio);
-        $tabs = $this->tabsPlan('ugel');
 
-        return view('plan.ugel', compact('plans', 'anio', 'listaInstituciones', 'listaAnios', 'tabs'));
+        return Inertia::render('Plan/General', [
+            'plans' => $plans,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => $listaInstituciones,
+            'listaAnios' => $this->listaAniosPlan($anio),
+            'filterActionRoute' => 'plans.ugel',
+            'exportRoute' => '/exportar-planes',
+            'scope' => 'ugel',
+            'tabs' => $this->tabsPlan('ugel'),
+            'filters' => $request->only(['year', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function director(Request $request)
     {
         $institucion = Auth::user()->institucion;
-        $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
-        $query = Plan::select(
-                "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
-                "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
-                "pro_plans.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
-            )
-            ->join("users", "users.id", "=", "pro_plans.idUser")
-            ->where("users.institucion", $institucion)
-            ->where('pro_plans.estado', '1')
-            ->whereYear('pro_plans.fecha', $anio);
+        [$query, $anio] = $this->plansScopeBase($request);
+        $query->where('users.institucion', $institucion);
 
         if ($request->filled('texto')) {
             $query->where('pro_plans.nombrePlan', 'LIKE', '%' . $request->input('texto') . '%');
@@ -276,23 +303,25 @@ class PlanController extends Controller
             });
         }
 
-        $plans = $query->orderBy('pro_plans.fecha', 'desc')->paginate(10)->withQueryString();
+        $plans = $this->paginatePlans($request, $query);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('plan._rows_general', ['plans' => $plans])->render(),
-                'pagination' => (string) $plans->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
-                'total' => $plans->total(),
-                'totalFormatted' => number_format($plans->total()),
-                'from' => $plans->firstItem() ?? 0,
-                'to' => $plans->lastItem() ?? 0,
-            ]);
+        if ($request->ajax() && !$request->header('X-Inertia')) {
+            return $this->ajaxPlansResponse($request, $plans);
         }
 
-        $listaAnios = $this->listaAniosPlan($anio);
-        $tabs = $this->tabsPlan('director');
-
-        return view('plan.director', compact('plans', 'anio', 'listaAnios', 'tabs'));
+        return Inertia::render('Plan/General', [
+            'plans' => $plans,
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => [],
+            'listaAnios' => $this->listaAniosPlan($anio),
+            'filterActionRoute' => 'plans.director',
+            'exportRoute' => '/exportar-planes',
+            'scope' => 'director',
+            'tabs' => $this->tabsPlan('director'),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+        ]);
     }
 
     public function profesorcoordinador(Request $request)
