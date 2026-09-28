@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePage, router } from '@inertiajs/vue3';
 import { useUiStore } from '@/stores/ui';
-import { Menu, Search, ChevronDown, LogOut } from 'lucide-vue-next';
+import { Menu, ChevronDown, LogOut } from 'lucide-vue-next';
 
 const props = defineProps({
     sidebarCollapsed: {
@@ -39,8 +39,8 @@ function logout() {
 
 <template>
     <header class="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-xs">
-        <!-- Izquierda: Botón Hamburguesa y Buscador -->
-        <div class="flex items-center space-x-3">
+        <!-- Izquierda: Botón Hamburguesa + Logo SIADPRO -->
+        <div class="flex items-center min-w-0 space-x-3">
             <button 
                 type="button" 
                 class="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors focus:outline-none"
@@ -50,14 +50,20 @@ function logout() {
                 <Menu class="w-5 h-5 text-slate-600" />
             </button>
 
-            <!-- Buscador estilo píldora -->
-            <div class="hidden sm:flex items-center bg-slate-100/80 rounded-full px-4 py-1.5 border border-slate-200/60 w-64 lg:w-80">
-                <Search class="w-3.5 h-3.5 text-slate-400 mr-2.5 shrink-0" />
-                <input 
-                    type="text" 
-                    placeholder="Buscar módulo o actividad..." 
-                    class="bg-transparent border-0 text-xs text-slate-700 focus:outline-none w-full placeholder-slate-400 p-0"
+            <div class="flex items-center min-w-0 overflow-hidden">
+                <img 
+                    src="/vendor/adminlte/dist/img/inicial.png" 
+                    alt="Logo SIADPRO" 
+                    class="w-9 h-9 object-contain shrink-0 shadow-sm"
                 />
+                <div class="ml-2.5 truncate hidden sm:block">
+                    <span class="font-extrabold text-slate-900 text-base tracking-tight block leading-tight">
+                        SIADPRO
+                    </span>
+                    <span class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider block leading-tight">
+                        DRE Huánuco
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -67,21 +73,33 @@ function logout() {
             <div class="relative">
                 <button 
                     type="button"
-                    class="flex items-center space-x-2.5 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none"
+                    class="group/badge flex items-center gap-2.5 rounded-full border bg-white py-1 pl-1 pr-1.5 shadow-xs transition-[border-color,background-color,box-shadow] duration-200 hover:shadow-sm focus:outline-none focus-visible:outline-none"
+                    :class="dropdownOpen
+                        ? 'border-indigo-300 bg-indigo-50/70 shadow-sm'
+                        : 'border-slate-200/80 hover:border-slate-300 hover:bg-slate-50'"
                     @click="dropdownOpen = !dropdownOpen"
                 >
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs border border-indigo-200 shadow-xs">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 text-xs font-extrabold text-white shadow-md ring-1 ring-white/80">
                         {{ user.name.charAt(0).toUpperCase() }}
-                    </div>
-                    <div class="hidden md:block text-left">
-                        <div class="text-xs font-bold text-slate-800 leading-none">
+                    </span>
+
+                    <span class="hidden min-w-0 text-left md:block">
+                        <span class="block max-w-[10rem] truncate text-[13px] font-bold leading-none text-slate-800">
                             {{ user.name }}
-                        </div>
-                        <div class="text-[10px] text-slate-400 font-medium mt-0.5 leading-none">
+                        </span>
+                        <span class="mt-1 block max-w-[10rem] truncate text-[10px] font-semibold uppercase leading-none tracking-wider text-slate-400">
                             {{ user.role }}
-                        </div>
-                    </div>
-                    <ChevronDown class="w-3 h-3 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': dropdownOpen }" />
+                        </span>
+                    </span>
+
+                    <span
+                        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors"
+                        :class="dropdownOpen
+                            ? 'bg-indigo-100 text-indigo-600'
+                            : 'bg-slate-100 text-slate-500 group-hover/badge:bg-slate-200/80'"
+                    >
+                        <ChevronDown class="h-3.5 w-3.5 transition-transform duration-200" :class="{ 'rotate-180': dropdownOpen }" />
+                    </span>
                 </button>
 
                 <!-- Backdrop invisible para cerrar al hacer clic fuera -->

@@ -28,6 +28,18 @@ export const useUiStore = defineStore('ui', () => {
     const sidebarCollapsed = ref(getStoredSidebarCollapsed());
     const sidebarMobileOpen = ref(false);
     const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1200);
+    // Tooltip flotante de los ítems del sidebar en modo colapsado.
+    // Se renderiza fuera del contenedor con overflow-x-hidden (ver Sidebar.vue)
+    // para que no sea recortado; se limpia al colapsar/expandir.
+    const sidebarTooltip = ref(null);
+
+    function showSidebarTooltip(tip) {
+        sidebarTooltip.value = tip;
+    }
+
+    function hideSidebarTooltip() {
+        sidebarTooltip.value = null;
+    }
 
     // Computados
     const isMobile = computed(() => windowWidth.value < 1024);
@@ -36,11 +48,13 @@ export const useUiStore = defineStore('ui', () => {
     function toggleCollapse() {
         sidebarCollapsed.value = !sidebarCollapsed.value;
         persistSidebarCollapsed(sidebarCollapsed.value);
+        hideSidebarTooltip();
     }
 
     function setSidebarCollapsed(value) {
         sidebarCollapsed.value = Boolean(value);
         persistSidebarCollapsed(sidebarCollapsed.value);
+        hideSidebarTooltip();
     }
 
     function openSidebar() {
@@ -124,6 +138,7 @@ export const useUiStore = defineStore('ui', () => {
         sidebarMobileOpen,
         windowWidth,
         isMobile,
+        sidebarTooltip,
 
         // Acciones
         toggleSidebar,
@@ -134,6 +149,8 @@ export const useUiStore = defineStore('ui', () => {
         toggleMobileSidebar,
         openMobileSidebar,
         closeMobileSidebar,
+        showSidebarTooltip,
+        hideSidebarTooltip,
         initWindowListeners,
         disposeWindowListeners,
     };

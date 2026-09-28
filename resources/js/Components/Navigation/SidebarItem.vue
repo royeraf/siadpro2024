@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onUnmounted } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { useUiStore } from '@/stores/ui';
 import { 
     House, ChartLine, Landmark, Users, User,
     Megaphone, Radio, LayoutGrid, FileText, 
@@ -24,6 +25,31 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['click']);
+
+const ui = useUiStore();
+
+// Tooltip en modo colapsado: se posiciona respecto al <aside> (el host real),
+// de modo que el tooltip viva como hermano del contenedor con overflow-x-hidden
+// y no quede recortado.
+function showTooltip(e) {
+    if (!props.collapsed) return;
+    const host = e.currentTarget?.closest?.('.main-sidebar');
+    if (!host) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const hostRect = host.getBoundingClientRect();
+    ui.showSidebarTooltip({
+        text: props.item.text,
+        badge: props.item.badge,
+        top: rect.top - hostRect.top + rect.height / 2,
+        left: rect.right - hostRect.left,
+    });
+}
+
+function hideTooltip() {
+    ui.hideSidebarTooltip();
+}
+
+onUnmounted(hideTooltip);
 
 const iconMap = {
     'house': House,
@@ -56,23 +82,30 @@ const resolvedIcon = computed(() => {
 const itemUrl = computed(() => props.item.href || props.item.url || '#');
 
 function handleClick(e) {
+    ui.hideSidebarTooltip();
     emit('click', e);
 }
 </script>
 
 <template>
-    <div class="relative group">
+    <div
+        class="relative group"
+        @mouseenter="showTooltip"
+        @mouseleave="hideTooltip"
+        @focusin="showTooltip"
+        @focusout="hideTooltip"
+    >
         <!-- Modo SPA (Inertia Link) -->
         <Link
             v-if="item.isSpa"
             :href="itemUrl"
-            class="flex items-center rounded-xl font-medium transition-all duration-200 select-none relative"
+            class="flex items-center rounded-xl font-medium transition-[color,background-color,box-shadow] duration-200 select-none relative focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400/70"
             :class="[
                 collapsed 
                     ? 'justify-center w-11 h-11 mx-auto' 
                     : 'px-3 py-2.5 w-full text-xs space-x-3',
                 isActive
-                    ? 'text-white shadow-lg shadow-indigo-600/30'
+                    ? 'text-white shadow-md shadow-indigo-600/25'
                     : 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/15'
             ]"
             :style="isActive ? { background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' } : {}"
@@ -80,7 +113,7 @@ function handleClick(e) {
         >
             <component 
                 :is="resolvedIcon" 
-                class="w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110" 
+                class="w-4 h-4 shrink-0"
                 :class="isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'"
             />
             
@@ -100,13 +133,13 @@ function handleClick(e) {
         <a
             v-else
             :href="itemUrl"
-            class="flex items-center rounded-xl font-medium transition-all duration-200 select-none relative"
+            class="flex items-center rounded-xl font-medium transition-[color,background-color,box-shadow] duration-200 select-none relative focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400/70"
             :class="[
                 collapsed 
                     ? 'justify-center w-11 h-11 mx-auto' 
                     : 'px-3 py-2.5 w-full text-xs space-x-3',
                 isActive
-                    ? 'text-white shadow-lg shadow-indigo-600/30'
+                    ? 'text-white shadow-md shadow-indigo-600/25'
                     : 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/15'
             ]"
             :style="isActive ? { background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' } : {}"
@@ -114,7 +147,7 @@ function handleClick(e) {
         >
             <component 
                 :is="resolvedIcon" 
-                class="w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110" 
+                class="w-4 h-4 shrink-0"
                 :class="isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'"
             />
             
@@ -129,21 +162,5 @@ function handleClick(e) {
                 {{ item.badge }}
             </span>
         </a>
-
-        <!-- Floating Tooltip cuando el sidebar está colapsado en pantallas de escritorio -->
-        <div 
-            v-if="collapsed"
-            class="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900/95 text-white text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-150 z-50 border border-white/15 hidden lg:flex items-center space-x-2"
-        >
-            <span>{{ item.text }}</span>
-            <span 
-                v-if="item.badge"
-                class="px-1.5 py-0.2 rounded bg-indigo-500 text-white text-[10px] font-bold"
-            >
-                {{ item.badge }}
-            </span>
-            <!-- Flechita del tooltip -->
-            <div class="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45 border-l border-b border-white/15"></div>
-        </div>
     </div>
 </template>

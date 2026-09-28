@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePage } from '@inertiajs/vue3';
 import { useUiStore } from '@/stores/ui';
@@ -19,7 +19,7 @@ const emit = defineEmits(['close']);
 const uiStore = useUiStore();
 // Refs reactivas del store (canónico Pinia: evita perder reactividad al
 // desestructurar y evita envolver en computed redundantes).
-const { sidebarCollapsed: storeCollapsed, sidebarMobileOpen: isMobileOpen, isMobile: storeIsMobile } = storeToRefs(uiStore);
+const { sidebarCollapsed: storeCollapsed, sidebarMobileOpen: isMobileOpen, isMobile: storeIsMobile, sidebarTooltip } = storeToRefs(uiStore);
 const page = usePage();
 
 // Determinamos el estado colapsado (usando prop si fue enviada, o la tienda Pinia)
@@ -41,6 +41,10 @@ const authUser = computed(() => page.props.auth?.user || { name: 'Usuario', role
 
 // Filtro rápido de búsqueda de módulos
 const searchQuery = ref('');
+
+// Al filtrar el menú los ítems se montan/desmontan sin disparar mouseleave:
+// limpiamos el tooltip para que no muestre texto ya filtrado.
+watch(searchQuery, () => uiStore.hideSidebarTooltip());
 
 const menuSections = computed(() => {
     const fromProps = page.props.sidebarMenu;
@@ -137,28 +141,28 @@ function handleItemClick() {
                 : 'lg:w-64'
         ]"
     >
-        <!-- Logo / Marca del Sistema -->
-        <div class="brand-link px-4 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 h-16">
+        <!-- Encabezado del drawer en móviles: cuando está abierto tapa al
+             navbar, así que aquí va la marca + botón de cierre -->
+        <div class="lg:hidden px-4 h-16 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
             <div class="flex items-center min-w-0 overflow-hidden">
                 <img 
                     src="/vendor/adminlte/dist/img/inicial.png" 
-                    alt="Logo" 
-                    class="w-9 h-9 rounded-full object-contain shrink-0 ring-2 ring-white/10 shadow-md"
+                    alt="Logo SIADPRO" 
+                    class="w-9 h-9 object-contain shrink-0 shadow-md"
                 />
-                <div v-show="!effectiveCollapsed" class="ml-3 truncate">
+                <div class="ml-2.5 truncate">
                     <span class="font-extrabold text-white text-base tracking-tight block leading-tight">
                         SIADPRO
                     </span>
-                    <span class="text-[10px] text-indigo-300 font-semibold uppercase tracking-wider block">
+                    <span class="text-[10px] text-indigo-300 font-semibold uppercase tracking-wider block leading-tight">
                         DRE Huánuco
                     </span>
                 </div>
             </div>
 
-            <!-- Botón cerrar en dispositivos móviles -->
             <button 
                 type="button" 
-                class="lg:hidden p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400/70 shrink-0"
                 @click="handleClose"
                 title="Cerrar menú"
             >
@@ -179,7 +183,7 @@ function handleItemClick() {
                 <button 
                     v-if="searchQuery" 
                     type="button" 
-                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400/70 rounded"
                     @click="searchQuery = ''"
                 >
                     <X class="w-3 h-3" />
@@ -187,8 +191,7 @@ function handleItemClick() {
             </div>
         </div>
 
-        <!-- Menú de navegación con scroll estilizado (overflow-x-hidden evita
-             la barra horizontal que provocan los tooltips de SidebarItem) -->
+        <!-- Menú de navegación con scroll estilizado -->
         <div class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-4 sidebar-scroll">
             <template v-for="section in filteredMenuSections" :key="section.header">
                 <SidebarSection 
@@ -240,6 +243,30 @@ function handleItemClick() {
                 </div>
             </div>
         </div>
+
+        <!-- Tooltip flotante en modo colapsado: vive como hijo directo del
+             <aside> (sin overflow) para que el contenedor con overflow-x-hidden
+             del menú no lo recorte. -->
+        <Transition
+            enter-active-class="transition-opacity duration-150 ease-out"
+            enter-from-class="opacity-0"
+            leave-active-class="transition-opacity duration-150 ease-in"
+            leave-to-class="opacity-0"
+        >
+            <div
+                v-if="effectiveCollapsed && sidebarTooltip"
+                class="hidden lg:flex items-center space-x-2 absolute ml-2 -translate-y-1/2 px-3 py-1.5 bg-slate-200 text-slate-900 text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap pointer-events-none z-[60]"
+                :style="{ top: sidebarTooltip.top + 'px', left: sidebarTooltip.left + 'px' }"
+            >
+                <span>{{ sidebarTooltip.text }}</span>
+                <span
+                    v-if="sidebarTooltip.badge"
+                    class="px-1.5 py-0.2 rounded bg-indigo-500 text-white text-[10px] font-bold"
+                >
+                    {{ sidebarTooltip.badge }}
+                </span>
+            </div>
+        </Transition>
     </aside>
 </template>
 
