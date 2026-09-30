@@ -182,7 +182,7 @@ function inputClass(field) {
                     v-model="nomInstitucion"
                     v-bind="nomInstitucionAttrs"
                     placeholder="Ej. I.E. SAN MARTIN DE PORRES"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="inputClass('nomInstitucion')"
                 />
                 <p v-if="errors.nomInstitucion" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
@@ -203,7 +203,7 @@ function inputClass(field) {
                     v-model="codModular"
                     v-bind="codModularAttrs"
                     placeholder="Ej. 0234567"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="inputClass('codModular')"
                 />
                 <p v-if="errors.codModular" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
@@ -220,7 +220,7 @@ function inputClass(field) {
                     id="nivel"
                     v-model="nivel"
                     v-bind="nivelAttrs"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="inputClass('nivel')"
                 >
                     <option value="">-- Seleccione nivel --</option>
@@ -244,7 +244,7 @@ function inputClass(field) {
                     v-model="provincia"
                     v-bind="provinciaAttrs"
                     placeholder="Ej. HUANUCO"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="inputClass('provincia')"
                 />
                 <p v-if="errors.provincia" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
@@ -263,7 +263,7 @@ function inputClass(field) {
                     v-model="distrito"
                     v-bind="distritoAttrs"
                     placeholder="Ej. HUANUCO"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="inputClass('distrito')"
                 />
                 <p v-if="errors.distrito" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
@@ -282,7 +282,7 @@ function inputClass(field) {
                     v-model="centropoblado"
                     v-bind="centropobladoAttrs"
                     placeholder="Ej. PILLAO"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="inputClass('centropoblado')"
                 />
                 <p v-if="errors.centropoblado" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
@@ -301,7 +301,7 @@ function inputClass(field) {
                     v-model="ugel"
                     v-bind="ugelAttrs"
                     placeholder="Ej. UGEL HUANUCO"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="inputClass('ugel')"
                     list="ugels-list"
                 />

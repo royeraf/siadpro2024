@@ -227,7 +227,7 @@ const submit = handleSubmit((values) => {
                     v-bind="titleAttrs"
                     :readonly="isView"
                     placeholder="Título del evento"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="[
                         errors.title ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300',
                         isView ? 'bg-slate-50 cursor-not-allowed' : ''
@@ -250,7 +250,7 @@ const submit = handleSubmit((values) => {
                     v-bind="eventoAttrs"
                     :readonly="isView"
                     placeholder="Descripcion del evento"
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="[
                         errors.evento ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300',
                         isView ? 'bg-slate-50 cursor-not-allowed' : ''
@@ -288,7 +288,7 @@ const submit = handleSubmit((values) => {
                         v-model="color"
                         v-bind="colorAttrs"
                         :disabled="isView"
-                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 transition focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         :class="[
                             errors.color ? 'border-rose-400 bg-rose-50/20 text-rose-900' : 'border-slate-300',
                             isView ? 'bg-slate-50 cursor-not-allowed' : ''
@@ -322,7 +322,7 @@ const submit = handleSubmit((values) => {
                         v-model="start"
                         v-bind="startAttrs"
                         :readonly="isView"
-                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         :class="[
                             errors.start ? 'border-rose-400 bg-rose-50/20 text-rose-900' : 'border-slate-300',
                             isView ? 'bg-slate-50 cursor-not-allowed' : ''
@@ -344,7 +344,7 @@ const submit = handleSubmit((values) => {
                         v-model="end"
                         v-bind="endAttrs"
                         :readonly="isView"
-                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         :class="[
                             errors.end ? 'border-rose-400 bg-rose-50/20 text-rose-900' : 'border-slate-300',
                             isView ? 'bg-slate-50 cursor-not-allowed' : ''

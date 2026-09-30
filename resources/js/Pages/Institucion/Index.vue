@@ -268,7 +268,7 @@ function confirmDelete(row) {
                         type="text"
                         v-model="localFilters.institucion"
                         placeholder="Ej. Illathupa"
-                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         @keydown.enter.prevent="applyFilters"
                     />
                 </div>
@@ -279,7 +279,7 @@ function confirmDelete(row) {
                         type="text"
                         v-model="localFilters.codModular"
                         placeholder="Ej. 0234567"
-                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         @keydown.enter.prevent="applyFilters"
                     />
                 </div>
@@ -288,7 +288,7 @@ function confirmDelete(row) {
                     <label class="block text-xs font-bold text-slate-700 mb-1">UGEL</label>
                     <select
                         v-model="localFilters.ugels"
-                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         @change="applyFilters"
                     >
                         <option value="">-- Todas las UGEL --</option>
@@ -300,7 +300,7 @@ function confirmDelete(row) {
                     <label class="block text-xs font-bold text-slate-700 mb-1">Nivel</label>
                     <select
                         v-model="localFilters.nivel"
-                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         @change="applyFilters"
                     >
                         <option value="">-- Todos los niveles --</option>

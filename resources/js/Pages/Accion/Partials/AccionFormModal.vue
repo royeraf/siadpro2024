@@ -248,7 +248,7 @@ const submit = handleSubmit((values) => {
                         v-model="nombreAccion"
                         v-bind="nombreAccionAttrs"
                         placeholder="Ej. Taller de sensibilización pedagógica integral"
-                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         :class="errors.nombreAccion ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300'"
                     />
                 </div>
@@ -272,7 +272,7 @@ const submit = handleSubmit((values) => {
                             v-model="lugar"
                             v-bind="lugarAttrs"
                             placeholder="Ej. Auditorio Central / I.E. San Martín"
-                            class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             :class="errors.lugar ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300'"
                         />
                     </div>
@@ -294,7 +294,7 @@ const submit = handleSubmit((values) => {
                             v-model="fecha"
                             v-bind="fechaAttrs"
                             :max="today"
-                            class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             :class="errors.fecha ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300'"
                         />
                     </div>
@@ -316,7 +316,7 @@ const submit = handleSubmit((values) => {
                     v-model="descripcion"
                     v-bind="descripcionAttrs"
                     placeholder="Ingrese detalles o aspectos relevantes de la acción realizada..."
-                    class="w-full text-xs bg-white border rounded-xl px-3 py-2 text-slate-800 transition focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    class="w-full text-xs bg-white border rounded-xl px-3 py-2 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     :class="errors.descripcion ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300'"
                 ></textarea>
                 <p v-if="errors.descripcion" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
