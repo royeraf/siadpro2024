@@ -340,6 +340,7 @@ return [
             'url'  => 'institucions',
             'icon' => 'landmark',
             'can' => 'institucions.index',
+            'active' => ['instituc*'],
         ],
         [
             'text' => 'USUARIOS',

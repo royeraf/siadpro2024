@@ -55,7 +55,7 @@ const menuSections = computed(() => {
         {
             header: 'GESTIÓN',
             items: [
-                { text: 'Instituciones', href: '/institucions', icon: 'landmark', isSpa: false },
+                { text: 'Instituciones', href: '/institucions', icon: 'landmark', isSpa: true },
                 { text: 'Usuarios', href: '/users', icon: 'users', isSpa: true },
             ]
         },

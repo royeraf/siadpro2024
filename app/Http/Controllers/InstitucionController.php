@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\Institucion;
 use App\Models\User;
+use Inertia\Inertia;
 
 class InstitucionController extends Controller
 {
@@ -45,8 +47,6 @@ class InstitucionController extends Controller
             $query->where('nivel', $request->get('nivel'));
         }
 
-        $total = $query->count();
-
         $perPageRaw = $request->get('per_page', 15);
         if ($perPageRaw === 'all') {
             $perPage = 100000;
@@ -59,7 +59,10 @@ class InstitucionController extends Controller
 
         $institucions = $query->orderBy('id', 'asc')->paginate($perPage)->withQueryString();
 
-        if ($request->ajax()) {
+        // El datatable Blade legacy pide filas por ajax; Inertia también envía
+        // X-Requested-With, así que hay que excluir X-Inertia para no devolver
+        // JSON cuando el cliente SPA consulta la página.
+        if ($request->ajax() && ! $request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('institucion._rows', ['institucions' => $institucions])->render(),
                 'pagination' => (string) $institucions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -84,7 +87,17 @@ class InstitucionController extends Controller
             ->orderBy('nivel')
             ->pluck('nivel');
 
-        return view('institucion.index', compact('institucions', 'total', 'listaUgels', 'listaNiveles'));
+        return Inertia::render('Institucion/Index', [
+            'institucions' => $institucions,
+            'listaUgels' => $listaUgels,
+            'listaNiveles' => $listaNiveles,
+            'filters' => $request->only(['buscar', 'institucion', 'codModular', 'ugels', 'nivel', 'per_page']),
+            'can' => [
+                'create' => Auth::user()->can('institucions.create'),
+                'edit' => Auth::user()->can('institucions.edit'),
+                'destroy' => Auth::user()->can('institucions.destroy'),
+            ],
+        ]);
     }
     
     public function create()
@@ -96,9 +109,11 @@ class InstitucionController extends Controller
 
     public function store(Request $request)
     {
+        $this->validarInstitucion($request);
+
         $institucions = new Institucion();
         $institucions->nomInstitucion = Str::upper($request->get('nomInstitucion'));
-        $institucions->codModular = $request->get('codModular');
+        $institucions->codModular = trim($request->get('codModular'));
         $institucions->nivel = $request->get('nivel');
         $institucions->centropoblado = Str::upper($request->get('centropoblado'));
         $institucions->estado = 1;
@@ -106,8 +121,8 @@ class InstitucionController extends Controller
         $institucions->provincia = Str::upper($request->get('provincia'));
         $institucions->ugel = Str::upper($request->get('ugel'));
         $institucions->save();
-        
-        return redirect('/institucions');
+
+        return redirect('/institucions')->with('success', '¡Institución registrada con éxito!');
 
     }
 
@@ -123,8 +138,15 @@ class InstitucionController extends Controller
     public function update(Request $request, $id)
     {
         $institucion = Institucion::find($id);
+
+        if (! $institucion) {
+            return redirect('/institucions')->with('error', 'La institución solicitada no existe.');
+        }
+
+        $this->validarInstitucion($request);
+
         $institucion->nomInstitucion = Str::upper($request->get('nomInstitucion'));
-        $institucion->codModular = $request->get('codModular');
+        $institucion->codModular = trim($request->get('codModular'));
         $institucion->nivel = $request->get('nivel');
         $institucion->centropoblado = Str::upper($request->get('centropoblado'));
         $institucion->estado = 1;
@@ -132,16 +154,56 @@ class InstitucionController extends Controller
         $institucion->provincia = Str::upper($request->get('provincia'));
         $institucion->ugel = Str::upper($request->get('ugel'));
         $institucion->save();
-        
-        return redirect('/institucions');
+
+        return redirect('/institucions')->with('success', '¡Institución actualizada con éxito!');
     }
 
     public function destroy($id)
     {
         $institucion = Institucion::find($id);
+
+        if (! $institucion) {
+            return redirect('/institucions')->with('error', 'La institución solicitada no existe.');
+        }
+
         $institucion->estado = '0';
         $institucion->save();
-        return redirect('/institucions');
+
+        return redirect('/institucions')->with('success', '¡Institución eliminada con éxito!');
+    }
+
+    /**
+     * Validación compartida por store/update (mensajes en español).
+     * Lanza ValidationException ante fallos: Laravel redirige hacia atrás con
+     * los errores, que el modal Inertia recibe con los mismos nombres de campo.
+     */
+    private function validarInstitucion(Request $request): void
+    {
+        Validator::make($request->all(), [
+            'nomInstitucion' => 'required|string|max:191',
+            'codModular' => 'required|string|max:9|regex:/^[0-9]{1,9}$/',
+            'nivel' => 'required|in:Inicial-Jardin,Primaria,Secundaria',
+            'provincia' => 'required|string|max:40',
+            'distrito' => 'required|string|max:40',
+            'centropoblado' => 'required|string|max:60',
+            'ugel' => 'required|string|max:50',
+        ], [
+            'nomInstitucion.required' => 'El nombre de la institución es obligatorio.',
+            'nomInstitucion.max' => 'El nombre de la institución no debe exceder los 191 caracteres.',
+            'codModular.required' => 'El código modular es obligatorio.',
+            'codModular.regex' => 'El código modular debe contener hasta 9 dígitos numéricos.',
+            'codModular.max' => 'El código modular no debe exceder los 9 caracteres.',
+            'nivel.required' => 'El nivel es obligatorio.',
+            'nivel.in' => 'El nivel seleccionado no es válido.',
+            'provincia.required' => 'La provincia es obligatoria.',
+            'provincia.max' => 'La provincia no debe exceder los 40 caracteres.',
+            'distrito.required' => 'El distrito es obligatorio.',
+            'distrito.max' => 'El distrito no debe exceder los 40 caracteres.',
+            'centropoblado.required' => 'El centro poblado es obligatorio.',
+            'centropoblado.max' => 'El centro poblado no debe exceder los 60 caracteres.',
+            'ugel.required' => 'La UGEL es obligatoria.',
+            'ugel.max' => 'La UGEL no debe exceder los 50 caracteres.',
+        ])->validate();
     }
 
     /**
