@@ -83,7 +83,7 @@ const calendarOptions = computed(() => ({
             subtitle="Lectura y actividades de lectura en la institución educativa"
         />
 
-        <SectionTabs :tabs="tabs" color="pink" />
+        <SectionTabs :tabs="tabs" section="agenda" color="pink" />
 
         <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
             <div class="p-3 sm:p-5 max-w-[860px] mx-auto">

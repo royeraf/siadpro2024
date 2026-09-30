@@ -179,7 +179,7 @@ function handleExportExcel() {
             subtitle="Lectura y actividades de lectura en la institución educativa"
         />
 
-        <SectionTabs :tabs="tabs" color="pink" />
+        <SectionTabs :tabs="tabs" section="agenda" color="pink" />
 
         <BaseTable
             id="tabla-agendas-ugel"

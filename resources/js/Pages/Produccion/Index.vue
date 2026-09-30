@@ -236,7 +236,7 @@ function confirmDelete(produccion) {
             subtitle="Registra y consulta las producciones de textos infantiles"
         />
 
-        <SectionTabs :tabs="tabs" color="green" />
+        <SectionTabs :tabs="tabs" section="produccion" color="green" />
 
         <div
             v-if="page.props.flash?.success"

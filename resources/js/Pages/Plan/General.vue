@@ -295,7 +295,7 @@ function handleExportExcel() {
             subtitle="Consulta y seguimiento del espacio de lectura en el hogar"
         />
 
-        <SectionTabs :tabs="tabs" color="cyan" />
+        <SectionTabs :tabs="tabs" section="plan" color="cyan" />
 
         <div
             v-if="page.props.flash?.success"

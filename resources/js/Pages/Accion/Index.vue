@@ -247,7 +247,7 @@ function confirmDelete(accion) {
         />
 
         <!-- ══ PESTAÑAS DE ALCANCE (MIS REGISTROS / UGEL / GENERAL / DIRECTOR) ══ -->
-        <SectionTabs :tabs="tabs" color="yellow" />
+        <SectionTabs :tabs="tabs" section="accion" color="yellow" />
 
         <!-- ══ MENSAJES FLASH ══ -->
         <div 

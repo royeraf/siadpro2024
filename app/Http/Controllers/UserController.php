@@ -167,11 +167,13 @@ class UserController extends Controller
             [
                 'label'  => 'Usuarios Activos (' . number_format((int) ($conteos['1'] ?? 0)) . ')',
                 'url'    => route('users.index', array_merge($filtros, ['estado' => '1'])),
+                'route'  => 'users.estado.1',
                 'active' => $estado === '1',
             ],
             [
                 'label'  => 'Usuarios Inhabilitados (' . number_format((int) ($conteos['0'] ?? 0)) . ')',
                 'url'    => route('users.index', array_merge($filtros, ['estado' => '0'])),
+                'route'  => 'users.estado.0',
                 'active' => $estado === '0',
             ],
         ];

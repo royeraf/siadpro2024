@@ -260,7 +260,7 @@ function handleExportExcel() {
             subtitle="Consulta y seguimiento de las evidencias de asistencia técnica"
         />
 
-        <SectionTabs :tabs="tabs" color="red" />
+        <SectionTabs :tabs="tabs" section="evidencia" color="red" />
 
         <div
             v-if="page.props.flash?.success"

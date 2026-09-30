@@ -181,7 +181,7 @@ function handleExportExcel() {
             subtitle="Consulta y seguimiento de acciones de difusión"
         />
 
-        <SectionTabs :tabs="tabs" color="blue" />
+        <SectionTabs :tabs="tabs" section="difusion" color="blue" />
 
         <div 
             v-if="page.props.flash?.success" 

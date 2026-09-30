@@ -27,6 +27,9 @@ trait HasScopeTabs
                 $tabs[] = [
                     'label' => $item['label'],
                     'url' => route($item['route']),
+                    // Identidad estable de la pestaña para el frontend (store de
+                    // tabs): la URL no sirve porque arrastra los filtros activos.
+                    'route' => $item['route'],
                     'active' => $activo === $key,
                 ];
             }
