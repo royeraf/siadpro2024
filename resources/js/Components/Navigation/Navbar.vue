@@ -64,9 +64,6 @@ function logout() {
                     <span class="font-extrabold text-slate-900 text-base tracking-tight block leading-tight">
                         SIADPRO
                     </span>
-                    <span class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider block leading-tight">
-                        DRE Huánuco
-                    </span>
                 </div>
             </div>
         </div>

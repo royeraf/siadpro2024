@@ -41,11 +41,9 @@ const iconComponent = icons[props.theme.icon] || Folder;
 
 <template>
     <div 
-        class="activity-card h-full flex flex-col justify-between relative"
+        class="activity-card h-full flex flex-col justify-between relative border-0"
         :style="{
-            '--card-border-hover': theme.borderHover,
             background: theme.cardBg,
-            border: `2px solid ${theme.border}`,
             boxShadow: theme.shadow,
         }"
     >
@@ -91,12 +89,8 @@ const iconComponent = icons[props.theme.icon] || Folder;
 .activity-card {
     border-radius: 22px;
     padding: 1.4rem 1.3rem 1.2rem 1.3rem;
-    transition: border-color 0.2s ease;
     overflow: hidden;
-}
-
-.activity-card:hover {
-    border-color: var(--card-border-hover, #4F46E5) !important;
+    border: none !important;
 }
 
 .activity-icon-badge {
