@@ -242,7 +242,7 @@ function confirmToggleEstado(row) {
             subtitle="Administra los usuarios, sus roles y su estado"
         />
 
-        <SectionTabs :tabs="tabs" section="users" :color="estado === '1' ? 'green' : 'red'" />
+        <SectionTabs :tabs="tabs" :color="estado === '1' ? 'green' : 'red'" />
 
         <div
             v-if="page.props.flash?.success"

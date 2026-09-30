@@ -260,7 +260,7 @@ function handleExportExcel() {
             subtitle="Consulta y seguimiento de la biblioteca del aula"
         />
 
-        <SectionTabs :tabs="tabs" section="informe" color="orange" />
+        <SectionTabs :tabs="tabs" color="orange" />
 
         <div
             v-if="page.props.flash?.success"

@@ -238,7 +238,7 @@ function confirmDelete(difusion) {
             subtitle="Registra y consulta las acciones de difusión y comunicación"
         />
 
-        <SectionTabs :tabs="tabs" section="difusion" color="blue" />
+        <SectionTabs :tabs="tabs" color="blue" />
 
         <div 
             v-if="page.props.flash?.success" 

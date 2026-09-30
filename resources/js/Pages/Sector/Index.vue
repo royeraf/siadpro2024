@@ -225,7 +225,7 @@ function confirmDelete(sector) {
             subtitle="Registra y consulta los sectores del aula"
         />
 
-        <SectionTabs :tabs="tabs" section="sector" color="gray" />
+        <SectionTabs :tabs="tabs" color="gray" />
 
         <div
             v-if="page.props.flash?.success"

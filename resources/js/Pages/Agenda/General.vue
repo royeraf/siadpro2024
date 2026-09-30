@@ -246,7 +246,7 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
             subtitle="Lectura y actividades de lectura en la institución educativa"
         />
 
-        <SectionTabs :tabs="tabs" section="agenda" color="pink" />
+        <SectionTabs :tabs="tabs" color="pink" />
 
         <BaseTable
             id="tabla-agendas-general"

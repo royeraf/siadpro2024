@@ -188,7 +188,7 @@ function handleExportExcel() {
         />
 
         <!-- ══ PESTAÑAS DE ALCANCE (MIS REGISTROS / UGEL / GENERAL / DIRECTOR) ══ -->
-        <SectionTabs :tabs="tabs" section="accion" color="yellow" />
+        <SectionTabs :tabs="tabs" color="yellow" />
 
         <!-- ══ MENSAJES FLASH ══ -->
         <div 

@@ -225,7 +225,7 @@ function confirmDelete(evidencia) {
             subtitle="Registra y consulta las evidencias de asistencia técnica"
         />
 
-        <SectionTabs :tabs="tabs" section="evidencia" color="red" />
+        <SectionTabs :tabs="tabs" color="red" />
 
         <div
             v-if="page.props.flash?.success"

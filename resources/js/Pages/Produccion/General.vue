@@ -286,7 +286,7 @@ function handleExportExcel() {
             subtitle="Consulta y seguimiento de las producciones de textos infantiles"
         />
 
-        <SectionTabs :tabs="tabs" section="produccion" color="green" />
+        <SectionTabs :tabs="tabs" color="green" />
 
         <div
             v-if="page.props.flash?.success"

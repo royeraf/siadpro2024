@@ -236,7 +236,7 @@ function confirmDelete(plan) {
             subtitle="Registra y consulta el espacio de lectura en el hogar"
         />
 
-        <SectionTabs :tabs="tabs" section="plan" color="cyan" />
+        <SectionTabs :tabs="tabs" color="cyan" />
 
         <div
             v-if="page.props.flash?.success"
