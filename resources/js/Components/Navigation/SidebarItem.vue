@@ -81,6 +81,26 @@ const resolvedIcon = computed(() => {
 
 const itemUrl = computed(() => props.item.href || props.item.url || '#');
 
+// Color de sección asignado al ítem (tonos 400 para fondo oscuro #192761).
+// Sin color asignado (Panel/Gestión) → gris actual.
+const iconPalette = {
+    yellow: 'text-amber-400',
+    blue: 'text-blue-400',
+    red: 'text-rose-400',
+    green: 'text-emerald-400',
+    cyan: 'text-cyan-400',
+    orange: 'text-orange-400',
+    pink: 'text-pink-400',
+    indigo: 'text-indigo-400',
+    white: 'text-white',
+    gray: 'text-slate-400',
+};
+
+const iconColorClass = computed(() => iconPalette[props.item.color] || 'text-slate-400');
+
+const activeBackground = { background: '#724ffb' };
+const activeShadow = 'shadow-[0_4px_14px_rgba(114,79,251,0.45)]';
+
 function handleClick(e) {
     ui.hideSidebarTooltip();
     emit('click', e);
@@ -105,16 +125,16 @@ function handleClick(e) {
                     ? 'justify-center w-11 h-11 mx-auto' 
                     : 'px-3 py-2.5 w-full text-xs space-x-3',
                 isActive
-                    ? 'text-white shadow-md shadow-indigo-600/25'
+                    ? `text-white ${activeShadow}`
                     : 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/15'
             ]"
-            :style="isActive ? { background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' } : {}"
+            :style="isActive ? activeBackground : {}"
             @click="handleClick"
         >
             <component 
                 :is="resolvedIcon" 
-                class="w-4 h-4 shrink-0"
-                :class="isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'"
+                class="w-4 h-4 shrink-0 transition-[filter] duration-200"
+                :class="isActive ? 'text-white' : [iconColorClass, 'group-hover:brightness-125']"
             />
             
             <span v-if="!collapsed" class="truncate font-semibold tracking-tight">
@@ -139,16 +159,16 @@ function handleClick(e) {
                     ? 'justify-center w-11 h-11 mx-auto' 
                     : 'px-3 py-2.5 w-full text-xs space-x-3',
                 isActive
-                    ? 'text-white shadow-md shadow-indigo-600/25'
+                    ? `text-white ${activeShadow}`
                     : 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/15'
             ]"
-            :style="isActive ? { background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' } : {}"
+            :style="isActive ? activeBackground : {}"
             @click="handleClick"
         >
             <component 
                 :is="resolvedIcon" 
-                class="w-4 h-4 shrink-0"
-                :class="isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'"
+                class="w-4 h-4 shrink-0 transition-[filter] duration-200"
+                :class="isActive ? 'text-white' : [iconColorClass, 'group-hover:brightness-125']"
             />
             
             <span v-if="!collapsed" class="truncate font-semibold tracking-tight">

@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePage } from '@inertiajs/vue3';
 import { useUiStore } from '@/stores/ui';
 import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
-import { X, Search } from 'lucide-vue-next';
+import { X } from 'lucide-vue-next';
 
 const props = defineProps({
     collapsed: {
@@ -37,14 +37,6 @@ const effectiveCollapsed = computed(() => {
     return isCollapsed.value;
 });
 const currentUrl = computed(() => page.url);
-const authUser = computed(() => page.props.auth?.user || { name: 'Usuario', role: 'Docente' });
-
-// Filtro rápido de búsqueda de módulos
-const searchQuery = ref('');
-
-// Al filtrar el menú los ítems se montan/desmontan sin disparar mouseleave:
-// limpiamos el tooltip para que no muestre texto ya filtrado.
-watch(searchQuery, () => uiStore.hideSidebarTooltip());
 
 const menuSections = computed(() => {
     const fromProps = page.props.sidebarMenu;
@@ -64,38 +56,23 @@ const menuSections = computed(() => {
             header: 'GESTIÓN',
             items: [
                 { text: 'Instituciones', href: '/institucions', icon: 'landmark', isSpa: false },
-                { text: 'Usuarios', href: '/users', icon: 'users', isSpa: false },
+                { text: 'Usuarios', href: '/users', icon: 'users', isSpa: true },
             ]
         },
         {
             header: 'ACTIVIDADES',
             items: [
-                { text: 'Acción de Sensibilización', href: '/accion-inicio', icon: 'megaphone', isSpa: true },
-                { text: 'Acción de Difusión', href: '/difusion-inicio', icon: 'radio', isSpa: true },
-                { text: 'Sectores del Aula', href: '/sector-inicio', icon: 'layout-grid', isSpa: true },
-                { text: 'Asistencia Técnica', href: '/evidencia-inicio', icon: 'file-text', isSpa: true },
-                { text: 'Biblioteca del Aula', href: '/informe', icon: 'book-open', isSpa: true },
-                { text: 'Espacio de Lectura', href: '/plan-inicio', icon: 'book-heart', isSpa: true },
-                { text: 'Producción de Textos', href: '/produccion-inicio', icon: 'notebook-pen', isSpa: true },
-                { text: 'Agenda de Lectura', href: '/agenda-inicio', icon: 'calendar-check', isSpa: true },
+                { text: 'Acción de Sensibilización', href: '/accion-inicio', icon: 'megaphone', color: 'yellow', isSpa: true },
+                { text: 'Acción de Difusión', href: '/difusion-inicio', icon: 'radio', color: 'blue', isSpa: true },
+                { text: 'Sectores del Aula', href: '/sector-inicio', icon: 'layout-grid', color: 'white', isSpa: true },
+                { text: 'Asistencia Técnica', href: '/evidencia-inicio', icon: 'file-text', color: 'red', isSpa: true },
+                { text: 'Biblioteca del Aula', href: '/informe', icon: 'book-open', color: 'orange', isSpa: true },
+                { text: 'Espacio de Lectura', href: '/plan-inicio', icon: 'book-heart', color: 'cyan', isSpa: true },
+                { text: 'Producción de Textos', href: '/produccion-inicio', icon: 'notebook-pen', color: 'green', isSpa: true },
+                { text: 'Agenda de Lectura', href: '/agenda-inicio', icon: 'calendar-check', color: 'pink', isSpa: true },
             ]
         }
     ];
-});
-
-// Secciones filtradas si el usuario busca algo
-const filteredMenuSections = computed(() => {
-    const q = searchQuery.value.trim().toLowerCase();
-    if (!q) return menuSections.value;
-
-    return menuSections.value
-        .map(section => ({
-            ...section,
-            items: section.items.filter(item => 
-                (item.text && item.text.toLowerCase().includes(q))
-            )
-        }))
-        .filter(section => section.items.length > 0);
 });
 
 function isItemActive(item) {
@@ -130,7 +107,7 @@ function handleItemClick() {
 
 <template>
     <aside 
-        class="main-sidebar flex flex-col fixed inset-y-0 left-0 z-50 transition-all duration-300 select-none bg-[#1A1D36]"
+        class="main-sidebar flex flex-col fixed inset-y-0 left-0 z-50 transition-all duration-300 select-none bg-[#192761]"
         :class="[
             isMobileOpen 
                 ? 'translate-x-0 w-64' 
@@ -170,30 +147,9 @@ function handleItemClick() {
             </button>
         </div>
 
-        <!-- Buscador rápido dentro del Sidebar (solo visible cuando está expandido) -->
-        <div v-show="!effectiveCollapsed" class="px-3 pt-3 pb-1 shrink-0">
-            <div class="relative">
-                <Search class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input 
-                    v-model="searchQuery"
-                    type="text" 
-                    placeholder="Filtrar menú..." 
-                    class="w-full pl-8 pr-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/50 transition"
-                />
-                <button 
-                    v-if="searchQuery" 
-                    type="button" 
-                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400/70 rounded"
-                    @click="searchQuery = ''"
-                >
-                    <X class="w-3 h-3" />
-                </button>
-            </div>
-        </div>
-
         <!-- Menú de navegación con scroll estilizado -->
         <div class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-4 sidebar-scroll">
-            <template v-for="section in filteredMenuSections" :key="section.header">
+            <template v-for="section in menuSections" :key="section.header">
                 <SidebarSection 
                     :header="section.header" 
                     :collapsed="effectiveCollapsed"
@@ -208,40 +164,6 @@ function handleItemClick() {
                     />
                 </SidebarSection>
             </template>
-
-            <!-- Mensaje si la búsqueda no encuentra coincidencias -->
-            <div 
-                v-if="filteredMenuSections.length === 0" 
-                class="text-center py-6 px-3 text-slate-400 text-xs"
-            >
-                No se encontraron módulos
-            </div>
-        </div>
-
-        <!-- Footer del Sidebar: Perfil de usuario -->
-        <div class="p-3 shrink-0 bg-[#16182E]/80 backdrop-blur-xs">
-            <!-- Información resumida de usuario -->
-            <div 
-                class="flex items-center rounded-xl p-1.5 transition-colors"
-                :class="effectiveCollapsed ? 'justify-center' : 'hover:bg-white/5'"
-            >
-                <div class="flex items-center min-w-0">
-                    <div 
-                        class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white font-bold flex items-center justify-center text-xs shadow-md shrink-0 ring-1 ring-white/20"
-                        :title="effectiveCollapsed ? `${authUser.name} (${authUser.role})` : undefined"
-                    >
-                        {{ authUser.name.charAt(0).toUpperCase() }}
-                    </div>
-                    <div v-show="!effectiveCollapsed" class="ml-2.5 truncate">
-                        <p class="text-xs font-bold text-white truncate mb-0 leading-tight">
-                            {{ authUser.name }}
-                        </p>
-                        <p class="text-[10px] text-slate-400 truncate mb-0 leading-tight">
-                            {{ authUser.role }}
-                        </p>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Tooltip flotante en modo colapsado: vive como hijo directo del

@@ -440,6 +440,11 @@ Route::get('/buscarDocenteporInstitucion', [ProduccionController::class, 'buscar
 
 Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 Route::get('/usuarios/{id}/estado', 'App\Http\Controllers\UserController@cambiarEstado')->name('cambiarEstado');
+// Variante para la SPA (Inertia): el GET de arriba se conserva solo para el
+// enlace legacy del datatable Blade (_rows.blade.php).
+Route::match(['put', 'patch'], '/usuarios/{id}/estado', [App\Http\Controllers\UserController::class, 'cambiarEstado'])
+    ->middleware('auth')
+    ->name('cambiarEstado.put');
 
 Route::get("/sector-dre", [App\Http\Controllers\SectorController::class, "dre"])->middleware('auth')->name('sectores.dre');
 Route::get('/exportar-producciones', [ProduccionController::class, 'exportarTodos'])->name('exportar.producciones');

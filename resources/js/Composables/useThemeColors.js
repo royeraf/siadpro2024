@@ -1,7 +1,7 @@
 export function useThemeColors() {
     const themeMap = {
         accion: {
-            cardBg: 'linear-gradient(145deg, #FEF08A 0%, #FDE047 50%, #FEF9C3 100%)',
+            cardBg: '#FEF3C7',
             border: '#EAB308',
             borderHover: '#CA8A04',
             badgeBg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
@@ -14,12 +14,12 @@ export function useThemeColors() {
             icon: 'Megaphone',
         },
         difusion: {
-            cardBg: 'linear-gradient(145deg, #E0E7FF 0%, #C7D2FE 50%, #EEF2FF 100%)',
+            cardBg: '#E0E7FF',
             border: '#818CF8',
             borderHover: '#4F46E5',
             badgeBg: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
             badgeText: '#FFFFFF',
-            btnBg: '#E0E7FF',
+            btnBg: '#C7D2FE',
             btnText: '#312E81',
             btnBorder: '#6366F1',
             shadow: '0 6px 18px rgba(99, 102, 241, 0.18)',
@@ -27,7 +27,7 @@ export function useThemeColors() {
             icon: 'Radio',
         },
         sector: {
-            cardBg: 'linear-gradient(145deg, #BAE6FD 0%, #7DD3FC 50%, #E0F2FE 100%)',
+            cardBg: '#E0F2FE',
             border: '#38BDF8',
             borderHover: '#0284C7',
             badgeBg: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)',
@@ -40,7 +40,7 @@ export function useThemeColors() {
             icon: 'LayoutGrid',
         },
         evidencia: {
-            cardBg: 'linear-gradient(145deg, #FECDD3 0%, #FDA4AF 50%, #FFE4E6 100%)',
+            cardBg: '#FFE4E6',
             border: '#FB7185',
             borderHover: '#E11D48',
             badgeBg: 'linear-gradient(135deg, #F43F5E 0%, #BE123C 100%)',
@@ -53,7 +53,7 @@ export function useThemeColors() {
             icon: 'FileText',
         },
         informe: {
-            cardBg: 'linear-gradient(145deg, #FED7AA 0%, #FDBA74 50%, #FFEDD5 100%)',
+            cardBg: '#FFEDD5',
             border: '#FB923C',
             borderHover: '#EA580C',
             badgeBg: 'linear-gradient(135deg, #F97316 0%, #C2410C 100%)',
@@ -66,7 +66,7 @@ export function useThemeColors() {
             icon: 'BookOpen',
         },
         plan: {
-            cardBg: 'linear-gradient(145deg, #A5F3FC 0%, #67E8F9 50%, #CFFAFE 100%)',
+            cardBg: '#CFFAFE',
             border: '#22D3EE',
             borderHover: '#0891B2',
             badgeBg: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)',
@@ -79,7 +79,7 @@ export function useThemeColors() {
             icon: 'BookHeart',
         },
         produccion: {
-            cardBg: 'linear-gradient(145deg, #BBF7D0 0%, #86EFAC 50%, #DCFCE7 100%)',
+            cardBg: '#D1FAE5',
             border: '#4ADE80',
             borderHover: '#16A34A',
             badgeBg: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
@@ -92,7 +92,7 @@ export function useThemeColors() {
             icon: 'NotebookPen',
         },
         agenda: {
-            cardBg: 'linear-gradient(145deg, #E9D5FF 0%, #D8B4FE 50%, #F3E8FF 100%)',
+            cardBg: '#F3E8FF',
             border: '#C084FC',
             borderHover: '#9333EA',
             badgeBg: 'linear-gradient(135deg, #A855F7 0%, #7E22CE 100%)',
@@ -127,7 +127,7 @@ export function useThemeColors() {
         }
 
         return {
-            cardBg: 'linear-gradient(150deg, #E2E8F0 0%, #F1F5F9 100%)',
+            cardBg: '#F1F5F9',
             border: '#CBD5E1',
             borderHover: '#64748B',
             badgeBg: 'linear-gradient(135deg, #64748B 0%, #475569 100%)',

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Services\ReniecService;
 
@@ -106,14 +107,18 @@ class UserController extends Controller
 
         $perPage = $this->resolvePerPage($request);
 
-        $users = $usersQuery->orderBy('id', 'desc')
+        $users = $usersQuery->with('roles:id,name')
+                            ->orderBy('id', 'desc')
                             ->paginate($perPage)
                             ->withQueryString();
 
         $listaUgels = $this->listaUgels($estado);
         $listaInstituciones = $this->listaInstituciones($estado, $request->input('ugel'));
 
-        if ($request->ajax()) {
+        // El datatable Blade legacy pide filas por ajax; Inertia también envía
+        // X-Requested-With, así que hay que excluir X-Inertia para no devolver
+        // JSON cuando el cliente SPA cambia de pestaña.
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('user._rows', ['users' => $users])->render(),
                 'pagination' => (string) $users->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -129,7 +134,47 @@ class UserController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
-        return view('user.index', compact('users', 'listaUgels', 'listaInstituciones', 'estado', 'conteos'));
+        // Listado SPA (Inertia). El branch de arriba (ajax sin X-Inertia)
+        // sigue alimentando al datatable Blade legacy con user._rows.
+        return Inertia::render('Users/Index', [
+            'users' => $users,
+            'estado' => $estado,
+            'conteos' => [
+                '1' => (int) ($conteos['1'] ?? 0),
+                '0' => (int) ($conteos['0'] ?? 0),
+            ],
+            'listaUgels' => $listaUgels,
+            'listaInstituciones' => $listaInstituciones,
+            'roles' => $this->assignableRoles(),
+            'filters' => $request->only(['estado', 'texto', 'cargos', 'ugel', 'institucion', 'buscar', 'per_page']),
+            'tabs' => $this->tabsUsuarios($estado, $conteos, $request->only(['texto', 'cargos', 'ugel', 'institucion', 'buscar'])),
+            'can' => [
+                'create' => Auth::user()->can('users.create'),
+                'edit' => Auth::user()->can('users.edit'),
+                'destroy' => Auth::user()->can('users.destroy'),
+            ],
+        ]);
+    }
+
+    /**
+     * Tabs "Activos" / "Inhabilitados" conservando los filtros vigentes y
+     * con el conteo embebido en la etiqueta (los badges de píldora del
+     * Blade legacy no existen en SectionTabs).
+     */
+    private function tabsUsuarios(string $estado, $conteos, array $filtros): array
+    {
+        return [
+            [
+                'label'  => 'Usuarios Activos (' . number_format((int) ($conteos['1'] ?? 0)) . ')',
+                'url'    => route('users.index', array_merge($filtros, ['estado' => '1'])),
+                'active' => $estado === '1',
+            ],
+            [
+                'label'  => 'Usuarios Inhabilitados (' . number_format((int) ($conteos['0'] ?? 0)) . ')',
+                'url'    => route('users.index', array_merge($filtros, ['estado' => '0'])),
+                'active' => $estado === '0',
+            ],
+        ];
     }
 
     public function create()
@@ -310,8 +355,11 @@ class UserController extends Controller
     {
         // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
 
-        // El formulario de asignación de roles (user.edit) solo envía "roles[]"
-        if ($request->has('roles') && !$request->has('name')) {
+        // El formulario de asignación de roles envía solo "roles[]" (Blade
+        // legacy) o el marcador "roles_form=1" (modal Inertia), que permite
+        // enviar además una lista vacía para quitar todos los roles sin caer
+        // en la rama de "datos del usuario" de abajo.
+        if (($request->has('roles') || $request->boolean('roles_form')) && !$request->has('name')) {
             $validated = $request->validate([
                 'roles' => 'array',
                 'roles.*' => 'integer|exists:roles,id',
