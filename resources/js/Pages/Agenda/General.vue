@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import { AgendasService } from '@/Services/agenda';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
@@ -84,14 +85,10 @@ async function loadInstituciones() {
     instOptions.value = [];
     if (!localFilters.ugels) return;
     try {
-        const params = new URLSearchParams({
+        const data = await AgendasService.buscarInstitucionesPorUgel({
             ugel: localFilters.ugels,
             year: localFilters.year || '',
         });
-        const res = await fetch(`/buscar-instituciones-por-ugel-ag?${params.toString()}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        const data = await res.json();
         instOptions.value = Array.isArray(data) ? data.map((d) => d.nomInstitucion) : [];
     } catch (e) {
         instOptions.value = [];
@@ -102,15 +99,11 @@ async function loadDocentes() {
     docOptions.value = [];
     if (!localFilters.instituciones) return;
     try {
-        const params = new URLSearchParams({
+        const data = await AgendasService.buscarDocentesPorInstitucion({
             docente: localFilters.instituciones,
             ugel: localFilters.ugels,
             year: localFilters.year || '',
         });
-        const res = await fetch(`/buscar-docentes-por-institucion-ag?${params.toString()}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        const data = await res.json();
         docOptions.value = Array.isArray(data) ? data.map((d) => d.name) : [];
     } catch (e) {
         docOptions.value = [];
@@ -176,10 +169,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get(window.location.pathname, getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    AgendasService.list(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -227,13 +217,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get(window.location.pathname, {
+    AgendasService.list({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -245,10 +232,7 @@ function handlePerPageChange(newPerPage) {
     applyFilters();
 }
 
-const exportUrl = computed(() => {
-    const params = new URLSearchParams(getCleanParams()).toString();
-    return params ? `${props.exportRoute}?${params}` : props.exportRoute;
-});
+const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), props.exportRoute));
 </script>
 
 <template>

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { EvidenciasService } from '@/Services/evidencia';
 import { CheckCircle, AlertCircle } from 'lucide-vue-next';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -90,14 +91,10 @@ async function loadInstituciones() {
     instOptions.value = [];
     if (!props.showFullFilters || !localFilters.ugels) return;
     try {
-        const params = new URLSearchParams({
+        const data = await EvidenciasService.buscarInstitucionesPorUgel({
             ugel: localFilters.ugels,
             anio: localFilters.anio || '',
         });
-        const res = await fetch(`/buscar-instituciones-por-ugel-evi?${params.toString()}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        const data = await res.json();
         instOptions.value = Array.isArray(data) ? data.map((d) => d.nomInstitucion) : [];
     } catch (e) {
         instOptions.value = [];
@@ -189,10 +186,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get(window.location.pathname, getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    EvidenciasService.list(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -235,13 +229,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get(window.location.pathname, {
+    EvidenciasService.list({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -254,8 +245,7 @@ function handlePerPageChange(newPerPage) {
 }
 
 function handleExportExcel() {
-    const params = new URLSearchParams(getCleanParams()).toString();
-    window.location.href = `${props.exportRoute}?${params}`;
+    EvidenciasService.exportar(getCleanParams(), props.exportRoute);
 }
 </script>
 

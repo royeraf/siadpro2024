@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { InstitucionsService } from '@/Services/institucion';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
 import { AlertCircle } from 'lucide-vue-next';
@@ -144,9 +144,9 @@ const submit = handleSubmit((values) => {
     };
 
     if (isEditing.value) {
-        router.put(`/institucions/${props.institucion.id}`, values, request);
+        InstitucionsService.update(props.institucion.id, values, request);
     } else {
-        router.post('/institucions', values, request);
+        InstitucionsService.store(values, request);
     }
 });
 

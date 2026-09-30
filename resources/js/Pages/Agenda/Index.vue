@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, computed } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { AgendasService } from '@/Services/agenda';
 import Swal from 'sweetalert2';
 import { CheckCircle, AlertCircle } from 'lucide-vue-next';
 import FullCalendar from '@fullcalendar/vue3';
@@ -131,7 +132,7 @@ function confirmDelete(evento) {
         formData.append('id', String(evento.id));
         formData.append('delete', 'on');
 
-        router.post('/agendas/update', formData, {
+        AgendasService.update(formData, {
             preserveScroll: true,
             onSuccess: () => {
                 modal.show = false;

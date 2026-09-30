@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { UsersService } from '@/Services/users';
 import { AlertCircle, ShieldCheck } from 'lucide-vue-next';
 import BaseModal from '@/Components/UI/BaseModal.vue';
 
@@ -59,7 +59,7 @@ function submit() {
     formData.append('roles_form', '1');
     selected.value.forEach((id) => formData.append('roles[]', String(id)));
 
-    router.post(`/users/${props.user.id}`, formData, {
+    UsersService.update(props.user.id, formData, {
         preserveScroll: true,
         onSuccess: () => {
             emit('saved');

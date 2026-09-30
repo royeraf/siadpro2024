@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ProduccionsService } from '@/Services/produccion';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
 import {
@@ -191,9 +191,9 @@ const submit = handleSubmit((values) => {
 
     if (isEditing.value) {
         formData.append('_method', 'PUT');
-        router.post(`/produccions/${props.produccion.id}`, formData, request);
+        ProduccionsService.update(props.produccion.id, formData, request);
     } else {
-        router.post('/produccions', formData, request);
+        ProduccionsService.store(formData, request);
     }
 });
 </script>

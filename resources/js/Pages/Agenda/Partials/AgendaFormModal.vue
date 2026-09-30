@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { AgendasService } from '@/Services/agenda';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
 import { AlertCircle, Trash2 } from 'lucide-vue-next';
@@ -193,9 +193,9 @@ const submit = handleSubmit((values) => {
     };
 
     if (isCreate.value) {
-        router.post('/agendas', formData, request);
+        AgendasService.store(formData, request);
     } else {
-        router.post('/agendas/update', formData, request);
+        AgendasService.update(formData, request);
     }
 });
 </script>

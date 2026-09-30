@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { AccionsService } from '@/Services/accion';
 import { Plus, Pencil, Trash2, Megaphone, CheckCircle, AlertCircle } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
@@ -125,16 +126,13 @@ function formatDate(dateStr) {
 // ── Manejo de Filtros y Búsqueda con Inertia ──
 function applyFilters() {
     loading.value = true;
-    router.get('/accions', {
+    AccionsService.list({
         texto: localFilters.texto || undefined,
         lugar: localFilters.lugar || undefined,
         fecha: localFilters.fecha || undefined,
         buscar: localFilters.buscar || undefined,
         per_page: localFilters.per_page !== 10 ? localFilters.per_page : undefined,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -156,13 +154,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get('/accions', {
+    AccionsService.list({
         ...localFilters,
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -217,7 +212,7 @@ function confirmDelete(accion) {
         buttonsStyling: false,
     }).then((result) => {
         if (result.isConfirmed) {
-            router.delete(`/accions/${accion.id}`, {
+            AccionsService.destroy(accion.id, {
                 preserveScroll: true,
                 onSuccess: () => {
                     Swal.fire({

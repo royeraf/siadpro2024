@@ -1,11 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
 import { Search, AlertCircle, CheckCircle2, Loader2 } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 import BaseModal from '@/Components/UI/BaseModal.vue';
+import { UsersService } from '@/Services/users';
 
 const props = defineProps({
     show: {
@@ -233,16 +233,9 @@ async function checkDni() {
     dniStatus.value = { type: 'info', text: 'Verificando DNI y consultando RENIEC...' };
 
     try {
-        const qs = isEditing.value
-            ? `?exclude_id=${encodeURIComponent(props.user.id)}`
-            : '?buscar_reniec=1';
-        const response = await fetch(`/users/check-dni/${encodeURIComponent(val)}${qs}`, {
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-        });
-        const data = await response.json();
+        const data = await UsersService.checkDni(val, isEditing.value
+            ? { exclude_id: props.user.id }
+            : { buscar_reniec: 1 });
 
         // El usuario siguió escribiendo mientras consultábamos: descartar.
         if (String(dni.value || '') !== val) return;
@@ -319,13 +312,7 @@ function onCodmodularInput() {
 async function fetchInstituciones(cleanId) {
     codStatus.value = { type: 'info', text: 'Buscando institución...' };
     try {
-        const response = await fetch(`/api/instituciones/${encodeURIComponent(cleanId)}`, {
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-        });
-        const instituciones = await response.json();
+        const instituciones = await UsersService.findInstitucionesByCodModular(cleanId);
         currentInstituciones.value = Array.isArray(instituciones) ? instituciones : [];
 
         if (currentInstituciones.value.length === 0) {
@@ -434,9 +421,9 @@ const submit = handleSubmit((values) => {
 
     if (isEditing.value) {
         formData.append('_method', 'PUT');
-        router.post(`/users/${props.user.id}`, formData, request);
+        UsersService.update(props.user.id, formData, request);
     } else {
-        router.post('/users', formData, request);
+        UsersService.store(formData, request);
     }
 });
 

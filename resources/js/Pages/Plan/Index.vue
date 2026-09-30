@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { PlansService } from '@/Services/plan';
 import { Pencil, Trash2, CheckCircle, AlertCircle } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
@@ -125,10 +126,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get(window.location.pathname, getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    PlansService.list(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -150,13 +148,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get(window.location.pathname, {
+    PlansService.list({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -208,7 +203,7 @@ function confirmDelete(plan) {
         buttonsStyling: false,
     }).then((result) => {
         if (result.isConfirmed) {
-            router.delete(`/plans/${plan.id}`, {
+            PlansService.destroy(plan.id, {
                 preserveScroll: true,
                 onSuccess: () => {
                     Swal.fire({

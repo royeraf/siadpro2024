@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { DifusionsService } from '@/Services/difusion';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
 import { 
@@ -196,9 +196,9 @@ const submit = handleSubmit((values) => {
 
     if (isEditing.value) {
         formData.append('_method', 'PUT');
-        router.post(`/difusions/${props.difusion.id}`, formData, request);
+        DifusionsService.update(props.difusion.id, formData, request);
     } else {
-        router.post('/difusions', formData, request);
+        DifusionsService.store(formData, request);
     }
 });
 </script>

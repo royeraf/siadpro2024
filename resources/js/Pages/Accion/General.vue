@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { AccionsService } from '@/Services/accion';
 import { Megaphone, CheckCircle, AlertCircle } from 'lucide-vue-next';
 import * as XLSX from 'xlsx';
 
@@ -128,10 +129,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get(window.location.pathname, getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    AccionsService.listCurrentPath(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -156,13 +154,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get(window.location.pathname, {
+    AccionsService.listCurrentPath({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -176,14 +171,7 @@ function handlePerPageChange(newPerPage) {
 
 // ── Exportar a Excel (Backend con todos los registros filtrados o Fallback Cliente) ──
 function handleExportExcel() {
-    const exportRoutes = {
-        general: '/export-acciones-general',
-        ugel: '/export-acciones-ugel',
-        director: '/export-acciones-director',
-    };
-    const endpoint = exportRoutes[props.scope] || '/export-acciones-general';
-    const params = new URLSearchParams(getCleanParams()).toString();
-    window.location.href = `${endpoint}?${params}`;
+    AccionsService.exportar(getCleanParams(), props.scope);
 }
 </script>
 

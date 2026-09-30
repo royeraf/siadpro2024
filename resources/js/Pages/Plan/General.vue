@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { PlansService } from '@/Services/plan';
 import { CheckCircle, AlertCircle } from 'lucide-vue-next';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -99,14 +100,10 @@ async function loadInstituciones() {
     instOptions.value = [];
     if (!props.showFullFilters || !localFilters.ugels) return;
     try {
-        const params = new URLSearchParams({
+        const data = await PlansService.buscarInstitucionesPorUgel({
             ugel: localFilters.ugels,
             year: localFilters.year || '',
         });
-        const res = await fetch(`/buscar-instituciones-por-ugel-plan?${params.toString()}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        const data = await res.json();
         instOptions.value = Array.isArray(data) ? data.map((d) => d.nomInstitucion) : [];
     } catch (e) {
         instOptions.value = [];
@@ -117,15 +114,11 @@ async function loadDocentes() {
     docOptions.value = [];
     if (!props.showFullFilters || !localFilters.instituciones) return;
     try {
-        const params = new URLSearchParams({
+        const data = await PlansService.buscarDocentesPorInstitucion({
             docente: localFilters.instituciones,
             ugel: localFilters.ugels,
             year: localFilters.year || '',
         });
-        const res = await fetch(`/buscar-docentes-por-institucion-pla?${params.toString()}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        const data = await res.json();
         docOptions.value = Array.isArray(data) ? data.map((d) => d.name) : [];
     } catch (e) {
         docOptions.value = [];
@@ -221,10 +214,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get(window.location.pathname, getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    PlansService.list(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -274,13 +264,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get(window.location.pathname, {
+    PlansService.list({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -293,8 +280,7 @@ function handlePerPageChange(newPerPage) {
 }
 
 function handleExportExcel() {
-    const params = new URLSearchParams(getCleanParams()).toString();
-    window.location.href = `${props.exportRoute}?${params}`;
+    PlansService.exportar(getCleanParams(), props.exportRoute);
 }
 </script>
 

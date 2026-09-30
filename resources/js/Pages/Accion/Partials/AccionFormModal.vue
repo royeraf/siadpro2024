@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { AccionsService } from '@/Services/accion';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
 import { 
@@ -181,7 +181,7 @@ const submit = handleSubmit((values) => {
 
     if (isEditing.value) {
         formData.append('_method', 'PUT');
-        router.post(`/accions/${props.accion.id}`, formData, {
+        AccionsService.update(props.accion.id, formData, {
             preserveScroll: true,
             onSuccess: () => {
                 emit('saved');
@@ -199,7 +199,7 @@ const submit = handleSubmit((values) => {
             },
         });
     } else {
-        router.post('/accions', formData, {
+        AccionsService.store(formData, {
             preserveScroll: true,
             onSuccess: () => {
                 emit('saved');

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { UsersService } from '@/Services/users';
 import { Pencil, Shield, UserCheck, UserX, CheckCircle, AlertCircle } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 
@@ -85,16 +86,14 @@ const columns = computed(() => {
 
 // Descarga server-side: conserva el mismo .xls con BOM que genera
 // UserController::exportUsers (no XLSX en cliente, a diferencia de otros módulos).
-const exportUrl = computed(() => {
-    const params = new URLSearchParams();
-    params.set('estado', props.estado);
-    if (localFilters.texto) params.set('texto', localFilters.texto);
-    if (localFilters.cargos) params.set('cargos', localFilters.cargos);
-    if (localFilters.ugel) params.set('ugel', localFilters.ugel);
-    if (localFilters.institucion) params.set('institucion', localFilters.institucion);
-    if (localFilters.buscar) params.set('buscar', localFilters.buscar);
-    return `/export-users?${params.toString()}`;
-});
+const exportUrl = computed(() => UsersService.exportUrl({
+    estado: props.estado,
+    texto: localFilters.texto,
+    cargos: localFilters.cargos,
+    ugel: localFilters.ugel,
+    institucion: localFilters.institucion,
+    buscar: localFilters.buscar,
+}));
 
 const formModal = reactive({
     show: false,
@@ -146,10 +145,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get('/users', getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    UsersService.list(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -172,13 +168,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get('/users', {
+    UsersService.list({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -216,7 +209,7 @@ function confirmToggleEstado(row) {
         buttonsStyling: false,
     }).then((result) => {
         if (result.isConfirmed) {
-            router.put(`/usuarios/${row.id}/estado`, {}, {
+            UsersService.toggleEstado(row.id, {
                 preserveScroll: true,
                 onSuccess: () => {
                     Swal.fire({

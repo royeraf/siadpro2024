@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { SectoresService } from '@/Services/sector';
 import { Pencil, Trash2, CheckCircle, AlertCircle } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
@@ -110,15 +111,12 @@ function formatDate(dateStr) {
 
 function applyFilters() {
     loading.value = true;
-    router.get(window.location.pathname, {
+    SectoresService.list({
         texto: localFilters.texto || undefined,
         fecha: localFilters.fecha || undefined,
         buscar: localFilters.buscar || undefined,
         per_page: localFilters.per_page !== 10 ? localFilters.per_page : undefined,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -139,13 +137,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get(window.location.pathname, {
+    SectoresService.list({
         ...localFilters,
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -197,7 +192,7 @@ function confirmDelete(sector) {
         buttonsStyling: false,
     }).then((result) => {
         if (result.isConfirmed) {
-            router.delete(`/sectores/${sector.id}`, {
+            SectoresService.destroy(sector.id, {
                 preserveScroll: true,
                 onSuccess: () => {
                     Swal.fire({

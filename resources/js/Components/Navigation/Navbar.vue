@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { usePage, router } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import { useUiStore } from '@/stores/ui';
+import { AuthService } from '@/Services/auth';
 import { Menu, ChevronDown, LogOut } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -33,7 +34,7 @@ function handleToggle() {
 }
 
 function logout() {
-    router.post('/logout');
+    AuthService.logout();
 }
 </script>
 

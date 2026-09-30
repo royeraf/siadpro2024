@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { InstitucionsService } from '@/Services/institucion';
 import { Pencil, Trash2, CheckCircle, AlertCircle } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 
@@ -64,15 +65,13 @@ const columns = computed(() => {
 
 // Descarga server-side: conserva el .xls con BOM de
 // InstitucionController::exportInstituciones con los filtros vigentes.
-const exportUrl = computed(() => {
-    const params = new URLSearchParams();
-    if (localFilters.buscar) params.set('buscar', localFilters.buscar);
-    if (localFilters.institucion) params.set('institucion', localFilters.institucion);
-    if (localFilters.codModular) params.set('codModular', localFilters.codModular);
-    if (localFilters.ugels) params.set('ugels', localFilters.ugels);
-    if (localFilters.nivel) params.set('nivel', localFilters.nivel);
-    return `/export-instituciones?${params.toString()}`;
-});
+const exportUrl = computed(() => InstitucionsService.exportUrl({
+    buscar: localFilters.buscar,
+    institucion: localFilters.institucion,
+    codModular: localFilters.codModular,
+    ugels: localFilters.ugels,
+    nivel: localFilters.nivel,
+}));
 
 const formModal = reactive({
     show: false,
@@ -109,10 +108,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get('/institucions', getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    InstitucionsService.list(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -135,13 +131,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get('/institucions', {
+    InstitucionsService.list({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
@@ -175,7 +168,7 @@ function confirmDelete(row) {
         buttonsStyling: false,
     }).then((result) => {
         if (result.isConfirmed) {
-            router.delete(`/institucions/${row.id}`, {
+            InstitucionsService.destroy(row.id, {
                 preserveScroll: true,
                 onSuccess: () => {
                     Swal.fire({

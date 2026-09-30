@@ -1,5 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
+import { isSpaPath } from '@/Composables/useSpaRoutes';
 
 const props = defineProps({
     tabs: {
@@ -29,35 +30,6 @@ function getTabClasses(tab) {
     return tab.active ? scheme.active : scheme.inactive;
 }
 
-function isSpaUrl(url) {
-    if (!url) return false;
-    try {
-        const path = url.startsWith('http://') || url.startsWith('https://') 
-            ? new URL(url).pathname 
-            : url;
-        return path.startsWith('/inicio') || 
-               path.startsWith('/accions') || 
-               path.startsWith('/accion-inicio') ||
-               path.startsWith('/accion-general') ||
-               path.startsWith('/accion-ugel') ||
-               path.startsWith('/accion-director') ||
-               path.startsWith('/difusions') ||
-               path.startsWith('/difusion-inicio') ||
-               path.startsWith('/difusion-general') ||
-               path.startsWith('/difusion-ugel') ||
-               path.startsWith('/difusion-director') ||
-               path.startsWith('/sector') ||
-               path.startsWith('/sectores') ||
-               path.startsWith('/evidencia') ||
-               path.startsWith('/informe') ||
-               path.startsWith('/plan') ||
-               path.startsWith('/produccion') ||
-               path.startsWith('/agenda') ||
-               path.startsWith('/users');
-    } catch (e) {
-        return false;
-    }
-}
 </script>
 
 <template>
@@ -71,7 +43,7 @@ function isSpaUrl(url) {
                     role="presentation"
                 >
                     <Link
-                        v-if="isSpaUrl(tab.url)"
+                        v-if="isSpaPath(tab.url)"
                         :href="tab.url"
                         role="tab"
                         :data-tab-target="tab.route || ''"

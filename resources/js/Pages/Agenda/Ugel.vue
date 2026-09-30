@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, watch } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import { AgendasService } from '@/Services/agenda';
 import * as XLSX from 'xlsx';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -99,10 +100,7 @@ function getCleanParams() {
 
 function applyFilters() {
     loading.value = true;
-    router.get(window.location.pathname, getCleanParams(), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
+    AgendasService.list(getCleanParams(), {
         onFinish: () => {
             loading.value = false;
         },
@@ -129,13 +127,10 @@ function handleClearFilters() {
 
 function handlePageChange(newPage) {
     loading.value = true;
-    router.get(window.location.pathname, {
+    AgendasService.list({
         ...getCleanParams(),
         page: newPage,
     }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
         onFinish: () => {
             loading.value = false;
         },
