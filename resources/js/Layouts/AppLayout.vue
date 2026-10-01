@@ -1,10 +1,40 @@
 <script setup>
+import { watch, onUnmounted } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { useUiStore } from '@/stores/ui';
 import Sidebar from '@/Components/Navigation/Sidebar.vue';
 import Navbar from '@/Components/Navigation/Navbar.vue';
 
 // El store auto-inicializa sus listeners de resize; no se requiere onMounted.
 const uiStore = useUiStore();
+
+// Los banners flash (success/error) de las páginas se ocultan solos
+// después de unos segundos; el usuario también puede cerrarlos con la ×.
+const page = usePage();
+const FLASH_SUCCESS_DURATION = 4000;
+let flashTimer = null;
+
+watch(
+    () => page.props.flash?.success,
+    (value) => {
+        if (flashTimer) {
+            clearTimeout(flashTimer);
+            flashTimer = null;
+        }
+        if (!value) return;
+        flashTimer = setTimeout(() => {
+            if (page.props.flash && page.props.flash.success === value) {
+                page.props.flash.success = null;
+            }
+            flashTimer = null;
+        }, FLASH_SUCCESS_DURATION);
+    },
+    { immediate: true }
+);
+
+onUnmounted(() => {
+    if (flashTimer) clearTimeout(flashTimer);
+});
 </script>
 
 <template>

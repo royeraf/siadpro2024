@@ -267,7 +267,9 @@ button.close:hover {
 }
 
 .swal2-actions {
-    display: flex !important;
+    /* display sin !important: sweetalert2 gestiona la visibilidad con
+       style="display:none|flex" inline; un !important aquí lo pisaría y
+       mostraría botones ocultos (ej. showConfirmButton:false). */
     align-items: center !important;
     justify-content: center !important;
     gap: 0.875rem !important;
@@ -283,7 +285,6 @@ button.close:hover {
     border-radius: 0.75rem !important;
     cursor: pointer !important;
     transition: all 0.2s ease-in-out !important;
-    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     min-height: 2.6rem !important;
