@@ -49,7 +49,7 @@ const menuSections = computed(() => {
             header: 'PANEL',
             items: [
                 { text: 'Inicio', href: '/inicio', icon: 'house', isSpa: true },
-                { text: 'Dashboard', href: '/dashboard-index', icon: 'chart-line', isSpa: false },
+                { text: 'Dashboard', href: '/dashboard', icon: 'chart-line', isSpa: true },
             ]
         },
         {
@@ -75,17 +75,25 @@ const menuSections = computed(() => {
     ];
 });
 
+/**
+ * Comparación exacta de rutas para marcar la entrada activa.
+ *
+ * Antes se usaba `href.endsWith('/inicio')`, que también capturaba
+ * `/accion-inicio`, `/difusion-inicio`, etc. y dejaba el acceso a Inicio
+ * encendido en todos ellos en lugar del que correspondía.
+ */
+function normalizePath(url) {
+    return (url || '').replace(/^https?:\/\/[^\/]+/, '').split('?')[0].replace(/\/+$/, '') || '/';
+}
+
 function isItemActive(item) {
     if (!item) return false;
     if (item.active) return true;
-    const href = item.href || item.url || '';
-    const currentPath = currentUrl.value.split('?')[0];
 
-    if (href.endsWith('/inicio') && (currentPath === '/inicio' || currentPath === '/')) {
-        return true;
-    }
-    const cleanPath = href.replace(/^https?:\/\/[^\/]+/, '').split('?')[0];
-    if (cleanPath.length > 1) {
+    const currentPath = normalizePath(currentUrl.value);
+    const cleanPath = normalizePath(item.href || item.url || '');
+
+    if (currentPath.length > 1) {
         if (currentPath === cleanPath) return true;
         if (currentPath.startsWith(cleanPath + '/')) return true;
     }

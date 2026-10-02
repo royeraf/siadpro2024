@@ -315,22 +315,18 @@ return [
             'active' => ['inicio'],
         ],
         [
+            // Dashboard de métricas, adaptado al perfil: por UGEL para DRE/Admin,
+            // por institución para UGEL y por docente para Director. No lleva
+            // `can` a propósito, cada rol ve su propio alcance.
+            //
+            // Absorbió las entradas anteriores DASHBOARD (`/dashboard-index`),
+            // DASHBOARD UGEL y DASHBOARD PC, cuyos stubs además devolvían
+            // vistas inexistentes. El Blade heredado sigue en `/dashboard-index`
+            // por URL directa.
             'text' => 'DASHBOARD',
-            'url'  => '/dashboard-index',
+            'url'  => '/dashboard',
             'icon' => 'fas fa-chart-line',
-            'can' => 'dashboard.index',
-        ],
-        [
-            'text' => 'DASHBOARD UGEL',
-            'url'  => '/dashboard-ugel',
-            'icon' => 'fas fa-chart-line',
-            'can' => 'dashboard.ugel',
-        ],
-        [
-            'text' => 'DASHBOARD PC',
-            'url'  => '/dashboard-pc',
-            'icon' => 'fas fa-chart-line',
-            'can' => 'dashboard.pc',
+            'active' => ['dashboard'],
         ],
 
         // Gestión

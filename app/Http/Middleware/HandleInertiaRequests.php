@@ -115,6 +115,7 @@ class HandleInertiaRequests extends Middleware
 
                         $spaRoutes = [
                             '/inicio',
+                            '/dashboard',
                             '/accions',
                             '/accion-inicio',
                             '/accion-general',

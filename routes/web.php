@@ -48,19 +48,21 @@ Route::get('/home', function () {
      //return view('welcomenp');        
 })->middleware('guest');
 
-Route::middleware([
-    'auth:sanctum',
-    config('jetstream.auth_session'),
-    'verified'
-])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// PANEL
+//
+// Son dos pantallas distintas y separadas a propósito:
+//   /inicio     → bienvenida y accesos rápidos (InicioController), sin cambios.
+//   /dashboard  → dashboard de métricas, adaptado al perfil (Dashboard\DashboardController).
+// ─────────────────────────────────────────────────────────────────────────────
 
 Route::get('/inicio', [App\Http\Controllers\InicioController::class, 'index'])
     ->middleware('auth')
     ->name('inicio');
+
+Route::get('/dashboard', [App\Http\Controllers\Dashboard\DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('dashboard');
 
 //RUTAS DE INSITUCIONES/INTERNET-----------------------------------------------
 
@@ -188,10 +190,11 @@ Route::resource('usuarios','App\Http\Controllers\UsuarioController');
 
 Route::resource('dashboard_main','App\Http\Controllers\DashboardController');
 
+// Dashboard Blade heredado. Sigue accesible por URL directa mientras se valida el
+// dashboard unificado, pero ya no tiene entrada en el menú. Los stubs por rol
+// (`-dre`, `-ugel`, `-pc`) se retiraron: `dre()` no existía y `ugel()`/`pc()`
+// devolvían una cadena en lugar de una vista.
 Route::get("/dashboard-index", ['App\Http\Controllers\DashboardController'::class, "index"])->middleware('auth')->name('dashboard.index');
-Route::get("/dashboard-dre", ['App\Http\Controllers\DashboardController'::class, "dre"])->middleware('auth')->name('dashboard.dre');
-Route::get("/dashboard-ugel", ['App\Http\Controllers\DashboardController'::class, "ugel"])->middleware('auth')->name('dashboard.ugel');
-Route::get("/dashboard-pc", ['App\Http\Controllers\DashboardController'::class, "pc"])->middleware('auth')->name('dashboard.pc');
 Route::get('/dashboard/resumen-modulos', [App\Http\Controllers\DashboardController::class, 'resumenModulos'])->middleware('auth')->name('dashboard.resumen-modulos');
 
 Route::resource('agendas','App\Http\Controllers\AgendaController');

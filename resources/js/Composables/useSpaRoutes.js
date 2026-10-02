@@ -5,6 +5,7 @@
 // Al convertir un módulo a SPA: agregar el path aquí + en $spaRoutes.
 export const SPA_PREFIXES = [
     '/inicio',
+    '/dashboard',
     '/users',
     '/institucions',
     '/accions',
