@@ -3,11 +3,10 @@ import { ref, computed, watch } from 'vue';
 import { InformesService } from '@/Services/informe';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
-import {
-    Upload, CheckCircle2, AlertCircle,
-    X, Paperclip
-} from 'lucide-vue-next';
+import { AlertCircle, Paperclip } from 'lucide-vue-next';
 import BaseModal from '@/Components/UI/BaseModal.vue';
+import FileDropzone from '@/Components/UI/FileDropzone.vue';
+import { useDocumentUpload } from '@/Composables/useDocumentUpload';
 
 const props = defineProps({
     show: {
@@ -22,17 +21,29 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved']);
 
-// Extensiones admitidas por `store()` (mimetypes: pdf / xls / xlsx / ppt /
-// pptx / doc / docx). El servidor sigue siendo quien valida en última instancia.
-const EXTENSIONES_OK = ['pdf', 'xls', 'xlsx', 'ppt', 'pptx', 'doc', 'docx'];
+const {
+    accept: fileAccept,
+    hint: fileHint,
+    compressors: pdfCompressors,
+    showCompressors,
+    file: selectedFile,
+    fileError,
+    uploading,
+    progress,
+    setFile,
+    setServerError,
+    removeFile,
+    reset: resetFile,
+    startUpload,
+    trackProgress,
+    finishUpload,
+} = useDocumentUpload({
+    accept: '.pdf,.xls,.xlsx,.ppt,.pptx,.doc,.docx',
+    extensions: ['pdf', 'xls', 'xlsx', 'ppt', 'pptx', 'doc', 'docx'],
+    hint: 'PDF, Word, Excel o PowerPoint',
+});
 
-const fileInput = ref(null);
-const selectedFile = ref(null);
-const selectedFileName = ref('');
-const selectedFileSize = ref('');
-const isDragging = ref(false);
 const submitting = ref(false);
-const fileError = ref('');
 
 const isEditing = computed(() => !!props.informe?.id);
 
@@ -80,11 +91,7 @@ const [fecha, fechaAttrs] = defineField('fecha', {
 
 watch(() => props.show, (newVal) => {
     if (newVal) {
-        fileError.value = '';
-        selectedFile.value = null;
-        selectedFileName.value = '';
-        selectedFileSize.value = '';
-        if (fileInput.value) fileInput.value.value = '';
+        resetFile();
 
         if (props.informe) {
             resetForm({
@@ -106,54 +113,6 @@ watch(() => props.show, (newVal) => {
     }
 });
 
-function formatBytes(bytes, decimals = 1) {
-    if (!+bytes) return '0 B';
-    const k = 1024;
-    const dm = decimals < 0 ? decimals : decimals;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-}
-
-function handleFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (file) {
-        setFile(file);
-    }
-}
-
-function handleDrop(e) {
-    isDragging.value = false;
-    const file = e.dataTransfer?.files?.[0];
-    if (file) {
-        setFile(file);
-    }
-}
-
-function setFile(file) {
-    fileError.value = '';
-    const ext = (file.name.split('.').pop() || '').toLowerCase();
-    if (!EXTENSIONES_OK.includes(ext)) {
-        fileError.value = `Formato no permitido (.${ext}). Admitidos: ${EXTENSIONES_OK.join(', ')}.`;
-        return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-        fileError.value = 'El archivo no debe ser superior a 10MB.';
-        return;
-    }
-    selectedFile.value = file;
-    selectedFileName.value = file.name;
-    selectedFileSize.value = formatBytes(file.size);
-}
-
-function removeFile() {
-    selectedFile.value = null;
-    selectedFileName.value = '';
-    selectedFileSize.value = '';
-    fileError.value = '';
-    if (fileInput.value) fileInput.value.value = '';
-}
-
 const submit = handleSubmit((values) => {
     fileError.value = '';
 
@@ -173,18 +132,21 @@ const submit = handleSubmit((values) => {
 
     const request = {
         preserveScroll: true,
+        onStart: startUpload,
+        onProgress: trackProgress,
         onSuccess: () => {
             emit('saved');
             emit('close');
         },
         onError: (serverErrors) => {
             if (serverErrors.documento) {
-                fileError.value = serverErrors.documento;
+                setServerError(serverErrors.documento);
                 delete serverErrors.documento;
             }
             setErrors(serverErrors);
         },
         onFinish: () => {
+            finishUpload();
             submitting.value = false;
         },
     };
@@ -280,7 +242,7 @@ const submit = handleSubmit((values) => {
                     <span v-else class="text-slate-400 font-normal ml-1">(Opcional: solo si desea reemplazar el actual)</span>
                 </label>
 
-                <div v-if="isEditing && informe.enlace && !selectedFileName" class="mb-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                <div v-if="isEditing && informe.enlace && !selectedFile" class="mb-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                     <div class="flex items-center min-w-0">
                         <Paperclip class="w-4 h-4 text-slate-500 mr-2 shrink-0" />
                         <span class="text-xs text-slate-700 font-medium truncate">
@@ -292,58 +254,18 @@ const submit = handleSubmit((values) => {
                     </span>
                 </div>
 
-                <div
-                    class="border-2 border-dashed rounded-2xl p-4 text-center transition-colors cursor-pointer"
-                    :class="[
-                        isDragging ? 'border-blue-500 bg-blue-50/50' : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50/50',
-                        fileError ? 'border-rose-400 bg-rose-50/10' : ''
-                    ]"
-                    @dragover.prevent="isDragging = true"
-                    @dragleave.prevent="isDragging = false"
-                    @drop.prevent="handleDrop"
-                    @click="fileInput?.click()"
-                >
-                    <input
-                        type="file"
-                        ref="fileInput"
-                        class="hidden"
-                        accept=".pdf,.xls,.xlsx,.ppt,.pptx,.doc,.docx"
-                        @change="handleFileSelect"
-                    />
-
-                    <div v-if="selectedFileName" class="flex items-center justify-between bg-blue-50/70 border border-blue-200 p-2.5 rounded-xl">
-                        <div class="flex items-center min-w-0">
-                            <CheckCircle2 class="w-4 h-4 text-emerald-600 mr-2 shrink-0" />
-                            <div class="text-left min-w-0">
-                                <p class="text-xs font-bold text-slate-800 truncate m-0">{{ selectedFileName }}</p>
-                                <p class="text-[11px] text-slate-500 m-0">{{ selectedFileSize }}</p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            @click.stop="removeFile"
-                            class="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors ml-2 cursor-pointer"
-                            title="Quitar archivo"
-                        >
-                            <X class="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    <div v-else class="py-2">
-                        <Upload class="w-7 h-7 text-blue-500 mx-auto mb-1.5" />
-                        <p class="text-xs font-semibold text-slate-700 m-0">
-                            Haga clic o arrastre su archivo aquí
-                        </p>
-                        <p class="text-[11px] text-slate-400 mt-1 m-0">
-                            PDF, Word, Excel o PowerPoint · Máx. 10MB
-                        </p>
-                    </div>
-                </div>
-
-                <p v-if="fileError" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
-                    <AlertCircle class="w-3.5 h-3.5 mr-1 shrink-0" />
-                    {{ fileError }}
-                </p>
+                <FileDropzone
+                    :file="selectedFile"
+                    :error="fileError"
+                    :uploading="uploading"
+                    :progress="progress"
+                    :accept="fileAccept"
+                    :hint="fileHint"
+                    :compressors="pdfCompressors"
+                    :show-compressors="showCompressors"
+                    @pick="setFile"
+                    @remove="removeFile"
+                />
             </div>
         </div>
     </BaseModal>

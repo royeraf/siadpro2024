@@ -38,13 +38,13 @@ Route::get("/sector", ['App\Http\Controllers\SectorController'::class, "index"]
 )->name('sector.index');
 
 Route::get('/', function () {
-    return view('auth.login');
+    return \Inertia\Inertia::render('Auth/Login');
      //return view('welcomenp');
 })->middleware('guest');
 
 
 Route::get('/home', function () {
-    return view('auth.login');
+    return \Inertia\Inertia::render('Auth/Login');
      //return view('welcomenp');        
 })->middleware('guest');
 

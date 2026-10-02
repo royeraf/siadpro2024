@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\HasScopeTabs;
+use App\Http\Controllers\Concerns\ValidaDocumento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -13,6 +14,10 @@ use Inertia\Inertia;
 class PlanController extends Controller
 {
     use HasScopeTabs;
+    use ValidaDocumento;
+
+    /** Regla de tipo de archivo admitida por este recurso. */
+    protected $documentoTypeRule = 'mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
     public function __construct(){
         $this->middleware('auth');
@@ -380,8 +385,8 @@ class PlanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'documento' => 'required|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
-        ]);
+            'documento' => $this->documentoRules(),
+        ], $this->documentoMessages());
 
         $file = $request->file('documento');
         $filename = $file->getClientOriginalName();
@@ -425,10 +430,8 @@ class PlanController extends Controller
     public function update(Request $request, Plan $plan)
     {
         $request->validate([
-            'documento' => 'nullable|mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10048',
-        ], [
-            'documento.max' => 'Archivo superior a 10MB', 
-        ]);
+            'documento' => $this->documentoRules(false),
+        ], $this->documentoMessages(false));
         
         if ($request->hasFile('documento')) {
             $file = $request->file('documento');

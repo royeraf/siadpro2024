@@ -87,7 +87,7 @@
                                     </div>
                                 @endif
                                 <input id="documento" type="file" class="form-control-file @error('documento') is-invalid @enderror" name="documento" autocomplete="documento">
-                                <small class="form-text text-muted">Dejar vacío para conservar el archivo actual (máx. 10MB).</small>
+                                <small class="form-text text-muted">Dejar vacío para conservar el archivo actual (máx. {{ (int) (config('siadpro.upload_max_kb') / 1024) }}MB).</small>
 
                                 @error('documento')
                                     <span class="invalid-feedback d-block" role="alert">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
+use App\Http\Controllers\Concerns\ValidaDocumento;
 use App\Models\Evidencia;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ use Inertia\Inertia;
 class EvidenciaController extends Controller
 {
     use HasScopeTabs;
+    use ValidaDocumento;
 
     public function __construct(){
         $this->middleware('auth');
@@ -388,8 +390,8 @@ class EvidenciaController extends Controller
             'nombreEvidencia' => 'required|string|max:191',
             'descripcion' => 'required|string',
             'fecha' => 'required|date',
-            'documento' => 'required|file|max:10240',
-        ]);
+            'documento' => $this->documentoRules(),
+        ], $this->documentoMessages());
         $file = $request->file('documento');
         $filename = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension();
@@ -435,8 +437,8 @@ class EvidenciaController extends Controller
             'nombreEvidencia' => 'required|string|max:191',
             'descripcion' => 'required|string',
             'fecha' => 'required|date',
-            'documento' => 'nullable|file|max:10240',
-        ]);
+            'documento' => $this->documentoRules(false),
+        ], $this->documentoMessages(false));
         
         if ($request->hasFile('documento')) {
             $file = $request->file('documento');

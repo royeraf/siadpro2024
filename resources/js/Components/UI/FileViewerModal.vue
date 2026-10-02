@@ -57,7 +57,17 @@ const pageInputRef = ref(null);
 
 const loading = ref(true);
 const errorMsg = ref('');
+const errorStatus = ref(0);
 const isUnsupported = ref(false);
+
+// Cuando hay error o formato no soportado, el contenedor del documento no debe
+// ocupar la altura del área de scroll: si lo hace, el mensaje (su hermano
+// siguiente) queda fuera del pliegue y solo aparece al hacer scroll.
+const showOverlay = computed(() => !loading.value && (!!errorMsg.value || isUnsupported.value));
+
+// HTTP 404 = el archivo no está en el servidor: no hay nada que descargar,
+// así que se ocultan los botones de descarga (barra superior y mensaje).
+const fileMissing = computed(() => errorStatus.value === 404);
 
 const showZoom = ref(false);
 const showPager = ref(false);
@@ -172,9 +182,18 @@ function convertedPdfUrl(streamUrl) {
     }
 }
 
+function httpError(res) {
+    const status = (res && res.status) || 0;
+    const err = new Error(status
+        ? 'No se pudo cargar el archivo (HTTP ' + status + ')'
+        : 'No se pudo cargar el archivo.');
+    err.status = status;
+    return err;
+}
+
 async function fetchArrayBuffer(url) {
     const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) throw new Error('No se pudo cargar el archivo (HTTP ' + res.status + ')');
+    if (!res.ok) throw httpError(res);
     return await res.arrayBuffer();
 }
 
@@ -192,6 +211,7 @@ function cleanup() {
     }
     loading.value = true;
     errorMsg.value = '';
+    errorStatus.value = 0;
     isUnsupported.value = false;
     showZoom.value = false;
     showPager.value = false;
@@ -374,7 +394,7 @@ async function openPdf(url) {
 }
 
 /* ──────────────────────── Imágenes ──────────────────────── */
-function openImage(url, name) {
+async function openImage(url, name) {
     const body = bodyRef.value;
     body.innerHTML = '';
     const img = new Image();
@@ -391,8 +411,22 @@ function openImage(url, name) {
         img.style.maxWidth = Math.max(100, contentRef.value.clientWidth - padX) + 'px';
         img.style.maxHeight = Math.max(100, contentRef.value.clientHeight - padY) + 'px';
     };
-    img.onload = () => { loading.value = false; fit(); };
-    fit();
+
+    // Si la imagen no carga se propaga al controlador maestro (igual que el
+    // resto de formatos) en vez de dejar el spinner girando sin fin.
+    await new Promise((resolve, reject) => {
+        img.onload = () => { loading.value = false; fit(); resolve(); };
+        // El <img> no informa el código HTTP: se consulta con HEAD para poder
+        // distinguir "archivo no existe" (404) de otros fallos de carga.
+        img.onerror = async () => {
+            let status = 0;
+            try {
+                const r = await fetch(url, { method: 'HEAD', credentials: 'same-origin' });
+                status = r.status;
+            } catch (e) { /* sin red: status desconocido */ }
+            reject(httpError({ status }));
+        };
+    });
 
     let resizeTimer = null;
     const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(fit, 150); };
@@ -641,6 +675,7 @@ async function openSheet(url) {
 /* ──────────────────────── Texto ──────────────────────── */
 async function openText(url) {
     const res = await fetch(url, { credentials: 'same-origin' });
+    if (!res.ok) throw httpError(res);
     const text = await res.text();
     const body = bodyRef.value;
     body.innerHTML = '';
@@ -672,6 +707,7 @@ async function loadFile() {
     cleanup();
     loading.value = true;
     errorMsg.value = '';
+    errorStatus.value = 0;
 
     await nextTick();
     if (!bodyRef.value) return;
@@ -683,7 +719,7 @@ async function loadFile() {
         if (PDF_EXTS.includes(ext)) {
             await openPdf(props.url);
         } else if (IMG_EXTS.includes(ext)) {
-            openImage(props.url, props.name);
+            await openImage(props.url, props.name);
         } else if (WORD_EXTS.includes(ext)) {
             await openWord(props.url);
         } else if (SHEET_EXTS.includes(ext)) {
@@ -696,6 +732,12 @@ async function loadFile() {
         }
     } catch (err) {
         loading.value = false;
+        if (bodyRef.value) bodyRef.value.innerHTML = '';
+        currentSession = null;
+        goToPageFn = null;
+        showZoom.value = false;
+        showPager.value = false;
+        errorStatus.value = (err && err.status) || 0;
         errorMsg.value = (err && err.message) || 'Error al abrir el archivo.';
     }
 }
@@ -821,9 +863,9 @@ onUnmounted(() => {
                 </div>
 
                 <div class="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <!-- Botón Descargar -->
+                    <!-- Botón Descargar (oculto si el archivo no existe: 404) -->
                     <a 
-                        v-if="downloadUrl || url"
+                        v-if="(downloadUrl || url) && !fileMissing"
                         :href="downloadUrl || url" 
                         :download="name"
                         title="Descargar archivo"
@@ -861,45 +903,57 @@ onUnmounted(() => {
                 <!-- Contenedor del documento renderizado -->
                 <div 
                     ref="bodyRef" 
-                    class="min-h-full flex flex-col items-center gap-4 p-2 sm:p-4"
+                    class="flex flex-col items-center gap-4"
+                    :class="showOverlay ? 'p-0' : 'min-h-full p-2 sm:p-4'"
                 ></div>
 
                 <!-- Mensaje de error al abrir -->
                 <div 
                     v-if="errorMsg && !loading"
-                    class="bg-white shadow-xl rounded-2xl p-8 max-w-md mx-auto my-12 text-center"
+                    class="min-h-full w-full flex items-center justify-center p-4"
                 >
-                    <AlertTriangle class="w-14 h-14 text-rose-500 mx-auto mb-4" />
-                    <p class="text-slate-700 font-semibold mb-2">Error al abrir el archivo</p>
-                    <p class="text-xs text-slate-500 mb-5 leading-relaxed">{{ errorMsg }}</p>
-                    <a 
-                        v-if="downloadUrl || url"
-                        :href="downloadUrl || url" 
-                        :download="name"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all"
-                    >
-                        <Download class="w-4 h-4" /> Descargar archivo
-                    </a>
+                    <div class="bg-white shadow-xl rounded-2xl p-8 max-w-md w-full text-center">
+                        <AlertTriangle class="w-14 h-14 text-rose-500 mx-auto mb-4" />
+                        <p class="text-slate-700 font-semibold mb-2">
+                            {{ fileMissing ? 'Archivo no disponible' : 'Error al abrir el archivo' }}
+                        </p>
+                        <p class="text-xs text-slate-500 mb-5 leading-relaxed">
+                            {{ fileMissing ? 'El archivo no existe o ya no está disponible en el servidor.' : errorMsg }}
+                        </p>
+                        <a 
+                            v-if="(downloadUrl || url) && !fileMissing"
+                            :href="downloadUrl || url" 
+                            :download="name"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all"
+                        >
+                            <Download class="w-4 h-4" /> Descargar archivo
+                        </a>
+                        <p v-else-if="fileMissing" class="text-[11px] text-slate-400">
+                            No hay nada que descargar.
+                        </p>
+                    </div>
                 </div>
 
                 <!-- Formato no soportado -->
                 <div 
                     v-if="isUnsupported && !loading"
-                    class="bg-white shadow-xl rounded-2xl p-8 max-w-md mx-auto my-12 text-center"
+                    class="min-h-full w-full flex items-center justify-center p-4"
                 >
-                    <FileQuestion class="w-14 h-14 text-slate-400 mx-auto mb-4" />
-                    <h5 class="text-slate-800 font-bold text-sm mb-2">Previsualización no disponible</h5>
-                    <p class="text-xs text-slate-500 mb-5 leading-relaxed">
-                        Este formato no se puede previsualizar directamente en el navegador. Puedes descargarlo para abrirlo con la aplicación correspondiente.
-                    </p>
-                    <a 
-                        v-if="downloadUrl || url"
-                        :href="downloadUrl || url" 
-                        :download="name"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all"
-                    >
-                        <Download class="w-4 h-4" /> Descargar
-                    </a>
+                    <div class="bg-white shadow-xl rounded-2xl p-8 max-w-md w-full text-center">
+                        <FileQuestion class="w-14 h-14 text-slate-400 mx-auto mb-4" />
+                        <h5 class="text-slate-800 font-bold text-sm mb-2">Previsualización no disponible</h5>
+                        <p class="text-xs text-slate-500 mb-5 leading-relaxed">
+                            Este formato no se puede previsualizar directamente en el navegador. Puedes descargarlo para abrirlo con la aplicación correspondiente.
+                        </p>
+                        <a 
+                            v-if="downloadUrl || url"
+                            :href="downloadUrl || url" 
+                            :download="name"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all"
+                        >
+                            <Download class="w-4 h-4" /> Descargar
+                        </a>
+                    </div>
                 </div>
             </div>
 

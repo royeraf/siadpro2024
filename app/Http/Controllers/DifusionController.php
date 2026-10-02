@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
+use App\Http\Controllers\Concerns\ValidaDocumento;
 use Illuminate\Http\Request;
 use App\Models\Difusion;
 use App\Models\User;
@@ -14,6 +15,10 @@ use Inertia\Inertia;
 class DifusionController extends Controller
 {
     use HasScopeTabs;
+    use ValidaDocumento;
+
+    /** Regla de tipo de archivo admitida por este recurso. */
+    protected $documentoTypeRule = 'mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg';
 
     public function __construct(){
         $this->middleware('auth');
@@ -406,12 +411,8 @@ class DifusionController extends Controller
             'lugar'        => 'required|string|max:191',
             'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
-            'documento'    => 'required|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
-        ], [
-            'documento.required' => 'Debe adjuntar un archivo para el registro.',
-            'documento.max'      => 'El archivo no debe ser superior a 10MB.',
-            'documento.mimes'    => 'El tipo de archivo no es compatible.',
-        ]);
+            'documento' => $this->documentoRules(),
+        ], $this->documentoMessages());
 
         $file = $request->file('documento');
         $extension = $file->getClientOriginalExtension();
@@ -454,11 +455,8 @@ class DifusionController extends Controller
             'lugar'        => 'required|string|max:191',
             'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
-            'documento'    => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
-        ], [
-            'documento.max'   => 'El archivo no debe ser superior a 10MB.',
-            'documento.mimes' => 'El tipo de archivo no es compatible.',
-        ]);
+            'documento' => $this->documentoRules(false),
+        ], $this->documentoMessages(false));
 
         $difusion->nombreAccion = $request->get('nombreAccion');
         $difusion->lugar = $request->get('lugar');

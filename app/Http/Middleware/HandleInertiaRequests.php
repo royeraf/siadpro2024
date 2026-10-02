@@ -36,6 +36,36 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
+            // Límite real de subida (bytes): lo usan los formularios para validar
+            // el archivo al seleccionarlo y no fallar después en el servidor.
+            // Es el menor entre lo configurado en `config/siadpro.php` y lo que
+            // permite el PHP.ini del hosting (upload_max_filesize/post_max_size).
+            'uploadMaxBytes' => function () {
+                $parse = static function (string $size): int {
+                    $size = trim($size);
+                    if ($size === '' || $size === '-1') {
+                        return PHP_INT_MAX;
+                    }
+                    $value = (float) $size;
+                    return (int) match (strtolower(substr($size, -1))) {
+                        'g' => $value * 1024 ** 3,
+                        'm' => $value * 1024 ** 2,
+                        'k' => $value * 1024,
+                        default => $value,
+                    };
+                };
+
+                $configured = (int) config('siadpro.upload_max_kb', 5120) * 1024;
+                $upload = $parse((string) ini_get('upload_max_filesize'));
+                $post = $parse((string) ini_get('post_max_size'));
+
+                return max(1, min($configured, $upload, $post));
+            },
+            // Tope configurado en kilobytes: los modals lo usan para los textos
+            // de ayuda ("Máx. 5MB", mensajes de error, etc.).
+            'uploadMaxKb' => fn () => (int) config('siadpro.upload_max_kb', 5120),
+            // Compresores online que se sugieren cuando el archivo no cabe.
+            'pdfCompressors' => fn () => config('siadpro.pdf_compressors', []),
             'auth' => [
                 'user' => $request->user() ? [
                     'id'               => $request->user()->id,
