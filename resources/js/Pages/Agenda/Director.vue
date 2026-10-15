@@ -8,7 +8,12 @@ import esLocale from '@fullcalendar/core/locales/es.js';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
+import { useMediaQuery } from '@/Composables/useMediaQuery';
 import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
+
+// En móvil el calendario ocupa el ancho completo: la altura fija de 550px
+// deja filas muy comprimidas, así que se deja crecer según su contenido.
+const isCompact = useMediaQuery('(max-width: 767px)');
 
 const props = defineProps({
     events: {
@@ -30,17 +35,47 @@ function findEvent(id) {
     return (props.events || []).find((e) => String(e.id) === String(id)) || null;
 }
 
+/**
+ * FullCalendar pinta UN evento de `start` a `end`; como el `start`/`end` de la
+ * agenda es el rango agregado (primer día → último día), marcaba también los
+ * días intermedios. Se expande a un evento por día programado.
+ */
+function eventosCalendario(list) {
+    return (list || []).flatMap((e) => {
+        const base = {
+            title: e.title,
+            color: e.color,
+            evento: e.evento,
+            seccion: e.seccion,
+            nomDocente: e.nomDocente || '',
+            agendaId: e.id,
+        };
+
+        const dias = Array.isArray(e.dias) && e.dias.length ? e.dias : null;
+
+        if (!dias) {
+            return [{ ...base, id: String(e.id), start: e.start, end: e.end }];
+        }
+
+        return dias.map((d) => ({
+            ...base,
+            id: `${e.id}-${d.id}`,
+            start: `${d.fecha}T${d.hora_inicio || '00:00'}`,
+            end: `${d.fecha}T${d.hora_fin || '23:59'}`,
+        }));
+    });
+}
+
 function handleEventClick(arg) {
-    const original = findEvent(arg.event.id);
+    const agendaId = arg.event.extendedProps?.agendaId ?? arg.event.id;
+    const original = findEvent(agendaId);
     detalle.event = original
         ? { ...original }
         : {
-            id: arg.event.id,
+            id: agendaId,
             title: arg.event.title,
             evento: arg.event.extendedProps?.evento || '',
             nomDocente: arg.event.extendedProps?.nomDocente || '',
-            start: arg.event.start ? arg.event.start.toISOString() : '',
-            end: arg.event.end ? arg.event.end.toISOString() : '',
         };
     detalle.show = true;
 }
@@ -57,17 +92,9 @@ const calendarOptions = computed(() => ({
     },
     locale: esLocale,
     firstDay: 1,
-    height: 550,
+    height: isCompact.value ? 'auto' : 550,
     dayMaxEvents: true,
-    events: (props.events || []).map((e) => ({
-        id: String(e.id),
-        title: e.title,
-        start: e.start,
-        end: e.end,
-        color: e.color,
-        evento: e.evento,
-        nomDocente: e.nomDocente || '',
-    })),
+    events: eventosCalendario(props.events),
     eventClick: handleEventClick,
 }));
 </script>
@@ -85,7 +112,7 @@ const calendarOptions = computed(() => ({
 
         <SectionTabs :tabs="tabs" color="pink" />
 
-        <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+        <div class="agenda-calendar bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
             <div class="p-3 sm:p-5 max-w-[860px] mx-auto">
                 <FullCalendar :options="calendarOptions" />
             </div>
@@ -93,7 +120,9 @@ const calendarOptions = computed(() => ({
 
         <AgendaDetailModal
             :show="detalle.show"
-            :event="detalle.event"
+            :agenda="detalle.event"
+            :can-edit="false"
+            :can-evidencia="false"
             @close="detalle.show = false"
         />
     </AppLayout>

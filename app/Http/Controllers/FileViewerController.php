@@ -16,6 +16,7 @@ class FileViewerController extends Controller
     private const ALLOWED_DIRS = [
         'accion', 'difusion', 'evidencia', 'informe',
         'plan', 'planA', 'produccion', 'sector',
+        'agenda_evidencia',
     ];
 
     /**

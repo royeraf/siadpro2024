@@ -1,9 +1,9 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { AgendasService } from '@/Services/agenda';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
-import { AlertCircle, Trash2 } from 'lucide-vue-next';
+import { AlertCircle, Trash2, Plus, CalendarDays, Clock, X, Loader2, Ban, Check, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import BaseModal from '@/Components/UI/BaseModal.vue';
 
 const props = defineProps({
@@ -14,7 +14,7 @@ const props = defineProps({
     mode: {
         type: String,
         default: 'create',
-        validator: (v) => ['create', 'view', 'edit'].includes(v),
+        validator: (v) => ['create', 'edit'].includes(v),
     },
     event: {
         type: Object,
@@ -34,26 +34,18 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['close', 'edit', 'cancel']);
+const emit = defineEmits(['close', 'cancel', 'delete']);
 
 const submitting = ref(false);
 const eventoHint = ref('');
 
-const isView = computed(() => props.mode === 'view');
 const isCreate = computed(() => props.mode === 'create');
 const isEdit = computed(() => props.mode === 'edit');
 
-const tituloModal = computed(() => {
-    if (isView.value) return 'Visualización de Evento';
-    if (isEdit.value) return 'Modificar Evento';
-    return 'Agregar Evento';
-});
-
-const subtitulo = computed(() => {
-    if (isView.value) return 'Detalle del evento seleccionado';
-    if (isEdit.value) return 'Modifique los campos necesarios para actualizar el evento';
-    return 'Complete los campos para registrar un nuevo evento en su agenda';
-});
+const tituloModal = computed(() => (isEdit.value ? 'Modificar Evento' : 'Agregar Evento'));
+const subtitulo = computed(() => (isEdit.value
+    ? 'Modifique los campos necesarios para actualizar el evento'
+    : 'Complete los campos para registrar un nuevo evento en su agenda'));
 
 const opcionesSeccion = computed(() =>
     Object.entries(props.secciones || {}).map(([clave, datos]) => ({
@@ -63,16 +55,155 @@ const opcionesSeccion = computed(() =>
     }))
 );
 
-const colorSeleccionado = computed(() =>
-    opcionesSeccion.value.find((o) => o.clave === color.value)
+/** Hex de la sección elegida; se usa para teñir el encabezado del modal. */
+const colorHex = computed(() =>
+    opcionesSeccion.value.find((o) => o.clave === color.value)?.hex || ''
 );
 
-// <input type="datetime-local"> trabaja con "YYYY-MM-DDTHH:mm"; el guardado en
-// base de datos usa exactamente ese formato.
-function toDatetimeLocal(value) {
-    if (!value) return '';
-    const clean = String(value).replace(' ', 'T');
-    return clean.length >= 16 ? clean.substring(0, 16) : clean;
+/* ── Scroll horizontal del selector de color ── */
+const colorRowRef = ref(null);
+const puedeIzq = ref(false);
+const puedeDer = ref(false);
+
+function actualizarFlechas() {
+    const el = colorRowRef.value;
+    if (!el) return;
+    puedeIzq.value = el.scrollLeft > 1;
+    puedeDer.value = Math.ceil(el.scrollLeft + el.clientWidth) < el.scrollWidth - 1;
+}
+
+function scrollColorDir(dir) {
+    const el = colorRowRef.value;
+    if (!el) return;
+    const paso = Math.max(140, Math.round(el.clientWidth * 0.7));
+    el.scrollBy({ left: dir * paso, behavior: 'smooth' });
+}
+
+onMounted(() => {
+    nextTick(actualizarFlechas);
+    window.addEventListener('resize', actualizarFlechas);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', actualizarFlechas);
+});
+
+/* ── Días programados (fuente de verdad del rango) ── */let secuencia = 0;
+function crearDia(fecha = '', hora_inicio = '', hora_fin = '') {
+    return { _key: ++secuencia, fecha, hora_inicio, hora_fin };
+}
+
+function hoyISO() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const dias = ref([]);
+const diasError = ref('');
+const diaErrors = ref({});
+const horaErrors = ref({});
+const cargandoDias = ref(false);
+
+function diasDesdeEvento() {
+    if (Array.isArray(props.event?.dias) && props.event.dias.length) {
+        return props.event.dias.map((d) => crearDia(d.fecha, d.hora_inicio || d.horaInicio || '', d.hora_fin || d.horaFin || ''));
+    }
+    return [crearDia(hoyISO(), '', '')];
+}
+
+function agregarDia() {
+    dias.value.push(crearDia(hoyISO(), '', ''));
+    revalidarHoras();
+}
+
+function quitarDia(index) {
+    dias.value.splice(index, 1);
+    revalidarHoras();
+}
+
+/** Devuelve el primer mensaje de error y marca las filas inválidas. */
+function validarDias() {
+    diaErrors.value = {};
+    horaErrors.value = {};
+
+    if (!dias.value.length) {
+        return 'Debe registrar al menos un día.';
+    }
+
+    const vistas = new Set();
+    let mensaje = '';
+
+    dias.value.forEach((dia, index) => {
+        if (!dia.fecha) {
+            diaErrors.value[index] = 'Indique la fecha.';
+            mensaje = mensaje || 'Complete la fecha de todos los días.';
+            return;
+        }
+
+        if (vistas.has(dia.fecha)) {
+            diaErrors.value[index] = 'Fecha repetida.';
+            mensaje = mensaje || 'No se puede repetir la misma fecha en dos días.';
+        }
+        vistas.add(dia.fecha);
+
+        const inicio = dia.hora_inicio;
+        const fin = dia.hora_fin;
+
+        if ((inicio && !fin) || (!inicio && fin)) {
+            diaErrors.value[index] = 'Indique hora inicial y final.';
+            horaErrors.value[index] = diaErrors.value[index];
+            mensaje = mensaje || 'Complete el rango de hora (inicial y final) o déjelo vacío.';
+            return;
+        }
+
+        if (inicio && fin && fin <= inicio) {
+            diaErrors.value[index] = 'La hora final debe ser posterior.';
+            horaErrors.value[index] = diaErrors.value[index];
+            mensaje = mensaje || 'En cada día, la hora final debe ser posterior a la inicial.';
+        }
+    });
+
+    return mensaje;
+}
+
+/**
+ * Valida en vivo el rango de hora de todos los días: la hora final debe ser
+ * posterior a la inicial. Se ejecuta al cambiar cualquiera de las horas (o al
+ * agregar/quitar días) para avisar de inmediato, sin esperar al envío.
+ */
+function revalidarHoras() {
+    const copia = {};
+
+    dias.value.forEach((dia, index) => {
+        if (dia.hora_inicio && dia.hora_fin && dia.hora_fin <= dia.hora_inicio) {
+            copia[index] = 'La hora final debe ser posterior a la hora de inicio.';
+        }
+    });
+
+    horaErrors.value = copia;
+}
+
+/** Mensaje visible de una fila: el de envío o el de hora en vivo. */
+function errorDia(index) {
+    return diaErrors.value[index] || horaErrors.value[index] || '';
+}
+
+async function cargarDiasDesdeServidor() {
+    if (!props.event?.id) return;
+
+    cargandoDias.value = true;
+    try {
+        const data = await AgendasService.evidencias(props.event.id);
+        dias.value = (data.dias || []).map((d) => crearDia(d.fecha, d.hora_inicio || '', d.hora_fin || ''));
+        if (!dias.value.length) {
+            dias.value = [crearDia(hoyISO(), '', '')];
+        }
+    } catch (e) {
+        dias.value = [crearDia(hoyISO(), '', '')];
+    } finally {
+        cargandoDias.value = false;
+    }
 }
 
 const validationSchema = computed(() => yup.object({
@@ -86,23 +217,8 @@ const validationSchema = computed(() => yup.object({
         .trim()
         .required('La descripción del evento es obligatoria.')
         .max(191, 'La descripción no debe exceder 191 caracteres.'),
-    color: yup
-        .string()
-        .required('Debe seleccionar la sección (color) del evento.'),
-    start: yup
-        .string()
-        .required('La fecha inicial es obligatoria.'),
-    end: yup
-        .string()
-        .required('La fecha final es obligatoria.')
-        .test(
-            'no-anterior',
-            'La fecha final debe ser posterior o igual a la inicial.',
-            function (value) {
-                if (!value || !this.parent.start) return true;
-                return value >= this.parent.start;
-            }
-        ),
+    // La sección es opcional: se puede guardar el evento "sin color".
+    color: yup.string(),
 }));
 
 const { errors, defineField, handleSubmit, resetForm, setErrors } = useVeeForm({
@@ -112,34 +228,44 @@ const { errors, defineField, handleSubmit, resetForm, setErrors } = useVeeForm({
 const [title, titleAttrs] = defineField('title', { validateOnModelUpdate: true });
 const [evento, eventoAttrs] = defineField('evento', { validateOnModelUpdate: true });
 const [color, colorAttrs] = defineField('color', { validateOnModelUpdate: true });
-const [start, startAttrs] = defineField('start', { validateOnModelUpdate: true });
-const [end, endAttrs] = defineField('end', { validateOnModelUpdate: true });
 
 function valoresOriginales() {
     if (!props.event) {
-        return { title: '', evento: '', color: '', start: '', end: '' };
+        return { title: '', evento: '', color: '' };
     }
     return {
         title: props.event.title || '',
         evento: props.event.evento || '',
         color: props.event.seccion || '',
-        start: toDatetimeLocal(props.event.start),
-        end: toDatetimeLocal(props.event.end),
     };
 }
 
 watch(() => props.show, (visible) => {
-    if (visible) {
-        eventoHint.value = '';
-        setErrors({});
-        resetForm({ values: valoresOriginales() });
+    if (!visible) return;
+
+    eventoHint.value = '';
+    diasError.value = '';
+    diaErrors.value = {};
+    horaErrors.value = {};
+    setErrors({});
+    resetForm({ values: valoresOriginales() });
+    dias.value = diasDesdeEvento();
+
+    // Edición directa (sin el detalle cargado): los días se traen del servidor.
+    if (props.mode === 'edit' && props.event?.id && !Array.isArray(props.event?.dias)) {
+        cargarDiasDesdeServidor();
     }
+
+    nextTick(actualizarFlechas);
 });
 
 watch([() => props.mode, () => props.event], () => {
-    if (props.show) {
-        resetForm({ values: valoresOriginales() });
-    }
+    if (!props.show) return;
+    resetForm({ values: valoresOriginales() });
+    dias.value = diasDesdeEvento();
+    diasError.value = '';
+    diaErrors.value = {};
+    horaErrors.value = {};
 });
 
 // Reglas heredadas del formulario legacy: el campo "evento" no admite Enter
@@ -170,21 +296,25 @@ function validarTeclaEvento(e) {
 }
 
 const submit = handleSubmit((values) => {
+    const errorDias = validarDias();
+    if (errorDias) {
+        diasError.value = errorDias;
+        return;
+    }
+
+    diasError.value = '';
     submitting.value = true;
 
-    // FormData a propósito: AgendaController usa $request->get(...) para leer
-    // title/evento/start/end/delete, y ese método no ve el body JSON (solo los
-    // bags de query/request). Con multipart entra por $_POST y funciona igual
-    // que el formulario jQuery original.
-    const formData = new FormData();
-    if (props.event?.id) {
-        formData.append('id', String(props.event.id));
-    }
-    formData.append('title', values.title);
-    formData.append('evento', values.evento);
-    formData.append('color', values.color);
-    formData.append('start', values.start);
-    formData.append('end', values.end);
+    const payload = {
+        title: values.title,
+        evento: values.evento,
+        color: values.color,
+        dias: dias.value.map((d) => ({
+            fecha: d.fecha,
+            hora_inicio: d.hora_inicio || null,
+            hora_fin: d.hora_fin || null,
+        })),
+    };
 
     const request = {
         preserveScroll: true,
@@ -193,6 +323,9 @@ const submit = handleSubmit((values) => {
         },
         onError: (serverErrors) => {
             setErrors(serverErrors);
+            if (serverErrors?.dias) {
+                diasError.value = Array.isArray(serverErrors.dias) ? serverErrors.dias[0] : serverErrors.dias;
+            }
         },
         onFinish: () => {
             submitting.value = false;
@@ -200,9 +333,9 @@ const submit = handleSubmit((values) => {
     };
 
     if (isCreate.value) {
-        AgendasService.store(formData, request);
+        AgendasService.store(payload, request);
     } else {
-        AgendasService.update(formData, request);
+        AgendasService.update(props.event.id, payload, request);
     }
 });
 </script>
@@ -214,8 +347,8 @@ const submit = handleSubmit((values) => {
         :subtitle="subtitulo"
         icon="CalendarCheck"
         color="pink"
+        :tint="colorHex"
         max-width="2xl"
-        :is-form="!isView"
         :submitting="submitting"
         :submit-text="isCreate ? 'Registrar' : 'Modificar'"
         cancel-text="Cancelar"
@@ -232,13 +365,9 @@ const submit = handleSubmit((values) => {
                     type="text"
                     v-model="title"
                     v-bind="titleAttrs"
-                    :readonly="isView"
                     placeholder="Título del evento"
                     class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    :class="[
-                        errors.title ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300',
-                        isView ? 'bg-slate-50 cursor-not-allowed' : ''
-                    ]"
+                    :class="errors.title ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300'"
                 />
                 <p v-if="errors.title" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
                     <AlertCircle class="w-3.5 h-3.5 mr-1 shrink-0" />
@@ -252,16 +381,12 @@ const submit = handleSubmit((values) => {
                 </label>
                 <textarea
                     id="evento"
-                    rows="5"
+                    rows="4"
                     v-model="evento"
                     v-bind="eventoAttrs"
-                    :readonly="isView"
                     placeholder="Descripcion del evento"
                     class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    :class="[
-                        errors.evento ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300',
-                        isView ? 'bg-slate-50 cursor-not-allowed' : ''
-                    ]"
+                    :class="errors.evento ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300'"
                     @keydown="validarTeclaEvento"
                     @keyup="limpiarHint"
                 ></textarea>
@@ -276,91 +401,176 @@ const submit = handleSubmit((values) => {
             </div>
 
             <div>
-                <label for="color" class="block text-xs font-bold text-slate-700 mb-1">
-                    Sección <span class="text-rose-500">*</span>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                    Sección
                 </label>
-                <div class="flex items-center gap-2">
-                    <span
-                        class="w-9 h-9 rounded-lg border shadow-xs shrink-0 transition-colors"
-                        :style="{
-                            backgroundColor: colorSeleccionado?.hex || 'transparent',
-                            borderColor: colorSeleccionado?.hex || '#cbd5e1',
-                            boxShadow: colorSeleccionado ? '0 0 0 1px rgba(0,0,0,0.15)' : 'none'
-                        }"
-                        aria-hidden="true"
-                    ></span>
-                    <select
-                        id="color"
-                        v-model="color"
-                        v-bind="colorAttrs"
-                        :disabled="isView"
-                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        :class="[
-                            errors.color ? 'border-rose-400 bg-rose-50/20 text-rose-900' : 'border-slate-300',
-                            isView ? 'bg-slate-50 cursor-not-allowed' : ''
-                        ]"
+                <div class="flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        title="Ver más"
+                        @click="scrollColorDir(-1)"
+                        class="w-7 h-7 shrink-0 inline-flex items-center justify-center rounded-full bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-all cursor-pointer shadow-xs"
+                        :class="puedeIzq ? 'opacity-100' : 'opacity-0 pointer-events-none'"
                     >
-                        <option value="">Seleccionar</option>
-                        <option
+                        <ChevronLeft class="w-4 h-4" />
+                    </button>
+
+                    <div
+                        ref="colorRowRef"
+                        class="color-scroll flex items-center gap-2.5 overflow-x-auto py-1.5 px-1.5 flex-1 min-w-0"
+                        role="radiogroup"
+                        aria-label="Sección (color) del evento"
+                        @scroll="actualizarFlechas"
+                    >
+                        <!-- Sin color -->
+                        <button
+                            type="button"
+                            role="radio"
+                            :aria-checked="color === ''"
+                            title="Sin color"
+                            @click="color = ''"
+                            class="relative w-9 h-9 shrink-0 rounded-full bg-slate-700 text-white flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 cursor-pointer"
+                            :class="color === '' ? 'ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-white' : 'ring-1 ring-slate-300'"
+                        >
+                            <Ban class="w-4 h-4" />
+                            <span
+                                v-if="color === ''"
+                                class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-fuchsia-600 text-white flex items-center justify-center ring-2 ring-white"
+                            >
+                                <Check class="w-2.5 h-2.5" />
+                            </span>
+                        </button>
+
+                        <!-- Secciones -->
+                        <button
                             v-for="op in opcionesSeccion"
                             :key="op.clave"
-                            :value="op.clave"
-                            :style="{ color: op.hex, fontWeight: 600 }"
+                            type="button"
+                            role="radio"
+                            :aria-checked="color === op.clave"
+                            :title="op.label"
+                            @click="color = op.clave"
+                            class="relative w-9 h-9 shrink-0 rounded-full transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 cursor-pointer"
+                            :style="{ backgroundColor: op.hex }"
+                            :class="color === op.clave ? 'ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-white' : 'ring-1 ring-black/10'"
                         >
-                            {{ op.label }}
-                        </option>
-                    </select>
+                            <span
+                                v-if="color === op.clave"
+                                class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-fuchsia-600 text-white flex items-center justify-center ring-2 ring-white"
+                            >
+                                <Check class="w-2.5 h-2.5" />
+                            </span>
+                        </button>
+                    </div>
+
+                    <button
+                        type="button"
+                        title="Ver más"
+                        @click="scrollColorDir(1)"
+                        class="w-7 h-7 shrink-0 inline-flex items-center justify-center rounded-full bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-all cursor-pointer shadow-xs"
+                        :class="puedeDer ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                    >
+                        <ChevronRight class="w-4 h-4" />
+                    </button>
                 </div>
-                <p v-if="errors.color" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
+                <p v-if="errors.color" class="mt-1.5 text-xs text-rose-600 font-semibold flex items-center">
                     <AlertCircle class="w-3.5 h-3.5 mr-1 shrink-0" />
                     {{ errors.color }}
                 </p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="start" class="block text-xs font-bold text-slate-700 mb-1">
-                        Fecha Inicial <span class="text-rose-500">*</span>
-                    </label>
-                    <input
-                        id="start"
-                        type="datetime-local"
-                        v-model="start"
-                        v-bind="startAttrs"
-                        :readonly="isView"
-                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        :class="[
-                            errors.start ? 'border-rose-400 bg-rose-50/20 text-rose-900' : 'border-slate-300',
-                            isView ? 'bg-slate-50 cursor-not-allowed' : ''
-                        ]"
-                    />
-                    <p v-if="errors.start" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
-                        <AlertCircle class="w-3.5 h-3.5 mr-1 shrink-0" />
-                        {{ errors.start }}
-                    </p>
+            <!-- Días programados -->
+            <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <CalendarDays class="w-4 h-4 text-pink-600 shrink-0" />
+                        <span class="text-xs font-bold text-slate-700">
+                            Días programados <span class="text-rose-500">*</span>
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        @click="agregarDia"
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-pink-700 bg-white border border-pink-200 rounded-lg hover:bg-pink-50 transition-colors cursor-pointer shrink-0"
+                    >
+                        <Plus class="w-3.5 h-3.5" />
+                        Agregar día
+                    </button>
                 </div>
 
-                <div>
-                    <label for="end" class="block text-xs font-bold text-slate-700 mb-1">
-                        Fecha Final <span class="text-rose-500">*</span>
-                    </label>
-                    <input
-                        id="end"
-                        type="datetime-local"
-                        v-model="end"
-                        v-bind="endAttrs"
-                        :readonly="isView"
-                        class="w-full text-xs bg-white border rounded-xl px-3 py-2.5 text-slate-800 transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        :class="[
-                            errors.end ? 'border-rose-400 bg-rose-50/20 text-rose-900' : 'border-slate-300',
-                            isView ? 'bg-slate-50 cursor-not-allowed' : ''
-                        ]"
-                    />
-                    <p v-if="errors.end" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
-                        <AlertCircle class="w-3.5 h-3.5 mr-1 shrink-0" />
-                        {{ errors.end }}
-                    </p>
+                <p class="text-[11px] text-slate-400 m-0 mb-2">
+                    Registre uno o varios días (pueden no ser seguidos). Indique el rango de hora en formato 24 h; puede dejarlo vacío si aún no lo define.
+                </p>
+
+                <div v-if="cargandoDias" class="flex items-center justify-center gap-2 py-4 text-slate-500">
+                    <Loader2 class="w-4 h-4 animate-spin" />
+                    <span class="text-[11px] font-semibold">Cargando días…</span>
                 </div>
+
+                <div v-else class="space-y-2">
+                    <div
+                        v-for="(dia, index) in dias"
+                        :key="dia._key"
+                        class="rounded-xl border bg-white p-2.5"
+                        :class="errorDia(index) ? 'border-rose-300' : 'border-slate-200'"
+                    >
+                        <div class="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr_1fr_auto] gap-2 items-end">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Fecha</label>
+                                <input
+                                    type="date"
+                                    v-model="dia.fecha"
+                                    class="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Hora inicio</label>
+                                <input
+                                    type="time"
+                                    v-model="dia.hora_inicio"
+                                    :max="dia.hora_fin || undefined"
+                                    @change="revalidarHoras"
+                                    class="w-full text-xs bg-white border rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    :class="horaErrors[index] ? 'border-rose-300 bg-rose-50/30' : 'border-slate-300'"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Hora fin</label>
+                                <input
+                                    type="time"
+                                    v-model="dia.hora_fin"
+                                    :min="dia.hora_inicio || undefined"
+                                    @change="revalidarHoras"
+                                    class="w-full text-xs bg-white border rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    :class="horaErrors[index] ? 'border-rose-300 bg-rose-50/30' : 'border-slate-300'"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                @click="quitarDia(index)"
+                                :disabled="dias.length <= 1"
+                                class="h-9 w-9 mb-px inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                                title="Quitar día"
+                            >
+                                <X class="w-4 h-4" />
+                            </button>
+                        </div>
+                        <p v-if="errorDia(index)" class="mt-1 text-[11px] text-rose-600 font-semibold flex items-center m-0">
+                            <AlertCircle class="w-3 h-3 mr-1 shrink-0" />
+                            {{ errorDia(index) }}
+                        </p>
+                    </div>
+                </div>
+
+                <p v-if="diasError" class="mt-2 text-xs text-rose-600 font-semibold flex items-center">
+                    <AlertCircle class="w-3.5 h-3.5 mr-1 shrink-0" />
+                    {{ diasError }}
+                </p>
+
+                <p v-if="!dias.length && !cargandoDias" class="text-[11px] text-slate-400 m-0 flex items-center">
+                    <Clock class="w-3 h-3 mr-1 shrink-0" />
+                    Sin días. Agregue al menos uno.
+                </p>
             </div>
 
             <div
@@ -386,45 +596,51 @@ const submit = handleSubmit((values) => {
 
         <template #footer>
             <div class="flex items-center gap-2.5 max-sm:w-full">
-                <template v-if="isView">
-                    <button
-                        v-if="canEdit"
-                        type="button"
-                        @click="emit('edit')"
-                        class="max-sm:flex-1 inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 active:bg-amber-700 border border-transparent rounded-xl transition-colors shadow-2xs cursor-pointer"
-                    >
-                        Editar
-                    </button>
-                    <button
-                        type="button"
-                        @click="emit('close')"
-                        class="max-sm:flex-1 inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-xl transition-colors shadow-2xs cursor-pointer"
-                    >
-                        Cerrar
-                    </button>
-                </template>
-
-                <template v-else>
-                    <button
-                        type="button"
-                        @click="emit('cancel')"
-                        :disabled="submitting"
-                        class="max-sm:flex-1 inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-xl transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
-                    >
-                        {{ isCreate ? 'Cancelar' : 'Cancelar' }}
-                    </button>
-                    <button
-                        type="submit"
-                        :disabled="submitting"
-                        class="max-sm:flex-1 inline-flex items-center justify-center px-5 py-2.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-colors shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        :class="submitting
-                            ? 'bg-pink-400 text-white'
-                            : 'bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white focus:ring-pink-500'"
-                    >
-                        <span>{{ submitting ? 'Guardando...' : (isCreate ? 'Registrar' : 'Modificar') }}</span>
-                    </button>
-                </template>
+                <button
+                    type="button"
+                    @click="emit('cancel')"
+                    :disabled="submitting"
+                    class="max-sm:flex-1 inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-xl transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    :disabled="submitting"
+                    class="max-sm:flex-1 inline-flex items-center justify-center px-5 py-2.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-colors shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    :class="submitting
+                        ? 'bg-pink-400 text-white'
+                        : 'bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white focus:ring-pink-500'"
+                >
+                    <span>{{ submitting ? 'Guardando...' : (isCreate ? 'Registrar' : 'Modificar') }}</span>
+                </button>
             </div>
         </template>
     </BaseModal>
 </template>
+
+<style scoped>
+/* Fila única con scroll horizontal y barra visible (llamativa). */
+.color-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #c026d3 #e2e8f0;
+}
+
+.color-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.color-scroll::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 9999px;
+}
+
+.color-scroll::-webkit-scrollbar-thumb {
+    background: #c026d3;
+    border-radius: 9999px;
+}
+
+.color-scroll::-webkit-scrollbar-thumb:hover {
+    background: #a21caf;
+}
+</style>

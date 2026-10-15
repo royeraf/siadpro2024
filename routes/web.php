@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EvidenciaController;
 use App\Http\Controllers\AgendaViewController;
 use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\AgendaEvidenciaController;
 use App\Http\Controllers\AccionController;
 use App\Http\Controllers\DifusionController;
 use App\Http\Controllers\InformeController;
@@ -197,9 +198,18 @@ Route::resource('dashboard_main','App\Http\Controllers\DashboardController');
 Route::get("/dashboard-index", ['App\Http\Controllers\DashboardController'::class, "index"])->middleware('auth')->name('dashboard.index');
 Route::get('/dashboard/resumen-modulos', [App\Http\Controllers\DashboardController::class, 'resumenModulos'])->middleware('auth')->name('dashboard.resumen-modulos');
 
-Route::resource('agendas','App\Http\Controllers\AgendaController');
+Route::get('agendas', [AgendaController::class, 'index'])->middleware('auth')->name('agendas.index');
+Route::post('agendas', [AgendaController::class, 'store'])->middleware('auth')->name('agendas.store');
+Route::put('agendas/{agenda}', [AgendaController::class, 'update'])->middleware('auth')->name('agendas.update');
+Route::delete('agendas/{agenda}', [AgendaController::class, 'destroy'])->middleware('auth')->name('agendas.destroy');
+
+// Evidencias (archivos) por día programado de una agenda de lectura.
+Route::get('agendas/{agenda}/evidencias', [AgendaEvidenciaController::class, 'index'])->middleware('auth')->name('agendas.evidencias.index');
+Route::post('agendas/{agenda}/evidencias', [AgendaEvidenciaController::class, 'store'])->middleware('auth')->name('agendas.evidencias.store');
+Route::delete('agendas/evidencias/{evidencia}', [AgendaEvidenciaController::class, 'destroy'])->middleware('auth')->name('agendas.evidencias.destroy');
+Route::get('agendas/evidencias/{evidencia}/download', [AgendaEvidenciaController::class, 'download'])->middleware('auth')->name('agendas.evidencias.download');
+
 Route::get('agenda/view', [App\Http\Controllers\AgendaViewController::class, 'index'])->middleware('auth')->name('agendas.view');
-Route::post('agendas/update', [App\Http\Controllers\AgendaController::class, 'update']);
 // Punto de entrada del menú (ver AgendaController::landing()): agendas.index/agendas.view
 // no cubren a EspecDRE/EspecUGEL, así que el enlace del menú no puede apuntar fijo a /agendas.
 Route::get('/agenda-inicio', [App\Http\Controllers\AgendaController::class, 'landing'])->middleware('auth')->name('agendas.landing');

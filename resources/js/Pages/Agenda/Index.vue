@@ -12,7 +12,13 @@ import esLocale from '@fullcalendar/core/locales/es.js';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
+import { useMediaQuery } from '@/Composables/useMediaQuery';
 import AgendaFormModal from './Partials/AgendaFormModal.vue';
+import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
+
+// En móvil el calendario ocupa el ancho completo: la altura fija de 550px
+// deja filas muy comprimidas, así que se deja crecer según su contenido.
+const isCompact = useMediaQuery('(max-width: 767px)');
 
 const props = defineProps({
     events: {
@@ -35,72 +41,156 @@ const props = defineProps({
 
 const page = usePage();
 
-const modal = reactive({
+const detalle = reactive({
+    show: false,
+    agenda: null,
+});
+
+const form = reactive({
     show: false,
     mode: 'create',
     event: null,
+    volverDetalle: false,
 });
 
-// <input type="datetime-local"> trabaja en hora local; FullCalendar entrega
-// objetos Date ya en hora local, así que se formatea a mano (nunca con
-// toISOString(), que convertiría a UTC y desplazaría un día).
-function toInputValue(value) {
-    if (!value) return '';
+// FullCalendar entrega objetos Date en hora local; se formatea a mano (nunca
+// con toISOString(), que convertiría a UTC y desplazaría un día).
+function toFechaISO(value) {
     const fecha = value instanceof Date ? value : new Date(String(value).replace(' ', 'T'));
     if (Number.isNaN(fecha.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
-    return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`;
+    return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}`;
 }
 
 function findEvent(id) {
     return (props.events || []).find((e) => String(e.id) === String(id)) || null;
 }
 
-function handleSelect(arg) {
-    modal.event = {
+/**
+ * FullCalendar pinta UN evento de `start` a `end`; como el `start`/`end` de la
+ * agenda es el rango agregado (primer día → último día), marcaba también los
+ * días intermedios. Se expande a un evento por día programado, de modo que en
+ * el calendario solo se marquen los días reales.
+ */
+function eventosCalendario(list) {
+    return (list || []).flatMap((e) => {
+        const base = {
+            title: e.title,
+            color: e.color,
+            evento: e.evento,
+            seccion: e.seccion,
+            nomDocente: e.nomDocente || '',
+            agendaId: e.id,
+        };
+
+        const dias = Array.isArray(e.dias) && e.dias.length ? e.dias : null;
+
+        // Agendas sin días (datos históricos): se conserva el rango agregado.
+        if (!dias) {
+            return [{ ...base, id: String(e.id), start: e.start, end: e.end }];
+        }
+
+        return dias.map((d) => ({
+            ...base,
+            id: `${e.id}-${d.id}`,
+            start: `${d.fecha}T${d.hora_inicio || '00:00'}`,
+            end: `${d.fecha}T${d.hora_fin || '23:59'}`,
+        }));
+    });
+}
+
+/** Días de un rango de selección del calendario (end exclusivo, como FullCalendar). */
+function fechasEnRango(start, end) {
+    const desde = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    let hasta = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    hasta = new Date(hasta.getTime() - 86400000);
+    if (hasta < desde) hasta = desde;
+
+    const dias = [];
+    for (let d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)) {
+        dias.push({ fecha: toFechaISO(d), hora_inicio: '', hora_fin: '' });
+    }
+    return dias;
+}
+
+/** Abre el formulario de creación con la lista de días indicada. */
+function abrirCreacion(dias) {
+    form.event = {
         id: null,
         title: '',
         evento: '',
         seccion: '',
-        start: toInputValue(arg.start),
-        end: toInputValue(arg.end),
+        dias,
     };
-    modal.mode = 'create';
-    modal.show = true;
+    form.volverDetalle = false;
+    form.mode = 'create';
+    form.show = true;
+}
+
+/**
+ * Clic/toque simple sobre un día vacío.
+ *
+ * En pantallas táctiles el evento `select` de FullCalendar solo se dispara
+ * tras una pulsación larga (`selectLongPressDelay`, 1000 ms por defecto), así
+ * que un toque normal no abría nada. `dateClick` sí responde al toque corto y
+ * es el que crea la agenda de un único día.
+ */
+function handleDateClick(arg) {
+    if (!props.can?.create) return;
+    abrirCreacion([
+        { fecha: toFechaISO(arg.date), hora_inicio: '', hora_fin: '' },
+    ]);
+}
+
+function handleSelect(arg) {
+    // El arrastre sobre varios días sigue abriendo el formulario con el rango.
+    // El clic/toque de un solo día lo maneja handleDateClick (así no se
+    // duplica la apertura, porque ambos eventos se disparan en el clic simple).
+    const dias = fechasEnRango(arg.start, arg.end);
+    if (dias.length <= 1) return;
+    abrirCreacion(dias);
 }
 
 function handleEventClick(arg) {
-    const original = findEvent(arg.event.id);
-    modal.event = original
+    // El id del evento del calendario es `${agendaId}-${diaId}`; se resuelve la
+    // agenda por `agendaId` para abrir el detalle completo.
+    const agendaId = arg.event.extendedProps?.agendaId ?? arg.event.id;
+    const original = findEvent(agendaId);
+    detalle.agenda = original
         ? { ...original }
         : {
-            id: arg.event.id,
+            id: agendaId,
             title: arg.event.title,
             evento: arg.event.extendedProps?.evento || '',
             seccion: arg.event.extendedProps?.seccion || '',
-            start: toInputValue(arg.event.start),
-            end: toInputValue(arg.event.end),
+            nomDocente: arg.event.extendedProps?.nomDocente || '',
         };
-    modal.mode = 'view';
-    modal.show = true;
+    detalle.show = true;
 }
 
-function handleEdit() {
-    modal.mode = 'edit';
+/** Abre el formulario en edición con los días ya cargados por el detalle. */
+function handleEdit(payload) {
+    const base = detalle.agenda || {};
+    form.event = {
+        id: base.id,
+        title: base.title,
+        evento: base.evento,
+        seccion: base.seccion,
+        dias: payload?.dias || undefined,
+    };
+    form.mode = 'edit';
+    form.volverDetalle = true;
+    form.show = true;
+    detalle.show = false;
 }
 
-function handleCancel() {
-    if (modal.mode === 'edit') {
-        // Vuelve a lectura descartando los cambios (el modal repuebla los
-        // campos desde el evento original al cambiar de modo).
-        modal.mode = 'view';
-    } else {
-        modal.show = false;
+function cerrarForm() {
+    form.show = false;
+
+    if (form.volverDetalle && detalle.agenda) {
+        detalle.show = true;
     }
-}
-
-function handleClose() {
-    modal.show = false;
+    form.volverDetalle = false;
 }
 
 function confirmDelete(evento) {
@@ -125,17 +215,11 @@ function confirmDelete(evento) {
     }).then((result) => {
         if (!result.isConfirmed) return;
 
-        // AgendaController::update() decide el borrado con $request->get('delete')
-        // == 'on' e identifica el registro por $request->id, así que hace falta
-        // un FormData multipart (el body JSON no se ve en $request->get()).
-        const formData = new FormData();
-        formData.append('id', String(evento.id));
-        formData.append('delete', 'on');
-
-        AgendasService.update(formData, {
+        AgendasService.destroy(evento.id, {
             preserveScroll: true,
             onSuccess: () => {
-                modal.show = false;
+                form.show = false;
+                detalle.show = false;
                 Swal.fire({
                     title: '¡Eliminado!',
                     text: 'El evento ha sido eliminado con éxito.',
@@ -180,24 +264,16 @@ const calendarOptions = computed(() => ({
     // La locale 'es' de FullCalendar v6 no fija el primer día de la semana;
     // el legacy (v3) mostraba lunes primero, así que se fija explícitamente.
     firstDay: 1,
-    height: 550,
+    height: isCompact.value ? 'auto' : 550,
     // Defensa en profundidad: el backend ya exige agendas.create/agendas.edit,
     // pero aquí también se ocultan la selección de un día vacío y el
     // arrastrar/soltar si falta el permiso (igual que el Blade original).
     editable: !!props.can?.edit,
     selectable: !!props.can?.create,
     dayMaxEvents: true,
-    events: (props.events || []).map((e) => ({
-        id: String(e.id),
-        title: e.title,
-        start: e.start,
-        end: e.end,
-        color: e.color,
-        evento: e.evento,
-        seccion: e.seccion,
-        nomDocente: e.nomDocente || '',
-    })),
+    events: eventosCalendario(props.events),
     select: handleSelect,
+    dateClick: handleDateClick,
     eventClick: handleEventClick,
 }));
 </script>
@@ -249,22 +325,30 @@ const calendarOptions = computed(() => ({
             </button>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+        <div class="agenda-calendar bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
             <div class="p-3 sm:p-5 max-w-[760px] mx-auto">
                 <FullCalendar :options="calendarOptions" />
             </div>
         </div>
 
+        <AgendaDetailModal
+            :show="detalle.show"
+            :agenda="detalle.agenda"
+            :can-edit="!!can.edit"
+            :can-evidencia="!!can.evidencia"
+            @close="detalle.show = false"
+            @edit="handleEdit"
+        />
+
         <AgendaFormModal
-            :show="modal.show"
-            :mode="modal.mode"
-            :event="modal.event"
+            :show="form.show"
+            :mode="form.mode"
+            :event="form.event"
             :secciones="secciones"
             :can-edit="!!can.edit"
             :can-destroy="!!can.destroy"
-            @close="handleClose"
-            @edit="handleEdit"
-            @cancel="handleCancel"
+            @close="cerrarForm"
+            @cancel="cerrarForm"
             @delete="confirmDelete"
         />
     </AppLayout>

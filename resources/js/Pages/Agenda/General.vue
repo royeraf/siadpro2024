@@ -2,11 +2,14 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { AgendasService } from '@/Services/agenda';
+import { Paperclip } from 'lucide-vue-next';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
+import EvidenciaStack from './Partials/EvidenciaStack.vue';
 
 const props = defineProps({
     agendas: {
@@ -48,6 +51,23 @@ const props = defineProps({
 });
 
 const loading = ref(false);
+
+const detalle = reactive({
+    show: false,
+    agenda: null,
+});
+
+function abrirDetalle(row) {
+    detalle.agenda = {
+        id: row.id,
+        title: row.title,
+        evento: row.evento,
+        nomDocente: row.nomDocente,
+        seccion: row.seccion,
+        color: row.color,
+    };
+    detalle.show = true;
+}
 
 const localFilters = reactive({
     year: props.filters.year || String(props.anio || new Date().getFullYear()),
@@ -140,6 +160,7 @@ const columns = [
     { key: 'evento', label: 'Descripción', sortable: false },
     { key: 'start', label: 'Fecha Inicio', width: '110px', sortable: false },
     { key: 'end', label: 'Fecha Fin', width: '110px', sortable: false },
+    { key: 'evidencias_count', label: 'Evidencias', width: '110px', sortable: false },
     { key: 'institucion', label: 'Institución', sortable: false },
     { key: 'nivelinstitucion', label: 'Tipo de II.EE', sortable: false },
     { key: 'provincia', label: 'Provincia', sortable: false },
@@ -344,6 +365,31 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
                     {{ formatDate(row.end) }}
                 </td>
+                <td class="px-4 py-3 align-middle">
+                    <EvidenciaStack
+                        v-if="row.evidencias_preview?.length"
+                        :evidencias="row.evidencias_preview"
+                        :total="row.evidencias_count || row.evidencias_preview.length"
+                        :limite="3"
+                        :expandable="false"
+                        :mostrar-contador="false"
+                        size="sm"
+                        @view="abrirDetalle(row)"
+                    />
+                    <button
+                        v-else
+                        type="button"
+                        @click="abrirDetalle(row)"
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold rounded-lg border transition-colors cursor-pointer"
+                        :class="row.evidencias_count
+                            ? 'text-pink-700 bg-pink-50 border-pink-200 hover:bg-pink-100'
+                            : 'text-slate-400 bg-slate-50 border-slate-200 hover:bg-slate-100'"
+                        title="Ver días y evidencias"
+                    >
+                        <Paperclip class="w-3.5 h-3.5" />
+                        {{ row.evidencias_count || 0 }}
+                    </button>
+                </td>
                 <td class="px-4 py-3 text-slate-600 align-middle min-w-[180px]">
                     {{ row.institucion || '-' }}
                 </td>
@@ -361,5 +407,13 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
                 </td>
             </template>
         </BaseTable>
+
+        <AgendaDetailModal
+            :show="detalle.show"
+            :agenda="detalle.agenda"
+            :can-edit="false"
+            :can-evidencia="false"
+            @close="detalle.show = false"
+        />
     </AppLayout>
 </template>

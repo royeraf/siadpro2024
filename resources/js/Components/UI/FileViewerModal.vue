@@ -5,9 +5,10 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
 import { renderAsync as renderDocxAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
 import { 
-    Download, X, ChevronUp, ChevronDown, 
+    Download, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
     ZoomIn, ZoomOut, AlertTriangle, FileQuestion, FileText 
 } from 'lucide-vue-next';
+import { esImagenArchivo, iconoArchivo } from '@/Utils/archivoIconos';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -32,9 +33,31 @@ const props = defineProps({
         type: String,
         default: '/visor/pdf',
     },
+    /**
+     * Posición (1-based) del archivo dentro de la lista y total de la lista.
+     * Si `total` es 1, no se muestran los controles de navegación; así los
+     * visores de un solo archivo no cambian de aspecto.
+     */
+    position: {
+        type: Number,
+        default: 1,
+    },
+    total: {
+        type: Number,
+        default: 1,
+    },
+    /**
+     * Lista de archivos de la navegación: `[{ url, name }]`. Sirve para mostrar
+     * la miniatura (imágenes) o el icono por tipo (resto) en el navegador.
+     * Debe venir en el mismo orden que `position`/`total`.
+     */
+    items: {
+        type: Array,
+        default: () => [],
+    },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'prev', 'next', 'select']);
 
 // ── Extensiones conocidas ──
 const IMG_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
@@ -399,17 +422,46 @@ async function openImage(url, name) {
     body.innerHTML = '';
     const img = new Image();
     img.alt = name;
+    img.draggable = false;
     img.src = url;
-    img.className = 'object-contain rounded shadow-lg bg-white transition-transform duration-150';
+    img.className = 'block rounded shadow-lg bg-white select-none';
+    // `margin: auto` centra la imagen y —cuando es más grande que el área—
+    // permite desplazarse hasta cualquiera de sus bordes (a diferencia de
+    // `items-center`, que recorta el borde superior/izquierdo sin scroll).
+    img.style.margin = 'auto';
     body.appendChild(img);
 
+    const state = { scale: 1, baseW: 0, baseH: 0 };
+
+    const canPan = () => {
+        const c = contentRef.value;
+        return !!c && (c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1);
+    };
+
+    const updateGrabCursor = () => {
+        img.style.cursor = canPan() ? 'grab' : '';
+    };
+
+    // El zoom cambia el tamaño real (width/height), no solo un `transform`: así
+    // el contenedor gana área de desplazamiento y la imagen se puede mover.
+    const apply = () => {
+        if (!state.baseW) return;
+        img.style.width = Math.round(state.baseW * state.scale) + 'px';
+        img.style.height = Math.round(state.baseH * state.scale) + 'px';
+        updateGrabCursor();
+    };
+
     const fit = () => {
-        if (!contentRef.value || !bodyRef.value) return;
+        if (!contentRef.value || !bodyRef.value || !img.naturalWidth) return;
         const cs = getComputedStyle(bodyRef.value);
         const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
         const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-        img.style.maxWidth = Math.max(100, contentRef.value.clientWidth - padX) + 'px';
-        img.style.maxHeight = Math.max(100, contentRef.value.clientHeight - padY) + 'px';
+        const availW = Math.max(50, contentRef.value.clientWidth - padX);
+        const availH = Math.max(50, contentRef.value.clientHeight - padY);
+        const ratio = Math.min(availW / img.naturalWidth, availH / img.naturalHeight, 1);
+        state.baseW = img.naturalWidth * ratio;
+        state.baseH = img.naturalHeight * ratio;
+        apply();
     };
 
     // Si la imagen no carga se propaga al controlador maestro (igual que el
@@ -428,20 +480,68 @@ async function openImage(url, name) {
         };
     });
 
+    /* ── Arrastrar para desplazar (solo cuando hay zoom / desborde) ── */
+    let panning = false;
+    let panStart = null;
+
+    const onImgMouseDown = (e) => {
+        if (e.button !== 0 || !canPan()) return;
+        const c = contentRef.value;
+        panning = true;
+        panStart = { x: e.clientX, y: e.clientY, left: c.scrollLeft, top: c.scrollTop };
+        img.style.cursor = 'grabbing';
+        e.preventDefault();
+    };
+    const onDocMouseMove = (e) => {
+        if (!panning || !contentRef.value) return;
+        // Se mueve el scroll en sentido inverso al puntero: es la sensación
+        // natural de "agarrar" la imagen y arrastrarla.
+        contentRef.value.scrollLeft = panStart.left - (e.clientX - panStart.x);
+        contentRef.value.scrollTop = panStart.top - (e.clientY - panStart.y);
+    };
+    const onDocMouseUp = () => {
+        if (!panning) return;
+        panning = false;
+        updateGrabCursor();
+    };
+
+    img.addEventListener('mousedown', onImgMouseDown);
+    window.addEventListener('mousemove', onDocMouseMove);
+    window.addEventListener('mouseup', onDocMouseUp);
+
     let resizeTimer = null;
     const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(fit, 150); };
     window.addEventListener('resize', onResize);
 
-    const state = { scale: 1 };
-    const apply = () => { img.style.transform = `scale(${state.scale})`; };
-    const onZoomOut = () => { state.scale = Math.max(0.2, +(state.scale - 0.25).toFixed(2)); apply(); };
-    const onZoomIn = () => { state.scale = Math.min(5, +(state.scale + 0.25).toFixed(2)); apply(); };
+    // Tras cambiar el zoom, centra el área desplazable en la imagen.
+    const centerScroll = () => {
+        requestAnimationFrame(() => {
+            const c = contentRef.value;
+            if (!c) return;
+            c.scrollLeft = (c.scrollWidth - c.clientWidth) / 2;
+            c.scrollTop = (c.scrollHeight - c.clientHeight) / 2;
+        });
+    };
+
+    const zoomTo = (newScale) => {
+        state.scale = newScale;
+        apply();
+        centerScroll();
+    };
+    const onZoomOut = () => zoomTo(Math.max(0.2, +(state.scale - 0.25).toFixed(2)));
+    const onZoomIn = () => zoomTo(Math.min(5, +(state.scale + 0.25).toFixed(2)));
 
     currentSession = {
         type: 'image',
         zoomIn: onZoomIn,
         zoomOut: onZoomOut,
-        cleanupExtra: () => { window.removeEventListener('resize', onResize); clearTimeout(resizeTimer); },
+        cleanupExtra: () => {
+            img.removeEventListener('mousedown', onImgMouseDown);
+            window.removeEventListener('mousemove', onDocMouseMove);
+            window.removeEventListener('mouseup', onDocMouseUp);
+            window.removeEventListener('resize', onResize);
+            clearTimeout(resizeTimer);
+        },
     };
     showPager.value = false;
     showZoom.value = true;
@@ -746,6 +846,7 @@ watch(() => props.show, (val) => {
     if (val) {
         document.body.style.overflow = 'hidden';
         loadFile();
+        centrarDiferido(true);
     } else {
         document.body.style.overflow = '';
         cleanup();
@@ -789,6 +890,117 @@ function handleZoomOut() {
     if (currentSession && currentSession.zoomOut) currentSession.zoomOut();
 }
 
+// ── Navegación entre archivos de la lista ──
+const showFileNav = computed(() => props.total > 1);
+
+const stripRef = ref(null);
+
+// Todos los archivos de la lista (sin ventana): el carrusel mantiene el activo
+// centrado y el resto queda desplazado a los lados.
+const stripItems = computed(() => {
+    const total = props.total;
+    if (total < 1) return [];
+
+    const current = Math.min(Math.max(props.position, 1), total) - 1;
+    const fuente = Array.isArray(props.items) ? props.items : [];
+
+    return Array.from({ length: total }, (_, i) => {
+        const item = fuente[i] || {};
+        return {
+            i,
+            active: i === current,
+            url: item.url || '',
+            name: item.name || '',
+        };
+    });
+});
+
+/**
+ * Centra la miniatura activa dentro del filmstrip, estilo "selección de
+ * personaje": el archivo actual siempre queda en el medio y los demás se
+ * desplazan a los costados. `instant` evita la animación (al abrir el visor).
+ */
+function centrarMiniatura(instant = false) {
+    const cont = stripRef.value;
+    if (!cont) return;
+
+    const activo = cont.querySelector('[data-active="true"]');
+    if (!activo) return;
+
+    const destino = activo.offsetLeft - (cont.clientWidth - activo.clientWidth) / 2;
+
+    if (instant) {
+        const anterior = cont.style.scrollBehavior;
+        cont.style.scrollBehavior = 'auto';
+        cont.scrollLeft = destino;
+        cont.style.scrollBehavior = anterior;
+    } else {
+        cont.scrollLeft = destino;
+    }
+}
+
+/**
+ * Reintenta el centrado en el siguiente frame. Cubre los casos en que el ancho
+ * del filmstrip aún no está estabilizado justo después del cambio (fuentes,
+ * cambio de breakpoint, apertura del visor, etc.).
+ */
+function centrarDiferido(instant = false) {
+    nextTick(() => {
+        centrarMiniatura(instant);
+        requestAnimationFrame(() => centrarMiniatura(instant));
+    });
+}
+
+// Al cambiar de archivo (o de lista), recentra la miniatura activa.
+watch(() => props.position, () => centrarDiferido());
+watch(() => props.total, () => centrarDiferido(true));
+watch(() => props.items, () => centrarDiferido(true));
+
+// Si el filmstrip cambia de tamaño (resize, rotación, cambio de breakpoint),
+// vuelve a centrar la miniatura activa.
+let stripObserver = null;
+watch(stripRef, (el) => {
+    stripObserver?.disconnect();
+    stripObserver = null;
+
+    if (el && typeof ResizeObserver !== 'undefined') {
+        stripObserver = new ResizeObserver(() => centrarMiniatura(true));
+        stripObserver.observe(el);
+        centrarMiniatura(true);
+    }
+});
+
+function handleFilePrev() {
+    if (props.position > 1) emit('prev');
+}
+
+function handleFileNext() {
+    if (props.position < props.total) emit('next');
+}
+
+/**
+ * Permite desplazar el filmstrip con la rueda del mouse (traduciendo el
+ * desplazamiento vertical a horizontal). Si el filmstrip ya está en un extremo,
+ * no bloquea la rueda para no atrapar al usuario.
+ */
+function handleStripWheel(e) {
+    const cont = stripRef.value;
+    if (!cont) return;
+
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (!delta) return;
+
+    const antes = cont.scrollLeft;
+    const anterior = cont.style.scrollBehavior;
+    cont.style.scrollBehavior = 'auto';
+    cont.scrollLeft = antes + delta;
+    cont.style.scrollBehavior = anterior;
+
+    if (cont.scrollLeft !== antes) {
+        e.preventDefault();
+    }
+}
+
 // ── Atajos de teclado ──
 function handleKeydown(e) {
     if (!props.show) return;
@@ -800,6 +1012,18 @@ function handleKeydown(e) {
 
     const tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
+
+    // Navegación entre archivos de la lista con las flechas laterales.
+    if (e.key === 'ArrowLeft' && props.total > 1 && props.position > 1) {
+        e.preventDefault();
+        emit('prev');
+        return;
+    }
+    if (e.key === 'ArrowRight' && props.total > 1 && props.position < props.total) {
+        e.preventDefault();
+        emit('next');
+        return;
+    }
 
     if (!goToPageFn) return;
 
@@ -823,12 +1047,14 @@ onMounted(() => {
     if (props.show) {
         document.body.style.overflow = 'hidden';
         loadFile();
+        centrarDiferido(true);
     }
 });
 
 onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown);
     document.body.style.overflow = '';
+    stripObserver?.disconnect();
     cleanup();
     unbindScrollCancel();
 });
@@ -855,14 +1081,16 @@ onUnmounted(() => {
         >
             <!-- Barra de herramientas superior -->
             <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 bg-gray-900 text-white shrink-0 flex-wrap z-20 shadow-md">
-                <div class="flex items-center gap-2 min-w-0 max-w-[60vw] sm:max-w-[70vw]">
+                <!-- Título -->
+                <div class="flex items-center gap-2 min-w-0 flex-1 order-[1]">
                     <FileText class="w-4 h-4 text-indigo-400 shrink-0" />
                     <span class="text-sm sm:text-base font-semibold truncate text-slate-100" :title="name">
                         {{ name || 'Visualizador de Documento' }}
                     </span>
                 </div>
 
-                <div class="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <!-- Acciones: descargar y cerrar (siempre visibles, primera fila) -->
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto order-[2] sm:order-[3]">
                     <!-- Botón Descargar (oculto si el archivo no existe: 404) -->
                     <a 
                         v-if="(downloadUrl || url) && !fileMissing"
@@ -882,6 +1110,74 @@ onUnmounted(() => {
                         @click="emit('close')"
                     >
                         <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <!-- Navegación entre archivos: fila propia en móvil, inline en escritorio -->
+                <div
+                    v-if="showFileNav"
+                    class="flex items-center gap-1 order-[3] w-full min-w-0 sm:order-[2] sm:w-auto sm:mr-1"
+                >
+                    <button
+                        type="button"
+                        title="Archivo anterior (←)"
+                        :disabled="position <= 1"
+                        @click="handleFilePrev"
+                        class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors inline-flex items-center justify-center cursor-pointer border-0 outline-none shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        <ChevronLeft class="w-5 h-5" />
+                    </button>
+                    <div
+                        ref="stripRef"
+                        class="fv-strip relative flex items-center gap-1.5 py-1 overflow-x-auto scroll-smooth flex-1 min-w-0 sm:flex-none sm:w-[200px]"
+                        :title="`Archivo ${position} de ${total}`"
+                        role="group"
+                        aria-label="Archivos de la lista"
+                        @wheel="handleStripWheel"
+                    >
+                        <!-- Relleno lateral: permite centrar también el primero y el último -->
+                        <div class="w-1/2 shrink-0" aria-hidden="true"></div>
+
+                        <button
+                            v-for="item in stripItems"
+                            :key="item.i"
+                            type="button"
+                            :data-active="item.active ? 'true' : undefined"
+                            :aria-current="item.active ? 'true' : undefined"
+                            :aria-label="`Ir al archivo ${item.i + 1}`"
+                            :title="item.name || `Archivo ${item.i + 1}`"
+                            @click="emit('select', item.i)"
+                            class="relative w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center transition-all duration-200 ease-out cursor-pointer outline-none bg-slate-800"
+                            :class="item.active
+                                ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-900 scale-110 opacity-100'
+                                : 'ring-1 ring-white/10 opacity-50 hover:opacity-90'"
+                        >
+                            <img
+                                v-if="esImagenArchivo(item.name || item.url)"
+                                :src="item.url"
+                                :alt="item.name || 'imagen'"
+                                loading="lazy"
+                                class="w-full h-full object-cover"
+                            />
+                            <span
+                                v-else
+                                class="w-full h-full flex items-center justify-center border"
+                                :class="iconoArchivo(item.name).clase"
+                            >
+                                <component :is="iconoArchivo(item.name).cmp" class="w-3.5 h-3.5" />
+                            </span>
+                        </button>
+
+                        <div class="w-1/2 shrink-0" aria-hidden="true"></div>
+                    </div>
+                    <button
+                        type="button"
+                        title="Archivo siguiente (→)"
+                        :disabled="position >= total"
+                        @click="handleFileNext"
+                        class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors inline-flex items-center justify-center cursor-pointer border-0 outline-none shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        <ChevronRight class="w-5 h-5" />
                     </button>
                 </div>
             </div>
@@ -912,7 +1208,7 @@ onUnmounted(() => {
                     v-if="errorMsg && !loading"
                     class="min-h-full w-full flex items-center justify-center p-4"
                 >
-                    <div class="bg-white shadow-xl rounded-2xl p-8 max-w-md w-full text-center">
+                    <div class="bg-white shadow-xl rounded-2xl p-6 sm:p-8 max-w-md w-full text-center">
                         <AlertTriangle class="w-14 h-14 text-rose-500 mx-auto mb-4" />
                         <p class="text-slate-700 font-semibold mb-2">
                             {{ fileMissing ? 'Archivo no disponible' : 'Error al abrir el archivo' }}
@@ -939,7 +1235,7 @@ onUnmounted(() => {
                     v-if="isUnsupported && !loading"
                     class="min-h-full w-full flex items-center justify-center p-4"
                 >
-                    <div class="bg-white shadow-xl rounded-2xl p-8 max-w-md w-full text-center">
+                    <div class="bg-white shadow-xl rounded-2xl p-6 sm:p-8 max-w-md w-full text-center">
                         <FileQuestion class="w-14 h-14 text-slate-400 mx-auto mb-4" />
                         <h5 class="text-slate-800 font-bold text-sm mb-2">Previsualización no disponible</h5>
                         <p class="text-xs text-slate-500 mb-5 leading-relaxed">
@@ -957,10 +1253,32 @@ onUnmounted(() => {
                 </div>
             </div>
 
+            <!-- Flechas laterales para pasar de archivo (escritorio) -->
+            <template v-if="showFileNav">
+                <button
+                    type="button"
+                    title="Archivo anterior (←)"
+                    :disabled="position <= 1"
+                    @click="handleFilePrev"
+                    class="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 z-30 w-11 h-11 items-center justify-center rounded-full bg-gray-900/80 hover:bg-gray-900 text-white shadow-2xl border border-gray-600/70 backdrop-blur-md transition-colors cursor-pointer disabled:opacity-0 disabled:pointer-events-none"
+                >
+                    <ChevronLeft class="w-6 h-6" />
+                </button>
+                <button
+                    type="button"
+                    title="Archivo siguiente (→)"
+                    :disabled="position >= total"
+                    @click="handleFileNext"
+                    class="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 z-30 w-11 h-11 items-center justify-center rounded-full bg-gray-900/80 hover:bg-gray-900 text-white shadow-2xl border border-gray-600/70 backdrop-blur-md transition-colors cursor-pointer disabled:opacity-0 disabled:pointer-events-none"
+                >
+                    <ChevronRight class="w-6 h-6" />
+                </button>
+            </template>
+
             <!-- Panel flotante de controles: Paginación y Zoom (fijo sobre el contenido) -->
             <div 
                 v-if="showZoom || showPager"
-                class="flex flex-col items-center gap-1 absolute bottom-4 right-4 z-30 bg-gray-900/90 backdrop-blur-md border border-gray-600/80 rounded-xl p-1.5 text-white shadow-2xl"
+                class="flex flex-col items-center gap-1 absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-30 bg-gray-900/90 backdrop-blur-md border border-gray-600/80 rounded-xl p-1.5 text-white shadow-2xl"
             >
                 <!-- Paginador -->
                 <div v-if="showPager" class="flex flex-col items-center gap-1">
@@ -1023,6 +1341,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Filmstrip de miniaturas en móvil: se desplaza sin mostrar la barra. */
+.fv-strip {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.fv-strip::-webkit-scrollbar {
+    display: none;
+}
+
 :deep(.fv-xlsx-table) {
     background-color: white;
     border-radius: 8px;

@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\HasScopeTabs;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\Agenda;
+use App\Models\AgendaEvidencia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,8 @@ class AgendaViewController extends Controller
             ->join('users', 'users.id', '=', 'pro_agendas.idUser')
             ->where('users.institucion', $institucion)
             ->where('pro_agendas.estado', '1')
-            ->with('user')
+            ->with(['user', 'dias'])
+            ->withCount(['evidencias' => fn ($q) => $q->where('pro_agenda_evidencias.estado', 1)])
             ->get()
             ->map(fn ($e) => [
                 'id'       => $e->id,
@@ -39,6 +41,13 @@ class AgendaViewController extends Controller
                 'nomDocente' => $e->nomDocente ?? ($e->user->name ?? ''),
                 'start'    => $this->isoDateTime($e->start),
                 'end'      => $this->isoDateTime($e->end),
+                'evidencias' => (int) ($e->evidencias_count ?? 0),
+                'dias'     => $e->dias->map(fn ($d) => [
+                    'id'          => $d->id,
+                    'fecha'       => $d->fecha?->format('Y-m-d'),
+                    'hora_inicio' => $d->hora_inicio ? substr($d->hora_inicio, 0, 5) : null,
+                    'hora_fin'    => $d->hora_fin ? substr($d->hora_fin, 0, 5) : null,
+                ])->values(),
             ]);
 
         $tabs = $this->tabsAgenda('view');
@@ -100,7 +109,8 @@ class AgendaViewController extends Controller
             // Solo el año de inicio: filtrar también por `end` descartaba los
             // eventos que cruzan de año (11 en 2026), que no aparecían en
             // ningún año.
-            ->whereYear('pro_agendas.start', $anio);
+            ->whereYear('pro_agendas.start', $anio)
+            ->withCount(['evidencias' => fn ($q) => $q->where('pro_agenda_evidencias.estado', 1)]);
 
         if ($request->filled('instituciones')) {
             $query->where('users.institucion', $request->input('instituciones'));
@@ -131,6 +141,8 @@ class AgendaViewController extends Controller
         }
 
         $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
+
+        $this->adjuntarEvidenciasPreview($agendas);
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -178,7 +190,8 @@ class AgendaViewController extends Controller
             ->join("users", "users.id", "=", "pro_agendas.idUser")
             ->where('pro_agendas.estado', '1')
             // Ver comentario en ugel(): solo el año de inicio.
-            ->whereYear('pro_agendas.start', $anio);
+            ->whereYear('pro_agendas.start', $anio)
+            ->withCount(['evidencias' => fn ($q) => $q->where('pro_agenda_evidencias.estado', 1)]);
 
         if ($request->filled('ugels')) {
             $query->where('users.ugel', $request->input('ugels'));
@@ -213,6 +226,8 @@ class AgendaViewController extends Controller
 
         $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
 
+        $this->adjuntarEvidenciasPreview($agendas);
+
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('agenda._rows_general', ['agendas' => $agendas])->render(),
@@ -244,6 +259,52 @@ class AgendaViewController extends Controller
     public function buscarGeneral(Request $request)
     {
         return $this->general($request);
+    }
+
+    /**
+     * Adjunta a cada agenda de la página una vista previa (máx. `$limite`) de
+     * sus archivos, para pintar el "stack" de iconos del listado sin cargar
+     * todas las evidencias de todas las agendas. El total real ya viene en
+     * `pro_agendas.evidencias_count` (withCount).
+     */
+    private function adjuntarEvidenciasPreview($agendas, int $limite = 3): void
+    {
+        $items = $agendas instanceof \Illuminate\Contracts\Pagination\Paginator
+            ? $agendas->getCollection()
+            : collect($agendas);
+
+        // Salvaguarda para "per_page=all" (miles de agendas): no tiene sentido
+        // traer la vista previa de todas; el listado muestra el contador.
+        if ($items->isEmpty() || $items->count() > 200) {
+            return;
+        }
+
+        $porAgenda = AgendaEvidencia::query()
+            ->join('pro_agenda_dias', 'pro_agenda_dias.id', '=', 'pro_agenda_evidencias.agenda_dia_id')
+            ->whereIn('pro_agenda_dias.agenda_id', $items->pluck('id')->all())
+            ->where('pro_agenda_evidencias.estado', 1)
+            ->orderBy('pro_agenda_evidencias.id')
+            ->get([
+                'pro_agenda_evidencias.id',
+                'pro_agenda_evidencias.enlace',
+                'pro_agenda_evidencias.nombre_original',
+                'pro_agenda_dias.agenda_id',
+            ])
+            ->groupBy('agenda_id');
+
+        foreach ($items as $agenda) {
+            $preview = ($porAgenda[$agenda->id] ?? collect())
+                ->take($limite)
+                ->map(fn ($ev) => [
+                    'id'              => $ev->id,
+                    'enlace'          => $ev->enlace,
+                    'nombre_original' => $ev->nombre_original,
+                ])
+                ->values()
+                ->all();
+
+            $agenda->setAttribute('evidencias_preview', $preview);
+        }
     }
 
     /**

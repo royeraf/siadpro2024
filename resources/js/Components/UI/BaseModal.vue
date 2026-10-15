@@ -27,6 +27,14 @@ const props = defineProps({
         type: String,
         default: 'yellow',
     },
+    /**
+     * Color (hex) para teñir suavemente el encabezado y el cuerpo del modal,
+     * cuando se quiere reflejar un color elegido dinámicamente.
+     */
+    tint: {
+        type: String,
+        default: '',
+    },
     maxWidth: {
         type: String,
         default: '2xl',
@@ -138,6 +146,41 @@ const palette = {
 
 const currentPalette = computed(() => palette[props.color] || palette.yellow);
 
+/** Convierte #RRGGBB + alpha (0-1) a rgba(). Devuelve null si no es válido. */
+function tint(hex, alpha) {
+    const h = String(hex || '').replace('#', '');
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Fondo tenue del encabezado con el color elegido (o null si no hay). */
+const headerStyle = computed(() => {
+    if (!props.tint) return null;
+    return {
+        backgroundColor: tint(props.tint, 0.12),
+        borderBottomColor: tint(props.tint, 0.28),
+    };
+});
+
+/** Fondo tenue del cuerpo del modal con el color elegido (o null si no hay). */
+const bodyStyle = computed(() => {
+    if (!props.tint) return null;
+    return { backgroundColor: tint(props.tint, 0.12) };
+});
+
+/** Ficha del ícono en el color elegido (o null para usar la paleta). */
+const badgeStyle = computed(() => {
+    if (!props.tint) return null;
+    return {
+        backgroundColor: tint(props.tint, 0.18),
+        borderColor: tint(props.tint, 0.35),
+        color: props.tint,
+    };
+});
+
 const maxWidthClass = computed(() => {
     const map = {
         sm: 'max-w-sm',
@@ -199,18 +242,19 @@ onUnmounted(() => {
                 @submit.prevent="emit('submit')"
             >
                 <!-- ══ TIRADOR / DRAG HANDLE (MÓVIL BOTTOM SHEET) ══ -->
-                <div class="sm:hidden pt-3 pb-1 flex justify-center shrink-0 bg-white">
+                <div class="sm:hidden pt-3 pb-1 flex justify-center shrink-0 transition-colors duration-200" :style="headerStyle">
                     <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
                 </div>
 
                 <!-- ══ CABECERA DEL MODAL ══ -->
-                <div v-if="hasHeader" class="px-5 py-3.5 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <div v-if="hasHeader" class="px-5 py-3.5 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between shrink-0 transition-colors duration-200" :style="headerStyle">
                     <slot name="header">
                         <div class="flex items-center gap-3 min-w-0">
                             <div 
                                 v-if="icon" 
                                 class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                                 :class="currentPalette.badge"
+                                :style="badgeStyle"
                             >
                                 <component :is="getIconComponent()" class="w-5 h-5" />
                             </div>
@@ -238,7 +282,7 @@ onUnmounted(() => {
                 </div>
 
                 <!-- ══ CUERPO SCROLLABLE DEL MODAL ══ -->
-                <div class="px-5 py-4 sm:px-6 sm:py-6 overflow-y-auto flex-1 space-y-4">
+                <div class="px-5 py-4 sm:px-6 sm:py-6 overflow-y-auto flex-1 space-y-4 transition-colors duration-200" :style="bodyStyle">
                     <slot />
                 </div>
 
