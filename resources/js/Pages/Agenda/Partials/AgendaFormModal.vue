@@ -162,6 +162,13 @@ function limpiarHint() {
     eventoHint.value = '';
 }
 
+// Un solo listener para el textarea: Vue no admite dos atributos @keydown en
+// el mismo elemento, así que ambas reglas heredadas comparten handler.
+function validarTeclaEvento(e) {
+    bloquearEnter(e);
+    bloquearComilla(e);
+}
+
 const submit = handleSubmit((values) => {
     submitting.value = true;
 
@@ -255,8 +262,7 @@ const submit = handleSubmit((values) => {
                         errors.evento ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:ring-rose-400 focus:border-rose-400' : 'border-slate-300',
                         isView ? 'bg-slate-50 cursor-not-allowed' : ''
                     ]"
-                    @keydown="bloquearEnter"
-                    @keydown.shift.tab.exact="bloquearComilla"
+                    @keydown="validarTeclaEvento"
                     @keyup="limpiarHint"
                 ></textarea>
                 <p v-if="eventoHint" class="mt-1 text-xs text-rose-600 font-semibold flex items-center">
