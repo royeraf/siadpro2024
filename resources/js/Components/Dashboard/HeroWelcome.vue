@@ -13,13 +13,20 @@ defineProps({
             <div class="hero-welcome-content w-full sm:max-w-[65%]">
                 <h2 class="hero-title mb-2 font-extrabold text-slate-900 tracking-tight">Bienvenido(a)</h2>
                 <p class="hero-subtitle mb-0 text-slate-600 text-sm sm:text-base leading-relaxed">
-                    Hola, <strong class="text-slate-800 font-bold">{{ userName }}</strong>. Aquí encontrarás recursos y herramientas para fortalecer las experiencias de aprendizaje de tus niños y niñas.
+                    Hola, <strong class="text-slate-800 font-bold">{{ userName }}</strong>.
                 </p>
             </div>
             <img 
                 src="/img/dashboard/1553253269.svg" 
                 alt="Bienvenida" 
                 class="hero-welcome-img hidden sm:block pointer-events-none"
+            />
+            <!-- Ilustración como filtro en la mitad derecha (solo móvil) -->
+            <img
+                src="/img/dashboard/1553253269.svg"
+                alt=""
+                aria-hidden="true"
+                class="hero-welcome-filter sm:hidden pointer-events-none"
             />
         </div>
     </div>
@@ -62,5 +69,19 @@ defineProps({
     object-fit: contain;
     z-index: 1;
     pointer-events: none;
+}
+
+/* Móvil: la ilustración se muestra en la mitad derecha de la tarjeta (centrada verticalmente) */
+.hero-welcome-filter {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 50%;
+    height: auto;
+    opacity: 0.35;
+    pointer-events: none;
+    user-select: none;
+    z-index: 1;
 }
 </style>

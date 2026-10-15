@@ -12,6 +12,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(234, 179, 8, 0.18)',
             title: 'Acción de Sensibilización',
             icon: 'Megaphone',
+            img: '/img/dashboard/ilu-accion.svg',
         },
         difusion: {
             cardBg: '#E0E7FF',
@@ -25,6 +26,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(99, 102, 241, 0.18)',
             title: 'Acción de Difusión',
             icon: 'Radio',
+            img: '/img/dashboard/ilu-difusion.svg',
         },
         sector: {
             cardBg: '#E0F2FE',
@@ -38,6 +40,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(14, 165, 233, 0.18)',
             title: 'Sectores del Aula',
             icon: 'LayoutGrid',
+            img: '/img/dashboard/ilu-sector.svg',
         },
         evidencia: {
             cardBg: '#FFE4E6',
@@ -51,6 +54,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(244, 63, 94, 0.18)',
             title: 'Asistencia Técnica',
             icon: 'FileText',
+            img: '/img/dashboard/ilu-evidencia.svg',
         },
         informe: {
             cardBg: '#FFEDD5',
@@ -64,6 +68,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(249, 115, 22, 0.18)',
             title: 'Biblioteca del Aula',
             icon: 'BookOpen',
+            img: '/img/dashboard/ilu-informe.svg',
         },
         plan: {
             cardBg: '#CFFAFE',
@@ -77,6 +82,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(6, 182, 212, 0.18)',
             title: 'Espacio de Lectura en el Hogar',
             icon: 'BookHeart',
+            img: '/img/dashboard/ilu-plan.svg',
         },
         produccion: {
             cardBg: '#D1FAE5',
@@ -90,6 +96,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(16, 185, 129, 0.18)',
             title: 'Producción de Textos Infantiles',
             icon: 'NotebookPen',
+            img: '/img/dashboard/ilu-produccion.svg',
         },
         agenda: {
             cardBg: '#F3E8FF',
@@ -103,6 +110,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(168, 85, 247, 0.18)',
             title: 'Agenda de Lectura',
             icon: 'CalendarCheck',
+            img: '/img/dashboard/ilu-agenda.svg',
         },
     };
 
@@ -138,6 +146,7 @@ export function useThemeColors() {
             shadow: '0 6px 18px rgba(0, 0, 0, 0.05)',
             title: modulo.text,
             icon: 'Folder',
+            img: null,
         };
     }
 

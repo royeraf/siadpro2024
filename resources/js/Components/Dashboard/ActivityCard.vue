@@ -47,7 +47,16 @@ const iconComponent = icons[props.theme.icon] || Folder;
             boxShadow: theme.shadow,
         }"
     >
-        <div>
+        <!-- Ilustración como filtro de fondo (solo móvil) -->
+        <img
+            v-if="theme.img"
+            :src="theme.img"
+            alt=""
+            aria-hidden="true"
+            class="activity-card-filter sm:hidden"
+        />
+
+        <div class="relative z-10">
             <!-- Insignia con icono -->
             <div 
                 class="activity-icon-badge mb-3"
@@ -67,8 +76,8 @@ const iconComponent = icons[props.theme.icon] || Folder;
             </p>
         </div>
 
-        <!-- Botón de acción -->
-        <div class="flex items-center justify-between mt-auto pt-3">
+        <!-- Botón de acción + ilustración -->
+        <div class="relative z-10 flex items-end justify-between mt-auto pt-3">
             <a 
                 :href="href"
                 class="btn-module-action inline-flex items-center no-underline"
@@ -81,6 +90,14 @@ const iconComponent = icons[props.theme.icon] || Folder;
                 <span>Ir al módulo</span>
                 <i class="fas fa-arrow-right ml-1.5 text-xs"></i>
             </a>
+
+            <!-- Ilustración inferior derecha -->
+            <img
+                v-if="theme.img"
+                :src="theme.img"
+                alt=""
+                class="activity-card-img hidden sm:block pointer-events-none"
+            />
         </div>
     </div>
 </template>
@@ -125,5 +142,28 @@ const iconComponent = icons[props.theme.icon] || Folder;
 
 .btn-module-action:hover {
     filter: brightness(0.92);
+}
+
+.activity-card-img {
+    max-height: 72px;
+    max-width: 95px;
+    object-fit: contain;
+    margin-bottom: -8px;
+    margin-right: -4px;
+    pointer-events: none;
+}
+
+/* Móvil: la ilustración se muestra en la mitad derecha de la tarjeta (centrada verticalmente) */
+.activity-card-filter {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 50%;
+    height: auto;
+    opacity: 0.35;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
 }
 </style>
