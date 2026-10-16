@@ -1,0 +1,17 @@
+# Configuración de pnpm del proyecto.
+#
+# pnpm 10+ bloquea por defecto los scripts de build de las dependencias y,
+# desde pnpm 12, el install falla con ERR_PNPM_IGNORED_BUILDS si queda algún
+# script sin resolver. Aquí declaramos explícitamente el destino de cada uno:
+#
+#   - esbuild y @parcel/watcher: permitidos (compilación ligera / binarios).
+#   - canvas: requiere librerías nativas del sistema (cairo, pango) y no se usa
+#     en el build de Vite; se marca `false` para ignorarlo a propósito sin que
+#     el install falle.
+#
+# Se mantiene igual que el resto de la config de pnpm para que
+# `pnpm install --frozen-lockfile` funcione en cualquier máquina (incluido el VPS).
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  canvas: false
