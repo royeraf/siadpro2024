@@ -3,17 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
+use App\Http\Controllers\Concerns\ValidaDocumento;
 use Illuminate\Http\Request;
 use App\Models\Accion;
 use App\Models\User;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class AccionController extends Controller
 {
     use HasScopeTabs;
+    use ValidaDocumento;
+
+    /** Regla de tipo de archivo admitida por este recurso. */
+    protected $documentoTypeRule = 'mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg';
 
     public function __construct(){
         $this->middleware('auth');
@@ -63,9 +71,14 @@ class AccionController extends Controller
             });
         }
 
-        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('accion._rows', ['accions' => $accions])->render(),
                 'pagination' => (string) $accions->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -78,7 +91,17 @@ class AccionController extends Controller
 
         $tabs = $this->tabsAccion('index');
 
-        return view('accion.index', compact('accions', 'tabs'));
+        return Inertia::render('Accion/Index', [
+            'accions' => $accions,
+            'filters' => $request->only(['texto', 'lugar', 'fecha', 'buscar', 'per_page']),
+            'tabs'    => $tabs,
+            'can'     => [
+                'create'  => Auth::user()->can('accions.create'),
+                'edit'    => Auth::user()->can('accions.edit'),
+                'destroy' => Auth::user()->can('accions.destroy'),
+                'view'    => Auth::user()->can('accions.view'),
+            ],
+        ]);
     }
 
     /**
@@ -118,7 +141,7 @@ class AccionController extends Controller
      * usuario — antes este método leía `users.cargo` para autolimitarse, lo que
      * podía divergir del rol real de Spatie.
      */
-    private function accionsGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
+    private function accionsGeneralQuery(Request $request, ?int $forceUgelId = null, ?int $forceInstitucionId = null): array
     {
         $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
@@ -126,26 +149,32 @@ class AccionController extends Controller
                 'pro_accions.id', 'pro_accions.nombreAccion', 'pro_accions.descripcion',
                 'pro_accions.fecha', 'pro_accions.lugar',
                 'pro_accions.enlace',
-                'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
-                'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
+                'users.name', 'users.cargo', 'users.dni',
+                'institucions.nomInstitucion as institucion',
+                'institucions.provincia as provincia',
+                'institucions.distrito as distrito',
+                'ugeles.nombre as ugel'
             )
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join('users', 'users.id', '=', 'pro_accions.idUser')
+            ->leftJoin('institucions', 'institucions.id', '=', 'users.institucion_id')
+            ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_accions.estado', '1')
             ->where('pro_accions.tipo', 'sensibilizacion')
             ->whereYear('pro_accions.fecha', $anio);
 
-        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
+        $showFullFilters = $forceUgelId === null && $forceInstitucionId === null;
 
-        if ($forceInstitucion !== null) {
-            $query->where('users.institucion', $forceInstitucion);
-        } elseif ($forceUgel !== null) {
-            $query->where('users.ugel', $forceUgel);
+        if ($forceInstitucionId !== null) {
+            $query->where('users.institucion_id', $forceInstitucionId);
+        } elseif ($forceUgelId !== null) {
+            $query->where('users.ugel_id', $forceUgelId);
         } elseif ($showFullFilters) {
             if ($request->filled('ugels')) {
-                $query->where('users.ugel', $request->input('ugels'));
+                $query->where('ugeles.nombre', $request->input('ugels'));
             }
             if ($request->filled('instituciones')) {
-                $query->where('users.institucion', 'LIKE', '%' . $request->input('instituciones') . '%');
+                $query->where('institucions.nomInstitucion', 'LIKE', '%' . $request->input('instituciones') . '%');
             }
         }
 
@@ -171,6 +200,20 @@ class AccionController extends Controller
         }
 
         return [$query, $anio, $showFullFilters];
+    }
+
+    /**
+     * Expresión SQL que deriva "nivelinstitucion" (Escolarizado / No escolarizado -
+     * PRONOEI) desde institucions.nivel, para conservar la salida que antes venía
+     * de la columna legacy users.nivelinstitucion.
+     */
+    private function nivelInstitucionExpr(): string
+    {
+        return "CASE "
+            . "WHEN institucions.nivel LIKE '%no escolariz%' OR institucions.nivel LIKE '%pronoei%' "
+            . "THEN 'No escolarizado - PRONOEI' "
+            . "WHEN institucions.nivel IS NULL OR TRIM(institucions.nivel) = '' THEN NULL "
+            . "ELSE 'Escolarizado' END as nivelinstitucion";
     }
 
     private function paginateAccions(Request $request, $query)
@@ -222,64 +265,77 @@ class AccionController extends Controller
         [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request);
         $accions = $this->paginateAccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxAccionsResponse($request, $accions);
         }
 
-        return view('accion.general', [
+        $tabs = $this->tabsAccion('general');
+        $listaUgels = Ugel::orderBy('nombre')->pluck('nombre');
+        $listaAnios = $this->listaAniosAccion($anio);
+
+        return Inertia::render('Accion/General', [
             'accions' => $accions,
-            'anio' => $anio,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
-            'listaAnios' => $this->listaAniosAccion($anio),
+            'listaUgels' => $listaUgels,
+            'listaAnios' => $listaAnios,
             'filterActionRoute' => 'accions.view',
             'exportRoute' => 'exportAccionsGeneral',
-            'tableId' => 'tabla-acciones-general',
-            'tabs' => $this->tabsAccion('general'),
+            'scope' => 'general',
+            'tabs' => $tabs,
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'ugels', 'instituciones', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 
     public function ugel(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, Auth::user()->ugel);
+        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, Auth::user()->ugel_id);
         $accions = $this->paginateAccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxAccionsResponse($request, $accions);
         }
 
-        return view('accion.general', [
+        $tabs = $this->tabsAccion('ugel');
+        $listaAnios = $this->listaAniosAccion($anio);
+
+        return Inertia::render('Accion/General', [
             'accions' => $accions,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaAnios' => $this->listaAniosAccion($anio),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaAnios' => $listaAnios,
             'filterActionRoute' => 'accions.ugel',
             'exportRoute' => 'exportAccionsUgel',
-            'tableId' => 'tabla-acciones-ugel',
-            'tabs' => $this->tabsAccion('ugel'),
+            'scope' => 'ugel',
+            'tabs' => $tabs,
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 
     public function director(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, null, Auth::user()->institucion);
+        [$query, $anio, $showFullFilters] = $this->accionsGeneralQuery($request, null, Auth::user()->institucion_id);
         $accions = $this->paginateAccions($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxAccionsResponse($request, $accions);
         }
 
-        return view('accion.general', [
+        $tabs = $this->tabsAccion('director');
+        $listaAnios = $this->listaAniosAccion($anio);
+
+        return Inertia::render('Accion/General', [
             'accions' => $accions,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaAnios' => $this->listaAniosAccion($anio),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaAnios' => $listaAnios,
             'filterActionRoute' => 'accions.director',
             'exportRoute' => 'exportAccionsDirector',
-            'tableId' => 'tabla-acciones-director',
-            'tabs' => $this->tabsAccion('director'),
+            'scope' => 'director',
+            'tabs' => $tabs,
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
         ]);
     }
 
@@ -347,22 +403,25 @@ class AccionController extends Controller
 
     public function exportAccionsUgel(Request $request)
     {
-        [$query] = $this->accionsGeneralQuery($request, Auth::user()->ugel);
+        [$query] = $this->accionsGeneralQuery($request, Auth::user()->ugel_id);
         return $this->streamAccionesExport($query, 'acciones_sensibilizacion_ugel');
     }
 
     public function exportAccionsDirector(Request $request)
     {
-        [$query] = $this->accionsGeneralQuery($request, null, Auth::user()->institucion);
+        [$query] = $this->accionsGeneralQuery($request, null, Auth::user()->institucion_id);
         return $this->streamAccionesExport($query, 'acciones_sensibilizacion_director');
     }
 
     public function profesorcoordinador()
     {
-        $institucion = Auth::user()->institucion;
-        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.descripcion","pro_accions.enlace","pro_accions.fecha","pro_accions.lugar","users.name","users.institucion","users.provincia","users.distrito","users.ugel","users.dni")
+        $institucionId = Auth::user()->institucion_id;
+        $accions = Accion::select("pro_accions.id","pro_accions.nombreAccion","pro_accions.descripcion","pro_accions.enlace","pro_accions.fecha","pro_accions.lugar","users.name","users.dni","institucions.nomInstitucion as institucion","institucions.provincia as provincia","institucions.distrito as distrito","ugeles.nombre as ugel")
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join("users","users.id","=","pro_accions.idUser")
-            ->where("users.institucion", $institucion)
+            ->leftJoin("institucions","institucions.id","=","users.institucion_id")
+            ->leftJoin("ugeles","ugeles.id","=","users.ugel_id")
+            ->where("users.institucion_id", $institucionId)
             ->where('pro_accions.estado', '1')
             ->where('pro_accions.tipo', 'sensibilizacion')
             ->orderby('pro_accions.fecha','desc')
@@ -403,12 +462,8 @@ class AccionController extends Controller
             'lugar'        => 'required|string|max:191',
             'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
-            'documento'    => 'required|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
-        ], [
-            'documento.required' => 'Debe adjuntar un archivo para el registro.',
-            'documento.max'      => 'El archivo no debe ser superior a 10MB.',
-            'documento.mimes'    => 'El tipo de archivo no es compatible.',
-        ]);
+            'documento' => $this->documentoRules(),
+        ], $this->documentoMessages());
 
         $file = $request->file('documento');
         $extension = $file->getClientOriginalExtension();
@@ -452,11 +507,8 @@ class AccionController extends Controller
             'lugar'        => 'required|string|max:191',
             'descripcion'  => 'nullable|string',
             'fecha'        => 'required|date',
-            'documento'    => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg|max:10240',
-        ], [
-            'documento.max'   => 'El archivo no debe ser superior a 10MB.',
-            'documento.mimes' => 'El tipo de archivo no es compatible.',
-        ]);
+            'documento' => $this->documentoRules(false),
+        ], $this->documentoMessages(false));
 
         $accion->nombreAccion = $request->get('nombreAccion');
         $accion->lugar = $request->get('lugar');
@@ -500,18 +552,18 @@ class AccionController extends Controller
         $anio = $request->input('anio');
         
         $query = DB::table('pro_accions')
-            ->select('users.ugel', DB::raw('count(distinct pro_accions.idUser) as docentes_count'))
+            ->select('ugeles.nombre as ugel', DB::raw('count(distinct pro_accions.idUser) as docentes_count'))
             ->join('users', 'pro_accions.idUser', '=', 'users.id')
+            ->join('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_accions.tipo', 'sensibilizacion')
-            ->where('pro_accions.estado', '1')
-            ->whereRaw("LENGTH(users.ugel) > 0");
-        
+            ->where('pro_accions.estado', '1');
+
         // Solo aplicar filtro por año si se proporciona uno
         if ($anio) {
             $query->whereYear('fecha', $anio);
         }
         
-        $ugels = $query->groupBy('users.ugel')->get();
+        $ugels = $query->groupBy('ugeles.nombre')->get();
 
         return response()->json($ugels);
     }
@@ -531,37 +583,34 @@ class AccionController extends Controller
                 $ugelSeleccionada = Auth::user()->ugel;
                 break;
             default:
+                $ugelSeleccionada = null;
                 break;
         }
         
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
+        
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_accions', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_accions.idUser')
                     ->where('pro_accions.estado', '=', '1')
                     ->where('pro_accions.tipo', '=', 'sensibilizacion')
                     ->whereYear('pro_accions.fecha', '=', $anio); // Agregar filtro por año
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_accions.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_accions', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_accions.idUser')
                     ->where('pro_accions.estado', '=', '1')
                     ->where('pro_accions.tipo', '=', 'sensibilizacion')
                     ->whereYear('pro_accions.fecha', '=', $anio); // Agregar filtro por año
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
@@ -592,30 +641,25 @@ class AccionController extends Controller
                     break;
             }
             
+            $ugelId = Ugel::resolverId($ugel);
             $term = $request->input('term');
 
             $resultados = DB::table('institucions')
-                ->leftJoin('users', function($join) {
-                    $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                        ->on('institucions.ugel', '=', 'users.ugel');
-                })
+                ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
                 ->leftJoin('pro_accions', function($join) use ($anio) {
                     $join->on('users.id', '=', 'pro_accions.idUser')
                         ->where('pro_accions.estado', '=', '1')
                         ->whereYear('pro_accions.fecha', '=', $anio); // Agregar filtro por año
                 })
-                ->where('institucions.ugel', '=', $ugel)
+                ->where('institucions.ugel_id', '=', $ugelId)
                 ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
                 ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_accions.idUser) as agendas_count'))
                 ->groupBy('institucions.nomInstitucion')
                 ->get();
 
             $totalDocentes = DB::table('institucions')
-                ->leftJoin('users', function($join) {
-                    $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                        ->on('institucions.ugel', '=', 'users.ugel');
-                })
-                ->where('institucions.ugel', '=', $ugel)
+                ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+                ->where('institucions.ugel_id', '=', $ugelId)
                 ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
                 ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
                 ->groupBy('institucions.nomInstitucion')
@@ -642,16 +686,25 @@ class AccionController extends Controller
             }
 
             $institucionSeleccionada = $request->input('docente');
+            $institucionId = Institucion::where('nomInstitucion', $institucionSeleccionada)->value('id');
+            $ugelId = Ugel::resolverId($ugelSeleccionada);
                 
-            $docentes = DB::table('users')
+            $query = DB::table('users')
                 ->leftJoin('pro_accions', function($join) use ($anio) {
                     $join->on('users.id', '=', 'pro_accions.idUser')
                         ->where('pro_accions.estado', '=', '1')
                         ->where('pro_accions.tipo', '=', 'sensibilizacion')
                         ->whereYear('pro_accions.fecha', '=', $anio); // Agregar filtro por año
-                })
-                ->where('users.institucion', '=', $institucionSeleccionada)
-                ->where('users.ugel', 'like', '%' . $ugelSeleccionada . '%')
+                });
+
+            if ($institucionId) {
+                $query->where('users.institucion_id', '=', $institucionId);
+            }
+            if ($ugelId) {
+                $query->where('users.ugel_id', '=', $ugelId);
+            }
+
+            $docentes = $query
                 ->select('users.name', DB::raw('count(pro_accions.id) as agendas_count'))
                 ->groupBy('users.name')
                 ->having('agendas_count', '>=', 0)
@@ -664,15 +717,21 @@ class AccionController extends Controller
                 $institucion = $request->input('institucion'); 
                 $term = $request->input('term');
                 $anio = $request->input('anio', '2026'); // Obtener el año seleccionado
-                
-                $docentes = DB::table('users')
+                $institucionId = Institucion::where('nomInstitucion', $institucion)->value('id');
+
+                $query = DB::table('users')
                     ->leftJoin('pro_accions', function($join) use ($anio) {
                         $join->on('users.id', '=', 'pro_accions.idUser')
                             ->where('pro_accions.estado', '=', '1')
                             ->where('pro_accions.tipo', '=', 'sensibilizacion')
                             ->whereYear('pro_accions.fecha', '=', $anio); // Agregar filtro por año
-                    })
-                    ->where('users.institucion', '=', $institucion)
+                    });
+
+                if ($institucionId) {
+                    $query->where('users.institucion_id', '=', $institucionId);
+                }
+
+                $docentes = $query
                     ->where('users.name', 'like', '%' . $term . '%')
                     ->select('users.name', DB::raw('count(pro_accions.idUser) as agendas_count'))
                     ->groupBy('users.name')
@@ -709,10 +768,16 @@ class AccionController extends Controller
         $query = Accion::select(
             "pro_accions.id", "pro_accions.nombreAccion",
             "pro_accions.descripcion", "pro_accions.fecha", 
-            "pro_accions.lugar", "users.name", "users.institucion", "users.provincia", 
-            "users.cargo", "users.nivelinstitucion", "users.distrito", "users.ugel", "users.dni"
+            "pro_accions.lugar", "users.name", "users.cargo", "users.dni",
+            "institucions.nomInstitucion as institucion",
+            "institucions.provincia as provincia",
+            "institucions.distrito as distrito",
+            "ugeles.nombre as ugel"
         )
+        ->addSelect(DB::raw($this->nivelInstitucionExpr()))
         ->join("users", "users.id", "=", "pro_accions.idUser")
+        ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+        ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
         ->where('pro_accions.estado', '1')
         ->where("pro_accions.tipo", "sensibilizacion");
         
@@ -735,7 +800,7 @@ class AccionController extends Controller
                 $query->where(function($q) use ($ugelParts) {
                     foreach ($ugelParts as $part) {
                         if (!empty($part)) {
-                            $q->where("users.ugel", "LIKE", "%{$part}%");
+                            $q->where("ugeles.nombre", "LIKE", "%{$part}%");
                         }
                     }
                 });
@@ -743,7 +808,7 @@ class AccionController extends Controller
         }
         
         if (!empty($institucion)) {
-            $query->where("users.institucion", "LIKE", "%{$institucion}%");
+            $query->where("institucions.nomInstitucion", "LIKE", "%{$institucion}%");
         }
         
         if (!empty($docente)) {
@@ -752,14 +817,12 @@ class AccionController extends Controller
         
         // Si es especialista UGEL, filtrar por su UGEL
         if ($cargo == 'Especialista UGEL') {
-            $ugeluser = Auth::user()->ugel;
-            $query->where("users.ugel", $ugeluser);
+            $query->where("users.ugel_id", Auth::user()->ugel_id);
         }
         
         // Si es director, filtrar por su institución
         if ($cargo == 'Director' || $cargo == 'Docente' || $cargo == 'PC') {
-            $institucionUser = Auth::user()->institucion;
-            $query->where("users.institucion", $institucionUser);
+            $query->where("users.institucion_id", Auth::user()->institucion_id);
         }
         
         // Antes de ejecutar la consulta, obtener la consulta SQL para depuración

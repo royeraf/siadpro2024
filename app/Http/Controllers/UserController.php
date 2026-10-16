@@ -5,11 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Services\ReniecService;
+use App\Services\Security\SecurityCatalog;
 
 class UserController extends Controller
 {
@@ -17,7 +22,7 @@ class UserController extends Controller
         $this->middleware('auth');
         $this->middleware('can:users.index')->only('index', 'exportUsers');
         $this->middleware('can:users.create')->only('create', 'store');
-        $this->middleware('can:users.edit')->only('edit', 'update');
+        $this->middleware('can:users.edit')->only('edit', 'update', 'access', 'syncAccess');
         $this->middleware('can:users.destroy')->only('destroy');
     }
 
@@ -27,31 +32,20 @@ class UserController extends Controller
     }
 
     /**
-     * Jerarquía escalonada de asignación de roles: cada rol solo puede
-     * asignar su propio nivel o niveles inferiores, nunca superiores.
-     * Admin no aparece aquí porque isAdmin() ya deja pasar cualquier rol.
-     */
-    private const ROLE_HIERARCHY = [
-        'EspecDRE'  => ['EspecDRE', 'EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
-        'EspecUGEL' => ['EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
-        'Director'  => ['Director', 'Docente', 'PC', 'PEC'],
-        'Docente'   => ['Docente', 'PC', 'PEC'],
-        'PC'        => ['Docente', 'PC', 'PEC'],
-        'PEC'       => ['Docente', 'PC', 'PEC'],
-    ];
-
-    /**
      * Roles que el usuario autenticado puede asignar a otros, según la
-     * jerarquía escalonada (nunca por encima de su propio nivel).
+     * jerarquía escalonada de config/security.php (nunca por encima de su
+     * propio nivel). Admin tiene acceso total y se resuelve aparte.
      */
     private function assignableRoles()
     {
+        $catalog = app(SecurityCatalog::class);
+
         if ($this->isAdmin()) {
-            return Role::all();
+            return $catalog->orderedRoles();
         }
 
         $assignableNames = collect(Auth::user()->roles->pluck('name'))
-            ->flatMap(fn ($roleName) => self::ROLE_HIERARCHY[$roleName] ?? [])
+            ->flatMap(fn ($roleName) => $catalog->assignmentFor($roleName))
             ->unique();
 
         return Role::whereIn('name', $assignableNames)->get();
@@ -86,34 +80,44 @@ class UserController extends Controller
         }
 
         if ($request->filled('ugel')) {
-            $usersQuery->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
+            $usersQuery->whereHas('ugelRel', function ($q) use ($request) {
+                $q->where('nombre', 'LIKE', "%{$request->input('ugel')}%");
+            });
         }
 
         if ($request->filled('institucion')) {
             // Coincidencia exacta: el filtro es un combo con valores exactos.
             // Con LIKE, filtrar "066" tambien traia "32066" ("066" es subcadena).
-            $usersQuery->where('institucion', trim($request->input('institucion')));
+            $usersQuery->whereHas('institucionRel', function ($q) use ($request) {
+                $q->where('nomInstitucion', trim($request->input('institucion')));
+            });
         }
 
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
             $usersQuery->where(function ($q) use ($buscar) {
-                foreach (['dni', 'name', 'email', 'cargo', 'institucion', 'ugel', 'provincia', 'distrito'] as $col) {
+                foreach (['dni', 'name', 'email', 'cargo'] as $col) {
                     $q->orWhere($col, 'LIKE', "%{$buscar}%");
                 }
+                $q->orWhereHas('institucionRel', fn ($i) => $i->where('nomInstitucion', 'LIKE', "%{$buscar}%"))
+                  ->orWhereHas('ugelRel', fn ($u) => $u->where('nombre', 'LIKE', "%{$buscar}%"));
             });
         }
 
         $perPage = $this->resolvePerPage($request);
 
-        $users = $usersQuery->orderBy('id', 'desc')
+        $users = $usersQuery->with(['roles:id,name,label', 'institucionRel:id,nomInstitucion,nivel,provincia,distrito', 'ugelRel:id,nombre,provincia,distrito'])
+                            ->orderBy('id', 'desc')
                             ->paginate($perPage)
                             ->withQueryString();
 
         $listaUgels = $this->listaUgels($estado);
         $listaInstituciones = $this->listaInstituciones($estado, $request->input('ugel'));
 
-        if ($request->ajax()) {
+        // El datatable Blade legacy pide filas por ajax; Inertia también envía
+        // X-Requested-With, así que hay que excluir X-Inertia para no devolver
+        // JSON cuando el cliente SPA cambia de pestaña.
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('user._rows', ['users' => $users])->render(),
                 'pagination' => (string) $users->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -129,7 +133,49 @@ class UserController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
-        return view('user.index', compact('users', 'listaUgels', 'listaInstituciones', 'estado', 'conteos'));
+        // Listado SPA (Inertia). El branch de arriba (ajax sin X-Inertia)
+        // sigue alimentando al datatable Blade legacy con user._rows.
+        return Inertia::render('Users/Index', [
+            'users' => $users,
+            'estado' => $estado,
+            'conteos' => [
+                '1' => (int) ($conteos['1'] ?? 0),
+                '0' => (int) ($conteos['0'] ?? 0),
+            ],
+            'listaUgels' => $listaUgels,
+            'listaInstituciones' => $listaInstituciones,
+            'roles' => $this->assignableRoles(),
+            'filters' => $request->only(['estado', 'texto', 'cargos', 'ugel', 'institucion', 'buscar', 'per_page']),
+            'tabs' => $this->tabsUsuarios($estado, $conteos, $request->only(['texto', 'cargos', 'ugel', 'institucion', 'buscar'])),
+            'can' => [
+                'create' => Auth::user()->can('users.create'),
+                'edit' => Auth::user()->can('users.edit'),
+                'destroy' => Auth::user()->can('users.destroy'),
+            ],
+        ]);
+    }
+
+    /**
+     * Tabs "Activos" / "Inhabilitados" conservando los filtros vigentes y
+     * con el conteo embebido en la etiqueta (los badges de píldora del
+     * Blade legacy no existen en SectionTabs).
+     */
+    private function tabsUsuarios(string $estado, $conteos, array $filtros): array
+    {
+        return [
+            [
+                'label'  => 'Usuarios Activos (' . number_format((int) ($conteos['1'] ?? 0)) . ')',
+                'url'    => route('users.index', array_merge($filtros, ['estado' => '1'])),
+                'route'  => 'users.estado.1',
+                'active' => $estado === '1',
+            ],
+            [
+                'label'  => 'Usuarios Inhabilitados (' . number_format((int) ($conteos['0'] ?? 0)) . ')',
+                'url'    => route('users.index', array_merge($filtros, ['estado' => '0'])),
+                'route'  => 'users.estado.0',
+                'active' => $estado === '0',
+            ],
+        ];
     }
 
     public function create()
@@ -152,27 +198,55 @@ class UserController extends Controller
 
     private function listaUgels(string $estado)
     {
-        return User::where('estado', $estado)
-            ->whereNotNull('ugel')
-            ->where('ugel', '!=', '')
-            ->distinct()
-            ->orderBy('ugel')
-            ->pluck('ugel');
+        // Catálogo completo de UGEL (ordenado). Mantener el parámetro por
+        // compatibilidad con la firma, aunque el catálogo no dependa de `estado`.
+        return Ugel::orderBy('nombre')->pluck('nombre');
     }
 
     private function listaInstituciones(string $estado, ?string $ugelFiltrada = null)
     {
         $query = User::where('estado', $estado)
-            ->whereNotNull('institucion')
-            ->where('institucion', '!=', '');
+            ->whereNotNull('institucion_id');
 
         if (!empty($ugelFiltrada)) {
-            $query->where('ugel', 'LIKE', "%{$ugelFiltrada}%");
+            $query->whereHas('ugelRel', function ($q) use ($ugelFiltrada) {
+                $q->where('nombre', 'LIKE', "%{$ugelFiltrada}%");
+            });
         }
 
-        return $query->distinct()
-            ->orderBy('institucion')
-            ->pluck('institucion');
+        return $query->with('institucionRel:id,nomInstitucion')
+            ->get()
+            ->pluck('institucionRel.nomInstitucion')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+    }
+
+    /**
+     * Resuelve institucion_id desde texto libre (nombre o código modular).
+     */
+    private function resolverInstitucionId(?string $texto): ?int
+    {
+        $texto = trim((string) $texto);
+        if ($texto === '') {
+            return null;
+        }
+
+        $institucion = Institucion::where('nomInstitucion', $texto)
+            ->orWhere('codModular', $texto)
+            ->orWhere('codModular', ltrim($texto, '0'))
+            ->first(['id']);
+
+        return $institucion?->id;
+    }
+
+    /**
+     * Resuelve ugel_id desde texto libre usando la clave normalizada de Ugel.
+     */
+    private function resolverUgelId(?string $texto): ?int
+    {
+        return Ugel::resolverId($texto);
     }
 
     public function checkDni(Request $request, string $dni, ReniecService $reniecService)
@@ -194,7 +268,8 @@ class UserController extends Controller
             $query->where('id', '!=', $excludeId);
         }
 
-        $user = $query->first(['id', 'name', 'email', 'cargo', 'institucion', 'ugel', 'estado']);
+        $user = $query->with(['institucionRel:id,nomInstitucion', 'ugelRel:id,nombre'])
+            ->first(['id', 'name', 'email', 'cargo', 'estado', 'institucion_id', 'ugel_id']);
 
         if ($user) {
             $estadoTexto = (int) $user->estado === 1 ? 'Activo' : 'Inactivo';
@@ -280,15 +355,12 @@ class UserController extends Controller
         $user->created_by = Auth::id();
         $user->name = Str::upper($request->get('name'));
         $user->email = trim($request->get('email'));
-        $user->ugel = $request->filled('ugel') ? Str::upper($request->get('ugel')) : null;
-        $user->institucion = $request->filled('institucion') ? Str::upper($request->get('institucion')) : null;
         $user->dni = trim($request->get('dni'));
-        $user->nivelinstitucion = $request->get('nivelinstitucion');
         $user->cargo = $request->get('cargo');
-        $user->distrito = $request->filled('distrito') ? Str::upper($request->get('distrito')) : null;
-        $user->provincia = $request->filled('provincia') ? Str::upper($request->get('provincia')) : null;
         $user->estado = (int) $request->get('estado');
         $user->password = bcrypt($request->get('password'));
+        $user->institucion_id = $this->resolverInstitucionId($request->get('institucion'));
+        $user->ugel_id = $this->resolverUgelId($request->get('ugel'));
         $user->save();
 
         return redirect()->route('users.index', ['estado' => $user->estado])
@@ -310,8 +382,11 @@ class UserController extends Controller
     {
         // abort_unless($this->isAdmin() || $user->created_by === Auth::id(), 403);
 
-        // El formulario de asignación de roles (user.edit) solo envía "roles[]"
-        if ($request->has('roles') && !$request->has('name')) {
+        // El formulario de asignación de roles envía solo "roles[]" (Blade
+        // legacy) o el marcador "roles_form=1" (modal Inertia), que permite
+        // enviar además una lista vacía para quitar todos los roles sin caer
+        // en la rama de "datos del usuario" de abajo.
+        if (($request->has('roles') || $request->boolean('roles_form')) && !$request->has('name')) {
             $validated = $request->validate([
                 'roles' => 'array',
                 'roles.*' => 'integer|exists:roles,id',
@@ -365,12 +440,7 @@ class UserController extends Controller
         $user->dni = trim($request->get('dni'));
         $user->name = Str::upper($request->get('name'));
         $user->email = trim($request->get('email'));
-        $user->ugel = $request->filled('ugel') ? Str::upper($request->get('ugel')) : null;
-        $user->institucion = $request->filled('institucion') ? Str::upper($request->get('institucion')) : null;
-        $user->nivelinstitucion = $request->get('nivelinstitucion');
         $user->cargo = $request->get('cargo');
-        $user->distrito = $request->filled('distrito') ? Str::upper($request->get('distrito')) : null;
-        $user->provincia = $request->filled('provincia') ? Str::upper($request->get('provincia')) : null;
         $user->estado = (int) $request->get('estado');
 
         // Solo actualizar la contraseña si se proporciona una nueva
@@ -383,10 +453,75 @@ class UserController extends Controller
             $user->roles()->sync($this->filterAssignableRoles($request->roles));
         }
 
+        $user->institucion_id = $this->resolverInstitucionId($request->get('institucion'));
+        $user->ugel_id = $this->resolverUgelId($request->get('ugel'));
+
         $user->save();
 
         return redirect()->route('users.index', ['estado' => $user->estado])
             ->with('success', 'Usuario actualizado correctamente.');
+    }
+
+    /**
+     * Acceso efectivo de un usuario (roles + permisos por rol + permisos
+     * directos), agrupado por módulo. Alimenta el modal "Accesos" de la SPA.
+     */
+    public function access(User $user, SecurityCatalog $catalog)
+    {
+        $assignable = $this->assignableRoles();
+
+        // Mapa rol → permisos. Permite que el modal calcule el candado EN VIVO
+        // según los roles que el operador tenga marcados (no solo los que el
+        // usuario tenía al abrir). Se incluyen tanto los roles asignables como
+        // los que ya tiene el usuario (por si alguno no es asignable).
+        $rolePermissions = [];
+        foreach ($assignable->merge($user->roles()->get())->unique('id') as $role) {
+            $rolePermissions[$role->name] = $role->permissions->pluck('name')->all();
+        }
+
+        return response()->json([
+            'user'             => [
+                'id'    => $user->id,
+                'name'  => $user->name,
+                'cargo' => $user->cargo,
+            ],
+            'access'           => $catalog->accessFor($user),
+            'assignable_roles' => $assignable
+                ->map(fn (Role $role) => [
+                    'id'      => $role->id,
+                    'name'    => $role->name,
+                    'label'   => $catalog->labelFor($role),
+                    'level'   => $catalog->roleDefinitions()[$role->name]['level'] ?? 0,
+                ])->values(),
+            'role_permissions' => $rolePermissions,
+        ]);
+    }
+
+    /**
+     * Sincroniza los roles y los permisos directos de un usuario.
+     *
+     * Los roles se filtran por la jerarquía del operador (evita escalada de
+     * privilegios) y los permisos directos se restringen al catálogo canónico.
+     */
+    public function syncAccess(Request $request, User $user, SecurityCatalog $catalog)
+    {
+        $validated = $request->validate([
+            'roles'         => ['sometimes', 'array'],
+            'roles.*'       => ['string', Rule::exists('roles', 'name')->where('guard_name', $catalog->guard())],
+            'permissions'   => ['sometimes', 'array'],
+            'permissions.*' => [Rule::in($catalog->permissionNames())],
+        ]);
+
+        $assignable = $this->assignableRoles()->pluck('name')->all();
+        $roleNames = array_values(array_intersect($validated['roles'] ?? [], $assignable));
+
+        $user->syncRoles($roleNames);
+        $user->syncPermissions($validated['permissions'] ?? []);
+
+        $catalog->forgetCache();
+
+        return redirect()->route('users.index', ['estado' => $user->estado])
+            ->with('success', 'Accesos del usuario actualizados correctamente.');
     }
 
     public function destroy($id)
@@ -411,14 +546,10 @@ class UserController extends Controller
 
     public function obtenerUgels()
     {
-        $ugels = \DB::table('users')
-            ->select('ugel')
-            ->where('ugel', '!=', '')
-            ->whereNotNull('ugel')
-            ->distinct()
-            ->orderBy('ugel')
+        $ugels = Ugel::select('nombre as ugel')
+            ->orderBy('nombre')
             ->get();
-        
+
         return response()->json($ugels);
     }
 
@@ -437,15 +568,21 @@ class UserController extends Controller
         }
 
         if ($request->filled('ugel')) {
-            $query->where('ugel', 'LIKE', "%{$request->input('ugel')}%");
+            $query->whereHas('ugelRel', function ($q) use ($request) {
+                $q->where('nombre', 'LIKE', "%{$request->input('ugel')}%");
+            });
         }
 
         if ($request->filled('institucion')) {
             // Coincidencia exacta, igual que en index (evita que "066" traiga "32066").
-            $query->where('institucion', trim($request->input('institucion')));
+            $query->whereHas('institucionRel', function ($q) use ($request) {
+                $q->where('nomInstitucion', trim($request->input('institucion')));
+            });
         }
 
-        $users = $query->orderBy('id', 'desc')->get();
+        $users = $query->with(['institucionRel:id,nomInstitucion,nivel,provincia,distrito', 'ugelRel:id,nombre,provincia,distrito'])
+            ->orderBy('id', 'desc')
+            ->get();
 
         $filename = ($estado === '1' ? 'usuarios_activos_' : 'usuarios_inhabilitados_') . date('Y-m-d') . '.xls';
 

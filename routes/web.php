@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EvidenciaController;
 use App\Http\Controllers\AgendaViewController;
 use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\AgendaEvidenciaController;
 use App\Http\Controllers\AccionController;
 use App\Http\Controllers\DifusionController;
 use App\Http\Controllers\InformeController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\InstitucionController;
+use App\Http\Controllers\Security\RoleController;
 
 
 
@@ -38,29 +40,31 @@ Route::get("/sector", ['App\Http\Controllers\SectorController'::class, "index"]
 )->name('sector.index');
 
 Route::get('/', function () {
-    return view('auth.login');
+    return \Inertia\Inertia::render('Auth/Login');
      //return view('welcomenp');
 })->middleware('guest');
 
 
 Route::get('/home', function () {
-    return view('auth.login');
+    return \Inertia\Inertia::render('Auth/Login');
      //return view('welcomenp');        
 })->middleware('guest');
 
-Route::middleware([
-    'auth:sanctum',
-    config('jetstream.auth_session'),
-    'verified'
-])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// PANEL
+//
+// Son dos pantallas distintas y separadas a propósito:
+//   /inicio     → bienvenida y accesos rápidos (InicioController), sin cambios.
+//   /dashboard  → dashboard de métricas, adaptado al perfil (Dashboard\DashboardController).
+// ─────────────────────────────────────────────────────────────────────────────
 
 Route::get('/inicio', [App\Http\Controllers\InicioController::class, 'index'])
     ->middleware('auth')
     ->name('inicio');
+
+Route::get('/dashboard', [App\Http\Controllers\Dashboard\DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('dashboard');
 
 //RUTAS DE INSITUCIONES/INTERNET-----------------------------------------------
 
@@ -75,7 +79,7 @@ Route::post('/interInstitucion/buscar', function (Illuminate\Http\Request $reque
     $codModular = $request->input('Codigo_Modular');
 
     //$revision["rev"] = DB::select("select * from internet_institucionesh where codigoModular = $codModular");
-    $data["datos"] = DB::select("select * from institucions where codModular = $codModular");
+    $data["datos"] = DB::table('institucions')->where('codModular', $codModular)->get();
     /*if (count($revision) == 0) {
 
         $data["datos"] = DB::select("select * from institucions where codModular = $codModular");
@@ -93,22 +97,19 @@ Route::post('/interInstitucion/buscar_index', function (Illuminate\Http\Request 
 
     $codModular = $request->input('Codigo_Modular');
 
-    $revision["rev"] = DB::select("select * from internet_institucionesh where codigoModular = $codModular");
-    $data["datos"] = DB::select("select * from institucions where codModular = $codModular");
+    $revision["rev"] = DB::table('internet_institucionesh')->where('codigoModular', $codModular)->get();
+    $data["datos"] = DB::table('institucions')->where('codModular', $codModular)->get();
 
     $usuario = Auth::user()->name;
     $ugel = Auth::user()->provincia;
 
-        $dat_user = DB::select("select roles.name as rol
-                                from users
-                                inner join model_has_roles as m
-                                on m.model_id= users.id
-                                inner join roles
-                                on m.role_id = roles.id
-                                where users.name = '$usuario'");
+        $dat_user = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', Auth::id())
+            ->pluck('roles.name');
 
         $authorizedRoles = ['Admin', 'EspecDRE', 'EspecUGEL', 'Director'];
-        $user_role = $dat_user[0]->rol; // Obt��n el rol del primer registro (siempre deber��a haber al menos uno)
+        $user_role = $dat_user->first(); // Rol del usuario autenticado
 
         if (in_array($user_role, $authorizedRoles)) {
 
@@ -122,13 +123,13 @@ Route::post('/interInstitucion/buscar_index', function (Illuminate\Http\Request 
             } elseif ($user_role == 'EspecUGEL') {
                 $datos_gen = DB::table('internet_institucionesh')
                             ->where('provincia', $ugel)
-                            ->and('codigoModular', $codModular)
+                            ->where('codigoModular', $codModular)
                             ->paginate(9);
 
             } elseif ($user_role == 'Director') {
                 $datos_gen = DB::table('internet_institucionesh')
                             ->where('usuario', $usuario)
-                            ->and('codigoModular', $codModular)
+                            ->where('codigoModular', $codModular)
                             ->paginate(9);
             }
 
@@ -164,6 +165,23 @@ Route::get('/users/check-dni/{dni}', [UserController::class, 'checkDni'])
     ->name('users.check-dni')
     ->middleware('auth');
 Route::resource('users','App\Http\Controllers\UserController');
+// Gestión de accesos por usuario (modal "Accesos" de la SPA de Usuarios).
+Route::get('/users/{user}/access', [UserController::class, 'access'])
+    ->middleware('auth')->name('users.access');
+Route::put('/users/{user}/access', [UserController::class, 'syncAccess'])
+    ->middleware('auth')->name('users.access.update');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEGURIDAD (roles + permisos). Acceso solo Admin vía permisos roles.*
+// definidos en config/security.php. El "Catálogo de Permisos" es una pestaña
+// dentro de /security/roles.
+// ─────────────────────────────────────────────────────────────────────────────
+Route::prefix('security')->name('security.')->middleware('auth')->group(function () {
+    Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
+    Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
+    Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+});
 // "Usuarios inhabilitados" ahora es el tab estado=0 dentro de /users.
 Route::get('/usersi', fn () => redirect()->route('users.index', ['estado' => '0']))
     ->middleware('auth')
@@ -188,15 +206,26 @@ Route::resource('usuarios','App\Http\Controllers\UsuarioController');
 
 Route::resource('dashboard_main','App\Http\Controllers\DashboardController');
 
+// Dashboard Blade heredado. Sigue accesible por URL directa mientras se valida el
+// dashboard unificado, pero ya no tiene entrada en el menú. Los stubs por rol
+// (`-dre`, `-ugel`, `-pc`) se retiraron: `dre()` no existía y `ugel()`/`pc()`
+// devolvían una cadena en lugar de una vista.
 Route::get("/dashboard-index", ['App\Http\Controllers\DashboardController'::class, "index"])->middleware('auth')->name('dashboard.index');
-Route::get("/dashboard-dre", ['App\Http\Controllers\DashboardController'::class, "dre"])->middleware('auth')->name('dashboard.dre');
-Route::get("/dashboard-ugel", ['App\Http\Controllers\DashboardController'::class, "ugel"])->middleware('auth')->name('dashboard.ugel');
-Route::get("/dashboard-pc", ['App\Http\Controllers\DashboardController'::class, "pc"])->middleware('auth')->name('dashboard.pc');
 Route::get('/dashboard/resumen-modulos', [App\Http\Controllers\DashboardController::class, 'resumenModulos'])->middleware('auth')->name('dashboard.resumen-modulos');
+Route::get('/dashboard/mapa-participacion', [App\Http\Controllers\DashboardController::class, 'participacionPorUgel'])->middleware('auth')->name('dashboard.mapa-participacion');
 
-Route::resource('agendas','App\Http\Controllers\AgendaController');
+Route::get('agendas', [AgendaController::class, 'index'])->middleware('auth')->name('agendas.index');
+Route::post('agendas', [AgendaController::class, 'store'])->middleware('auth')->name('agendas.store');
+Route::put('agendas/{agenda}', [AgendaController::class, 'update'])->middleware('auth')->name('agendas.update');
+Route::delete('agendas/{agenda}', [AgendaController::class, 'destroy'])->middleware('auth')->name('agendas.destroy');
+
+// Evidencias (archivos) por día programado de una agenda de lectura.
+Route::get('agendas/{agenda}/evidencias', [AgendaEvidenciaController::class, 'index'])->middleware('auth')->name('agendas.evidencias.index');
+Route::post('agendas/{agenda}/evidencias', [AgendaEvidenciaController::class, 'store'])->middleware('auth')->name('agendas.evidencias.store');
+Route::delete('agendas/evidencias/{evidencia}', [AgendaEvidenciaController::class, 'destroy'])->middleware('auth')->name('agendas.evidencias.destroy');
+Route::get('agendas/evidencias/{evidencia}/download', [AgendaEvidenciaController::class, 'download'])->middleware('auth')->name('agendas.evidencias.download');
+
 Route::get('agenda/view', [App\Http\Controllers\AgendaViewController::class, 'index'])->middleware('auth')->name('agendas.view');
-Route::post('agendas/update', [App\Http\Controllers\AgendaController::class, 'update']);
 // Punto de entrada del menú (ver AgendaController::landing()): agendas.index/agendas.view
 // no cubren a EspecDRE/EspecUGEL, así que el enlace del menú no puede apuntar fijo a /agendas.
 Route::get('/agenda-inicio', [App\Http\Controllers\AgendaController::class, 'landing'])->middleware('auth')->name('agendas.landing');
@@ -440,6 +469,11 @@ Route::get('/buscarDocenteporInstitucion', [ProduccionController::class, 'buscar
 
 Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 Route::get('/usuarios/{id}/estado', 'App\Http\Controllers\UserController@cambiarEstado')->name('cambiarEstado');
+// Variante para la SPA (Inertia): el GET de arriba se conserva solo para el
+// enlace legacy del datatable Blade (_rows.blade.php).
+Route::match(['put', 'patch'], '/usuarios/{id}/estado', [App\Http\Controllers\UserController::class, 'cambiarEstado'])
+    ->middleware('auth')
+    ->name('cambiarEstado.put');
 
 Route::get("/sector-dre", [App\Http\Controllers\SectorController::class, "dre"])->middleware('auth')->name('sectores.dre');
 Route::get('/exportar-producciones', [ProduccionController::class, 'exportarTodos'])->name('exportar.producciones');

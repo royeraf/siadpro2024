@@ -13,7 +13,7 @@
     'filterAction' => null,
     'filterParams' => [],
     'searchName' => 'buscar',
-    'stacked' => true,
+    'stacked' => false,
 ])
 
 <div x-data="TableEngine('{{ $id }}', {
@@ -91,10 +91,10 @@
         </div>
     </form>
 
-    {{-- Contenedor de la Tabla --}}
-    <div class="overflow-x-auto transition-opacity" :class="{ 'opacity-50': srvLoading }">
-        <table id="{{ $id }}" class="min-w-full divide-y divide-gray-200 text-left text-sm text-gray-700 {{ $stacked ? 'table-stacked' : '' }}">
-            <thead class="bg-blue-600 text-white select-none">
+    {{-- Contenedor de la Tabla (Estilo Bootstrap Responsivo) --}}
+    <div class="table-responsive overflow-x-auto transition-opacity" :class="{ 'opacity-50': srvLoading }">
+        <table id="{{ $id }}" class="min-w-full divide-y divide-gray-200 text-left text-sm text-gray-700 align-middle {{ $stacked ? 'table-stacked' : '' }}">
+            <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 select-none">
                 {{ $header }}
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">

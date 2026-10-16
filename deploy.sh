@@ -31,13 +31,17 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# 6. Compilar assets de frontend (si npm está disponible)
-if command -v npm &> /dev/null; then
-    echo "🎨 Compilando frontend (Vite / Tailwind)..."
-    npm install --no-audit --no-fund
-    npm run build
+# 5b. Reiniciar la caché de permisos de Spatie (roles/permisos recién reconciliados)
+echo "🔐 Reiniciando caché de permisos..."
+php artisan permission:cache-reset || true
+
+# 6. Compilar assets de frontend (si pnpm está disponible)
+if command -v pnpm &> /dev/null; then
+    echo "🎨 Compilando frontend (Vite / Tailwind) con pnpm..."
+    pnpm install --frozen-lockfile
+    pnpm run build
 else
-    echo "ℹ️ Node/NPM no disponible en servidor. Recuerda compilar en local si cambiaste JS/CSS."
+    echo "ℹ️ pnpm no disponible en servidor. Recuerda compilar en local si cambiaste JS/CSS."
 fi
 
 # 7. Asegurar permisos correctos en carpetas críticas de Laravel

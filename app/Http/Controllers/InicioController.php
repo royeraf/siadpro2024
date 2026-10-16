@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Inertia\Inertia;
 use JeroenNoten\LaravelAdminLte\AdminLte;
 use JeroenNoten\LaravelAdminLte\Helpers\MenuItemHelper;
 
@@ -39,6 +40,16 @@ class InicioController extends Controller
             ->values()
             ->all();
 
-        return view('inicio.index', compact('modulos'));
+        $stats = null;
+        try {
+            $stats = app(\App\Http\Controllers\DashboardController::class)->resumenModulos()->getData();
+        } catch (\Throwable $e) {
+            // Silencioso para no bloquear la carga si la BD tuviera alguna lentitud
+        }
+
+        return Inertia::render('Inicio/Index', [
+            'modulos' => $modulos,
+            'stats'   => $stats,
+        ]);
     }
 }

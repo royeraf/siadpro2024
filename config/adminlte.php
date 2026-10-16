@@ -68,7 +68,7 @@ return [
     'logo_img_class' => 'brand-image img-circle elevation-3',
     'logo_img_xl' => null,
     'logo_img_xl_class' => 'brand-image-xs',
-    'logo_img_alt' => 'Admin Logo',
+    'logo_img_alt' => 'SIADPRO Logo',
 
     /*
     |--------------------------------------------------------------------------
@@ -315,22 +315,18 @@ return [
             'active' => ['inicio'],
         ],
         [
+            // Dashboard de métricas, adaptado al perfil: por UGEL para DRE/Admin,
+            // por institución para UGEL y por docente para Director. No lleva
+            // `can` a propósito, cada rol ve su propio alcance.
+            //
+            // Absorbió las entradas anteriores DASHBOARD (`/dashboard-index`),
+            // DASHBOARD UGEL y DASHBOARD PC, cuyos stubs además devolvían
+            // vistas inexistentes. El Blade heredado sigue en `/dashboard-index`
+            // por URL directa.
             'text' => 'DASHBOARD',
-            'url'  => '/dashboard-index',
+            'url'  => '/dashboard',
             'icon' => 'fas fa-chart-line',
-            'can' => 'dashboard.index',
-        ],
-        [
-            'text' => 'DASHBOARD UGEL',
-            'url'  => '/dashboard-ugel',
-            'icon' => 'fas fa-chart-line',
-            'can' => 'dashboard.ugel',
-        ],
-        [
-            'text' => 'DASHBOARD PC',
-            'url'  => '/dashboard-pc',
-            'icon' => 'fas fa-chart-line',
-            'can' => 'dashboard.pc',
+            'active' => ['dashboard'],
         ],
 
         // Gestión
@@ -340,12 +336,23 @@ return [
             'url'  => 'institucions',
             'icon' => 'landmark',
             'can' => 'institucions.index',
+            'active' => ['instituc*'],
         ],
         [
             'text' => 'USUARIOS',
             'url'  => 'users',
             'icon' => 'users',
             'can' => 'users.index',
+        ],
+
+        // Seguridad (solo Admin, vía permisos roles.*)
+        ['header' => 'Seguridad'],
+        [
+            'text' => 'ROLES Y PERMISOS',
+            'url'  => '/security/roles',
+            'icon' => 'fas fa-user-shield',
+            'can'  => 'roles.index',
+            'active' => ['security/roles*'],
         ],
 
         // Actividades de lectura

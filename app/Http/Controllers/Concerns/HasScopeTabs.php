@@ -27,11 +27,33 @@ trait HasScopeTabs
                 $tabs[] = [
                     'label' => $item['label'],
                     'url' => route($item['route']),
+                    // Identidad estable de la pestaña: la URL no sirve porque
+                    // arrastra los filtros activos.
+                    'route' => $item['route'],
                     'active' => $activo === $key,
                 ];
             }
         }
 
         return $tabs;
+    }
+
+    /**
+     * Devuelve la clave (index/ugel/general/director…) de la primera pestaña
+     * a la que el usuario autenticado tiene acceso, o null si ninguna aplica.
+     *
+     * @param array<string, array{permission: string, label: string, route: string}> $items
+     */
+    private function firstAllowedKey(array $items): ?string
+    {
+        $user = Auth::user();
+
+        foreach ($items as $key => $item) {
+            if ($user->can($item['permission'])) {
+                return $key;
+            }
+        }
+
+        return null;
     }
 }

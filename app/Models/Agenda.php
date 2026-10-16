@@ -101,11 +101,12 @@ class Agenda extends Model
      */
     public function getColorAttribute(): string
     {
-        $slug = strtolower((string) ($this->attributes['color'] ?? 'lila'));
+        $slug = strtolower((string) ($this->attributes['color'] ?? ''));
         if (str_starts_with($slug, '#')) {
             return $slug;
         }
-        return self::SECCIONES[$slug]['hex'] ?? '#FF0085';
+        // Sin sección: color neutro (no lila) para que el evento se vea "sin color".
+        return self::SECCIONES[$slug]['hex'] ?? '#94A3B8';
     }
 
     /**
@@ -142,6 +143,30 @@ class Agenda extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'idUser');
+    }
+
+    /**
+     * Días programados de la agenda (ordenados). Son la fuente de verdad del
+     * rango de fechas/horas; `start`/`end` son solo un agregado para el calendario.
+     */
+    public function dias()
+    {
+        return $this->hasMany(AgendaDia::class, 'agenda_id')->orderBy('fecha');
+    }
+
+    /**
+     * Archivos (evidencias) de todos los días de la agenda.
+     */
+    public function evidencias()
+    {
+        return $this->hasManyThrough(
+            AgendaEvidencia::class,
+            AgendaDia::class,
+            'agenda_id',
+            'agenda_dia_id',
+            'id',
+            'id'
+        );
     }
 
     /**

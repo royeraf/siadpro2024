@@ -36,34 +36,31 @@ class InternetInstitucionesController extends Controller
         $usuario = Auth::user()->name;
         $ugel = Auth::user()->provincia;
 
-        $dat_user = DB::select("select roles.name as rol
-                                from users
-                                inner join model_has_roles as m
-                                on m.model_id= users.id
-                                inner join roles
-                                on m.role_id = roles.id
-                                where users.name = '$usuario'");
+        $dat_user = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', Auth::id())
+            ->pluck('roles.name');
 
         $authorizedRoles = ['Admin', 'EspecDRE', 'EspecUGEL', 'Director'];
-        $user_role = $dat_user[0]->rol; // Obtén el rol del primer registro (siempre debería haber al menos uno)
+        $user_role = $dat_user->first(); // Rol del usuario autenticado
 
         if (in_array($user_role, $authorizedRoles)) {
 
             if ($user_role == 'Admin') {
                 $tipo_rol['tipo_rol'] = 'Admin';
-                $dat_inst['dat_inst'] = DB::select("select * from internet_institucionesh where id = $id");
+                $dat_inst['dat_inst'] = DB::table('internet_institucionesh')->where('id', $id)->get();
 
             } elseif ($user_role == 'EspecDRE') {
                 $tipo_rol['tipo_rol'] = 'EspecDRE';
-                $dat_inst['dat_inst'] = DB::select("select * from internet_institucionesh where id = $id");
+                $dat_inst['dat_inst'] = DB::table('internet_institucionesh')->where('id', $id)->get();
 
             } elseif ($user_role == 'EspecUGEL') {
                 $tipo_rol['tipo_rol'] = 'EspecUGEL';
-                $dat_inst['dat_inst'] = DB::select("select * from internet_institucionesh where id = $id and provincia = '$ugel'");
+                $dat_inst['dat_inst'] = DB::table('internet_institucionesh')->where('id', $id)->where('provincia', $ugel)->get();
 
             } elseif ($user_role == 'Director') {
                 $tipo_rol['tipo_rol'] = 'Director';
-                $dat_inst['dat_inst'] = DB::select("select * from internet_institucionesh where id = $id and usuario = '$usuario'");
+                $dat_inst['dat_inst'] = DB::table('internet_institucionesh')->where('id', $id)->where('usuario', $usuario)->get();
 
             }
 
@@ -80,16 +77,13 @@ class InternetInstitucionesController extends Controller
         $usuario = Auth::user()->name;
         $ugel = Auth::user()->provincia;
 
-        $dat_user = DB::select("select roles.name as rol
-                                from users
-                                inner join model_has_roles as m
-                                on m.model_id= users.id
-                                inner join roles
-                                on m.role_id = roles.id
-                                where users.name = '$usuario'");
+        $dat_user = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', Auth::id())
+            ->pluck('roles.name');
 
         $authorizedRoles = ['Admin', 'EspecDRE', 'EspecUGEL', 'Director'];
-        $user_role = $dat_user[0]->rol; // Obtén el rol del primer registro (siempre debería haber al menos uno)
+        $user_role = $dat_user->first(); // Rol del usuario autenticado
 
         if (in_array($user_role, $authorizedRoles)) {
 
@@ -285,7 +279,7 @@ class InternetInstitucionesController extends Controller
      */
     public function edit($id)
     {
-        $informacion["info"] = DB::select("select * from internet_institucionesh where id = $id");
+        $informacion["info"] = DB::table('internet_institucionesh')->where('id', $id)->get();
 
         return view('interInstitucion.edit',$informacion);
     }
@@ -370,7 +364,7 @@ class InternetInstitucionesController extends Controller
     Session::flash('success_message', 'La información ha sido actualizada correctamente.');
 
 
-        $informacion["info"] = DB::select("select * from internet_institucionesh where id = $id");
+        $informacion["info"] = DB::table('internet_institucionesh')->where('id', $id)->get();
 
 
     // Redirigir a la vista de búsqueda después de actualizar

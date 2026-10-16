@@ -32,11 +32,8 @@ class User extends Authenticatable
         'dni',
         'cargo',
         'estado',
-        'provincia',
-        'distrito',
-        'institucion',
-        'nivelinstitucion',
-        'ugel',
+        'institucion_id',
+        'ugel_id',
         'created_by',
     ];
 
@@ -68,6 +65,16 @@ class User extends Authenticatable
      */
     protected $appends = [
         'profile_photo_url',
+        // Campos legacy derivados de institucionRel()/ugelRel(). Se exponen en
+        // la serialización (JSON de Inertia) para no romper las vistas/Vue que
+        // leen user.institucion / user.ugel / user.provincia / user.distrito /
+        // user.nivelinstitucion. Las consultas que listan usuarios cargan ambas
+        // relaciones con eager loading para evitar N+1.
+        'institucion',
+        'nivelinstitucion',
+        'ugel',
+        'provincia',
+        'distrito',
     ];
 
     public function creator()
@@ -78,5 +85,62 @@ class User extends Authenticatable
     public function agendas()
     {
         return $this->hasMany(Agenda::class, 'idUser');
+    }
+
+    public function institucionRel()
+    {
+        return $this->belongsTo(Institucion::class, 'institucion_id');
+    }
+
+    public function ugelRel()
+    {
+        return $this->belongsTo(Ugel::class, 'ugel_id');
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Accessors de compatibilidad (columnas legacy eliminadas de `users`)
+     |--------------------------------------------------------------------------
+     | Los campos institucion / nivelinstitucion / ugel / provincia / distrito
+     | se eliminaron de `users` y ahora se derivan de las relaciones
+     | institucionRel() / ugelRel(). Mantienen la API de atributos intacta
+     | para el código y las vistas que aún los leen.
+     */
+
+    public function getInstitucionAttribute(): ?string
+    {
+        return $this->institucionRel?->nomInstitucion;
+    }
+
+    public function getNivelinstitucionAttribute(): ?string
+    {
+        $nivel = $this->institucionRel?->nivel;
+
+        if (! $nivel) {
+            return null;
+        }
+
+        $nivel = mb_strtolower($nivel);
+
+        if (str_contains($nivel, 'no escolariz') || str_contains($nivel, 'pronoei')) {
+            return 'No escolarizado - PRONOEI';
+        }
+
+        return 'Escolarizado';
+    }
+
+    public function getUgelAttribute(): ?string
+    {
+        return $this->ugelRel?->nombre;
+    }
+
+    public function getProvinciaAttribute(): ?string
+    {
+        return $this->institucionRel?->provincia ?? $this->ugelRel?->provincia;
+    }
+
+    public function getDistritoAttribute(): ?string
+    {
+        return $this->institucionRel?->distrito ?? $this->ugelRel?->distrito;
     }
 }

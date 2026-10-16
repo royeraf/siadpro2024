@@ -20,9 +20,7 @@ class Userseeder extends Seeder
             'email' => '2019210132@udh.edu.pe',
             'password' => bcrypt('12345678'),
             'cargo' => 'No',
-            'provincia' => 'HUÁNUCO',
             'estado' => '1',
-            'distrito' => 'HUÁNUCO',
             'dni' => '12345678',
         ])->assignRole('Admin');
 

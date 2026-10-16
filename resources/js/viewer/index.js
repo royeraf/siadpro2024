@@ -19,9 +19,15 @@ const MAX_READING_WIDTH = 900;
 // redondeo de scrollTop), de lo contrario revierte el cambio apenas ocurre.
 const PAGE_SCROLL_GAP = 8;
 const PAGE_NAV_TOLERANCE = 16;
+// Duración del salto animado entre páginas. Constante para cualquier distancia:
+// un salto de 40 páginas se siente igual de ágil que uno de una sola página.
+const PAGE_SCROLL_MS = 400;
 
 let current = null;
 let goToPage = null;
+// rAF del salto animado en curso, o null. Mientras exista, el contador de página
+// se congela en la página destino (ver onScroll de cada visor).
+let pageScroll = null;
 
 function el(id) {
     return document.getElementById(id);
@@ -168,7 +174,7 @@ async function openPdf(url, name) {
         els().next.disabled = n >= numPages;
         if (scrollTo) {
             const p = state.pages[n - 1];
-            if (p) els().content.scrollTop = p.wrap.offsetTop - PAGE_SCROLL_GAP;
+            if (p) scrollToPageSmooth(els().content, p.wrap.offsetTop - PAGE_SCROLL_GAP, updateCurrentPageFromScroll);
         }
     };
 
@@ -195,7 +201,7 @@ async function openPdf(url, name) {
         setCurrentPage(idx + 1, false);
     };
     const onScroll = () => {
-        if (scrollRAF) return;
+        if (scrollRAF || pageScroll) return;
         scrollRAF = requestAnimationFrame(updateCurrentPageFromScroll);
     };
     els().content.addEventListener('scroll', onScroll);
@@ -207,6 +213,7 @@ async function openPdf(url, name) {
 
     const rezoom = (newZoom) => {
         const content = els().content;
+        stopPageScroll();
         const anchor = state.pages[state.current - 1];
         // Punto de lectura como fracción dentro de la página ancla, para que el
         // zoom mantenga la zona que se estaba viendo en vez de volver arriba.
@@ -241,6 +248,7 @@ async function openPdf(url, name) {
         cleanupExtra: () => {
             renderObserver.disconnect();
             els().content.removeEventListener('scroll', onScroll);
+            stopPageScroll();
             if (scrollRAF) cancelAnimationFrame(scrollRAF);
             window.removeEventListener('resize', onResize);
             clearTimeout(resizeTimer);
@@ -373,9 +381,19 @@ async function openDocx(url, name) {
     };
     applyScale();
 
-    const scrollToPage = (n) => {
+    // smooth = true solo en navegación explícita de página (botones, flechas,
+    // input). El re-anchor tras un resize debe ser instantáneo: si no, el
+    // documento se mueve solo mientras el usuario solo cambió el tamaño de la
+    // ventana.
+    const scrollToPage = (n, smooth) => {
         const s = state.baseScale * state.zoom;
-        els().content.scrollTop = host.offsetTop + pageTops[n - 1] * s - PAGE_SCROLL_GAP;
+        const top = host.offsetTop + pageTops[n - 1] * s - PAGE_SCROLL_GAP;
+        if (!smooth) {
+            stopPageScroll();
+            els().content.scrollTop = top;
+            return;
+        }
+        scrollToPageSmooth(els().content, top, updateCurrentPageFromScroll);
     };
 
     const setCurrentPage = (n, scrollTo) => {
@@ -385,7 +403,7 @@ async function openDocx(url, name) {
         }
         els().prev.disabled = n <= 1;
         els().next.disabled = n >= numPages;
-        if (scrollTo) scrollToPage(n);
+        if (scrollTo) scrollToPage(n, true);
     };
 
     // Igual que en openPdf(): contador basado en la posición de scroll, no en
@@ -407,7 +425,7 @@ async function openDocx(url, name) {
         setCurrentPage(idx + 1, false);
     };
     const onScroll = () => {
-        if (scrollRAF) return;
+        if (scrollRAF || pageScroll) return;
         scrollRAF = requestAnimationFrame(updateCurrentPageFromScroll);
     };
     els().content.addEventListener('scroll', onScroll);
@@ -420,6 +438,7 @@ async function openDocx(url, name) {
     const zoomTo = (newZoom) => {
         const sOld = state.baseScale * state.zoom;
         const content = els().content;
+        stopPageScroll();
         const rel = (content.scrollTop - host.offsetTop) / (naturalHeight * sOld || 1);
         state.zoom = newZoom;
         applyScale();
@@ -444,6 +463,7 @@ async function openDocx(url, name) {
         type: 'docx',
         cleanupExtra: () => {
             els().content.removeEventListener('scroll', onScroll);
+            stopPageScroll();
             if (scrollRAF) cancelAnimationFrame(scrollRAF);
             window.removeEventListener('resize', onResize);
             clearTimeout(resizeTimer);
@@ -615,6 +635,54 @@ function hideLoading() {
     els().loading.classList.add('hidden');
 }
 
+/* --------------------- Salto animado entre páginas --------------------- */
+// Se anima con rAF + easing en vez de poner `scroll-behavior: smooth` en
+// #fv-content, porque así el salto se puede cancelar: si el usuario scrollea a
+// mano, hace zoom o pide otra página a mitad de vuelo, el control vuelve a él
+// de inmediato en vez de pelearse con el scroll del navegador. Además el
+// re-anchor del zoom (que debe ser instantáneo) no se anima por accidente.
+function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function stopPageScroll() {
+    if (!pageScroll) return;
+    cancelAnimationFrame(pageScroll);
+    pageScroll = null;
+}
+
+function scrollToPageSmooth(content, top, onDone) {
+    stopPageScroll();
+
+    // El navegador recorta solo al asignar scrollTop, pero se recorta aquí para
+    // no animar un tramo que al final no exista.
+    const to = Math.max(0, Math.min(top, content.scrollHeight - content.clientHeight));
+    const from = content.scrollTop;
+
+    if (Math.abs(to - from) < 1 || prefersReducedMotion()) {
+        content.scrollTop = to;
+        if (onDone) onDone();
+        return;
+    }
+
+    const startedAt = performance.now();
+    const step = (now) => {
+        const t = Math.min(1, (now - startedAt) / PAGE_SCROLL_MS);
+        content.scrollTop = from + (to - from) * easeInOutCubic(t);
+        if (t < 1) {
+            pageScroll = requestAnimationFrame(step);
+            return;
+        }
+        pageScroll = null;
+        if (onDone) onDone();
+    };
+    pageScroll = requestAnimationFrame(step);
+}
+
 function showPager(show, enabled, onGoTo) {
     els().pager.classList.toggle('hidden', !show);
     els().pager.classList.toggle('flex', show);
@@ -730,6 +798,14 @@ function open(payload) {
 
 export function initFileViewer() {
     if (!el('file-viewer')) return;
+
+    // Si el usuario scrollea a mano, el salto animado entre páginas cede el
+    // control en el acto (el scroll manual recalcula el contador de página).
+    if (els().content) {
+        ['wheel', 'touchstart'].forEach((evt) => {
+            els().content.addEventListener(evt, stopPageScroll, { passive: true });
+        });
+    }
 
     els().close.onclick = close;
     els().backdrop.onclick = close;

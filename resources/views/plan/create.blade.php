@@ -71,7 +71,16 @@
                                 <input id="documento" type="file" class="form-control-file @error('documento') is-invalid @enderror" name="documento"  autocomplete="documento" required>
 
                                 <div id="error-message" class="alert alert-danger" style="display: none;">
-                                    <strong>Registro no guardado: El archivo es superior a 2MB.</strong>
+                                    <strong>Registro no guardado: el archivo supera el máximo de {{ (int) (config('siadpro.upload_max_kb') / 1024) }} permitidos.</strong>
+                                    <hr>
+                                    <p class="mb-1">Si su archivo es un PDF, comprímalo antes de volver a intentarlo:</p>
+                                    <ul class="mb-0 pl-3">
+                                        @foreach (config('siadpro.pdf_compressors') as $compressor)
+                                            <li>
+                                                <a href="{{ $compressor['url'] }}" target="_blank" rel="noopener noreferrer">{{ $compressor['name'] }}</a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -102,10 +111,10 @@
     // A�0�9adir un evento 'click' al bot��n de guardar
     document.getElementById('guardarBtn').addEventListener('click', function(event) {
         var archivo = document.getElementById('documento').files[0];
-        var maxSize = 2 * 1024 * 1024; // 2MB en bytes
+        var maxSize = {{ (int) config('siadpro.upload_max_kb') }} * 1024; // tamaño máximo en bytes
         var errorMessage = document.getElementById('error-message');
 
-        // Verificar si el archivo es mayor a 2MB
+        // Verificar si el archivo supera el máximo permitido
         if (archivo && archivo.size > maxSize) {
             // Evitar que el formulario se env��e
             event.preventDefault();

@@ -3,17 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
+use App\Http\Controllers\Concerns\ValidaDocumento;
 use App\Models\Sector;
 use App\Models\User;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class SectorController extends Controller
 {
     use HasScopeTabs;
+    use ValidaDocumento;
 
     public function __construct(){
         $this->middleware('auth');
@@ -53,9 +58,14 @@ class SectorController extends Controller
             });
         }
 
-        $sectores = $sectoresQuery->orderBy('fecha', 'desc')->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
 
-        if ($request->ajax()) {
+        $sectores = $sectoresQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('sector._rows', ['sectores' => $sectores])->render(),
                 'pagination' => (string) $sectores->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -66,9 +76,17 @@ class SectorController extends Controller
             ]);
         }
 
-        $tabs = $this->tabsSector('index');
-
-        return view('sector.index', compact('sectores', 'tabs'));
+        return Inertia::render('Sector/Index', [
+            'sectores' => $sectores,
+            'filters' => $request->only(['texto', 'fecha', 'buscar', 'per_page']),
+            'tabs' => $this->tabsSector('index'),
+            'can' => [
+                'create'  => Auth::user()->can('sectores.create'),
+                'edit'    => Auth::user()->can('sectores.edit'),
+                'destroy' => Auth::user()->can('sectores.destroy'),
+                'view'    => Auth::user()->can('sectores.view'),
+            ],
+        ]);
     }
 
     /**
@@ -106,7 +124,7 @@ class SectorController extends Controller
      * UGEL del usuario autenticado, vía $forceUgel). Ambas comparten los mismos
      * filtros de año/DNI/docente, y General añade UGEL/Institución libres.
      */
-    private function sectoresGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
+    private function sectoresGeneralQuery(Request $request, ?int $forceUgelId = null, ?int $forceInstitucionId = null): array
     {
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
@@ -114,25 +132,32 @@ class SectorController extends Controller
                 'pro_sectores.id', 'pro_sectores.nombreSector', 'pro_sectores.descripcion',
                 'pro_sectores.documento', 'pro_sectores.color', 'pro_sectores.fecha',
                 'pro_sectores.enlace',
-                'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
-                'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
+                'users.name', 'users.cargo', 'users.dni',
+                'institucions.nomInstitucion as institucion',
+                'institucions.provincia as provincia',
+                'institucions.distrito as distrito',
+                'ugeles.nombre as ugel'
             )
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join('users', 'users.id', '=', 'pro_sectores.idUser')
+            ->leftJoin('institucions', 'institucions.id', '=', 'users.institucion_id')
+            ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_sectores.estado', '1')
             ->whereYear('pro_sectores.fecha', $anio);
 
-        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
+        $showFullFilters = $forceUgelId === null && $forceInstitucionId === null;
 
-        if ($forceInstitucion !== null) {
-            $query->where('users.institucion', $forceInstitucion);
-        } elseif ($forceUgel !== null) {
-            $query->where('users.ugel', $forceUgel);
-        } elseif ($request->filled('ugels')) {
-            $query->where('users.ugel', $request->input('ugels'));
-        }
-
-        if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+        if ($forceInstitucionId !== null) {
+            $query->where('users.institucion_id', $forceInstitucionId);
+        } elseif ($forceUgelId !== null) {
+            $query->where('users.ugel_id', $forceUgelId);
+        } elseif ($showFullFilters) {
+            if ($request->filled('ugels')) {
+                $query->where('ugeles.nombre', $request->input('ugels'));
+            }
+            if ($request->filled('instituciones')) {
+                $query->where('institucions.nomInstitucion', $request->input('instituciones'));
+            }
         }
 
         if ($request->filled('texto')) {
@@ -144,7 +169,7 @@ class SectorController extends Controller
         }
 
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', 'LIKE', '%' . $request->input('nivel') . '%');
+            $query->whereRaw($this->nivelInstitucionCase() . ' LIKE ?', ['%' . $request->input('nivel') . '%']);
         }
 
         if ($request->filled('buscar')) {
@@ -156,6 +181,28 @@ class SectorController extends Controller
         }
 
         return [$query, $anio, $showFullFilters];
+    }
+
+    /**
+     * Expresión SQL que deriva "nivelinstitucion" (Escolarizado / No escolarizado -
+     * PRONOEI) desde institucions.nivel, para conservar la salida que antes venía
+     * de la columna legacy users.nivelinstitucion.
+     */
+    private function nivelInstitucionExpr(): string
+    {
+        return $this->nivelInstitucionCase() . ' as nivelinstitucion';
+    }
+
+    /**
+     * Misma expresión sin alias, reutilizable en cláusulas WHERE.
+     */
+    private function nivelInstitucionCase(): string
+    {
+        return "CASE "
+            . "WHEN institucions.nivel LIKE '%no escolariz%' OR institucions.nivel LIKE '%pronoei%' "
+            . "THEN 'No escolarizado - PRONOEI' "
+            . "WHEN institucions.nivel IS NULL OR TRIM(institucions.nivel) = '' THEN NULL "
+            . "ELSE 'Escolarizado' END";
     }
 
     private function paginateSectores(Request $request, $query)
@@ -171,6 +218,24 @@ class SectorController extends Controller
         }
 
         return $query->orderBy('pro_sectores.fecha', 'desc')->paginate($perPage)->withQueryString();
+    }
+
+    /**
+     * Instituciones distintas para el selector del filtro.
+     *
+     * Con $porUgel = true se acota a la UGEL del usuario autenticado (por su
+     * FK ugel_id). General no acota porque el encadenado UGEL→Institución del
+     * Blade se sustituye por selectores independientes.
+     */
+    private function listaInstitucionesSectores(?int $forceUgelId, bool $porUgel)
+    {
+        return Institucion::query()
+            ->when($porUgel, fn ($q) => $q->where('ugel_id', $forceUgelId))
+            ->whereNotNull('nomInstitucion')
+            ->where('nomInstitucion', '!=', '')
+            ->distinct()
+            ->orderBy('nomInstitucion')
+            ->pluck('nomInstitucion');
     }
 
     private function listaAniosSectores($anio)
@@ -207,45 +272,46 @@ class SectorController extends Controller
         [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request);
         $sectores = $this->paginateSectores($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxSectoresResponse($request, $sectores);
         }
 
-        return view('sector.general', [
+        return Inertia::render('Sector/General', [
             'sectores' => $sectores,
-            'anio' => $anio,
+            'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaUgels' => Ugel::orderBy('nombre')->pluck('nombre'),
+            'listaInstituciones' => $this->listaInstitucionesSectores(null, false),
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.view',
             'exportRoute' => 'exportSectoresGeneral',
-            'pageTitle' => 'Sectores del Aula',
-            'tableId' => 'tabla-sectores-general',
+            'scope' => 'general',
             'tabs' => $this->tabsSector('general'),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'ugels', 'instituciones', 'docentes', 'buscar', 'per_page']),
         ]);
     }
 
     public function ugel(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request, Auth::user()->ugel);
+        [$query, $anio] = $this->sectoresGeneralQuery($request, Auth::user()->ugel_id);
         $sectores = $this->paginateSectores($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxSectoresResponse($request, $sectores);
         }
 
-        return view('sector.general', [
+        return Inertia::render('Sector/General', [
             'sectores' => $sectores,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaInstituciones' => User::where('ugel', Auth::user()->ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion'),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => $this->listaInstitucionesSectores(Auth::user()->ugel_id, true),
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.ugel',
             'exportRoute' => 'exportSectoresUgel',
-            'pageTitle' => 'Sectores del Aula',
-            'tableId' => 'tabla-sectores-ugel',
+            'scope' => 'ugel',
             'tabs' => $this->tabsSector('ugel'),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'instituciones', 'docentes', 'buscar', 'per_page']),
         ]);
     }
 
@@ -312,48 +378,50 @@ class SectorController extends Controller
 
     public function exportSectoresUgel(Request $request)
     {
-        [$query] = $this->sectoresGeneralQuery($request, Auth::user()->ugel);
+        [$query] = $this->sectoresGeneralQuery($request, Auth::user()->ugel_id);
         return $this->streamSectoresExport($query, 'sectores_ugel');
     }
 
     public function exportSectoresDirector(Request $request)
     {
-        [$query] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion);
+        [$query] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion_id);
         return $this->streamSectoresExport($query, 'sectores_director');
     }
 
     public function director(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion);
+        [$query, $anio] = $this->sectoresGeneralQuery($request, null, Auth::user()->institucion_id);
         $sectores = $this->paginateSectores($request, $query);
 
-        if ($request->ajax()) {
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return $this->ajaxSectoresResponse($request, $sectores);
         }
 
-        return view('sector.general', [
+        return Inertia::render('Sector/General', [
             'sectores' => $sectores,
-            'anio' => $anio,
-            'showFullFilters' => $showFullFilters,
-            'listaUgels' => collect(),
-            'listaInstituciones' => collect(),
+            'anio' => (string) $anio,
+            'showFullFilters' => false,
+            'listaUgels' => [],
+            'listaInstituciones' => [],
             'listaAnios' => $this->listaAniosSectores($anio),
             'filterActionRoute' => 'sectores.director',
             'exportRoute' => 'exportSectoresDirector',
-            'pageTitle' => 'Sectores del Aula',
-            'tableId' => 'tabla-sectores-director',
+            'scope' => 'director',
             'tabs' => $this->tabsSector('director'),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'docentes', 'buscar', 'per_page']),
         ]);
     }
 
     public function profesorcoordinador(Request $request)
     {
-        $institucion = Auth::user()->institucion;
+        $institucionId = Auth::user()->institucion_id;
         $selectedYear = $request->get('year', 2026);
         
-        $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
+        $sectores = Sector::select("pro_sectores.id","pro_sectores.nombreSector","pro_sectores.documento","pro_sectores.color","pro_sectores.descripcion","pro_sectores.fecha","users.name","institucions.nomInstitucion as institucion","institucions.provincia as provincia","institucions.distrito as distrito","ugeles.nombre as ugel")
             ->join("users","users.id","=","pro_sectores.idUser")
-            ->where("users.institucion", $institucion)
+            ->leftJoin("institucions","institucions.id","=","users.institucion_id")
+            ->leftJoin("ugeles","ugeles.id","=","users.ugel_id")
+            ->where("users.institucion_id", $institucionId)
             ->where('pro_sectores.estado', '1')
             ->whereYear('pro_sectores.fecha', $selectedYear)
             ->orderby('fecha','desc')
@@ -406,8 +474,8 @@ class SectorController extends Controller
             'nombreSector' => 'required|string|max:191',
             'descripcion' => 'required|string',
             'fecha' => 'required|date',
-            'documento' => 'required|file|max:10240',
-        ]);
+            'documento' => $this->documentoRules(),
+        ], $this->documentoMessages());
         $file = $request->file('documento');
         $filename = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension();
@@ -453,8 +521,8 @@ class SectorController extends Controller
             'nombreSector' => 'required|string|max:191',
             'descripcion' => 'required|string',
             'fecha' => 'required|date',
-            'documento' => 'nullable|file|max:10240',
-        ]);
+            'documento' => $this->documentoRules(false),
+        ], $this->documentoMessages(false));
         
         if ($request->hasFile('documento')) {
             $file = $request->file('documento');
@@ -540,12 +608,12 @@ class SectorController extends Controller
         $selectedYear = $request->get('year', 2026);
             
         $ugels = DB::table('pro_sectores')
-            ->select('users.ugel', DB::raw('count(distinct pro_sectores.idUser) as docentes_count'))
+            ->select('ugeles.nombre as ugel', DB::raw('count(distinct pro_sectores.idUser) as docentes_count'))
             ->join('users', 'pro_sectores.idUser', '=', 'users.id')
+            ->join('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_sectores.estado', '1')
-            ->whereRaw("LENGTH(users.ugel) > 0")
             ->whereYear('pro_sectores.fecha', $selectedYear)
-            ->groupBy('users.ugel')
+            ->groupBy('ugeles.nombre')
             ->get();
 
         return response()->json($ugels);
@@ -556,32 +624,28 @@ class SectorController extends Controller
         $ugelSeleccionada = $request->input('ugel');
         $selectedYear = $request->get('year', 2026);
         
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
+        
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_sectores', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_sectores.idUser')
                     ->where('pro_sectores.estado', '=', '1')
                     ->whereYear('pro_sectores.fecha', $selectedYear);
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_sectores.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_sectores', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_sectores.idUser')
                     ->where('pro_sectores.estado', '=', '1')
                     ->whereYear('pro_sectores.fecha', $selectedYear);
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
@@ -614,29 +678,25 @@ class SectorController extends Controller
         
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
 
+        $ugelId = Ugel::resolverId($ugel);
+
         // Realiza una consulta para buscar instituciones que coincidan con $term y tengan información sobre docentes y agendas
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_sectores', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_sectores.idUser')
                     ->where('pro_sectores.estado', '=', '1')
                     ->whereYear('pro_sectores.fecha', $selectedYear);
             })
-            ->where('institucions.ugel', '=', $ugel)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_sectores.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
-            ->where('institucions.ugel', '=', $ugel)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
@@ -670,6 +730,8 @@ class SectorController extends Controller
 
         // Este es el nombre de la institución seleccionada
         $institucionSeleccionada = $request->input('docente');
+        $institucionId = Institucion::where('nomInstitucion', $institucionSeleccionada)->value('id');
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
         
         \Log::info('Buscando docentes para: ', [
             'institucion' => $institucionSeleccionada, 
@@ -678,17 +740,21 @@ class SectorController extends Controller
         ]);
 
         // Realiza la consulta de docentes
-        $docentes = DB::table('users')
+        $query = DB::table('users')
             ->leftJoin('pro_sectores', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_sectores.idUser')
                     ->where('pro_sectores.estado', '=', '1')
                     ->whereYear('pro_sectores.fecha', $selectedYear);
-            })
-            ->where('users.institucion', '=', $institucionSeleccionada)
-            // Condicional para aplicar el filtro por UGEL solo si está presente
-            ->when($ugelSeleccionada, function($query) use ($ugelSeleccionada) {
-                return $query->where('users.ugel', 'like', '%' . $ugelSeleccionada . '%');
-            })
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+        if ($ugelId) {
+            $query->where('users.ugel_id', '=', $ugelId);
+        }
+
+        $docentes = $query
             ->select('users.name', DB::raw('count(pro_sectores.id) as agendas_count'))
             ->groupBy('users.name')
             ->having('agendas_count', '>=', 0)
@@ -704,14 +770,20 @@ class SectorController extends Controller
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
         $selectedYear = $request->get('year', 2026);
-        
-        $docentes = DB::table('users')
+        $institucionId = Institucion::where('nomInstitucion', $institucion)->value('id');
+
+        $query = DB::table('users')
             ->leftJoin('pro_sectores', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_sectores.idUser')
                     ->where('pro_sectores.estado', '=', '1')
                     ->whereYear('pro_sectores.fecha', $selectedYear);
-            })
-            ->where('users.institucion', '=', $institucion)
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+
+        $docentes = $query
             ->where('users.name', 'like', '%' . $term . '%')
             ->select('users.name', DB::raw('count(pro_sectores.idUser) as agendas_count'))
             ->groupBy('users.name')
@@ -734,16 +806,21 @@ class SectorController extends Controller
         $query = Sector::select(
             "pro_sectores.nombreSector", "pro_sectores.descripcion", 
             "pro_sectores.fecha", "users.name", "users.cargo", 
-            "users.nivelinstitucion", "users.institucion", 
-            "users.provincia", "users.distrito", "users.ugel"
+            "institucions.nomInstitucion as institucion",
+            "institucions.provincia as provincia",
+            "institucions.distrito as distrito",
+            "ugeles.nombre as ugel"
         )
+        ->addSelect(DB::raw($this->nivelInstitucionExpr()))
         ->join("users", "users.id", "=", "pro_sectores.idUser")
+        ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+        ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
         ->where('pro_sectores.estado', '1')
         ->whereYear('pro_sectores.fecha', $selectedYear);
 
         // Aplicar filtros
         if (!empty($ugel)) {
-            $query->where("users.ugel", "LIKE", "%$ugel%");
+            $query->where("ugeles.nombre", "LIKE", "%$ugel%");
         }
         
         if (!empty($dni)) {
@@ -755,7 +832,7 @@ class SectorController extends Controller
         }
         
         if (!empty($nominstitucion)) {
-            $query->where("users.institucion", "LIKE", "%$nominstitucion%");
+            $query->where("institucions.nomInstitucion", "LIKE", "%$nominstitucion%");
         }
 
         // Obtener TODOS los resultados (sin paginar)

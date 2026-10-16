@@ -169,6 +169,37 @@ button.close:hover {
 }
 
 
+/* ==========================================================================
+   Tablas Responsivas: Estilo Bootstrap (.table-responsive)
+   Mantiene la estructura tabular intacta (filas, columnas, thead) y añade
+   desplazamiento horizontal fluido en dispositivos móviles.
+   ========================================================================== */
+.table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 9999px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
 @media (max-width: 767px) {
     .table-stacked thead {
         display: none;
@@ -222,3 +253,324 @@ button.close:hover {
         background: #f9fafb;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   FullCalendar — Agenda de Lectura (tema claro + responsive)
+   Todo encapsulado en `.agenda-calendar` para no afectar a otros usos.
+   - Paleta clara vía las CSS variables de FullCalendar v6.
+   - Eventos como "píldoras" con el color de cada sección.
+   - "Hoy" destacado como pastilla (pink-600, color del módulo).
+   - Toolbar responsive (el flex por defecto de v6 no rompe línea).
+   ══════════════════════════════════════════════════════════════════════ */
+.agenda-calendar .fc {
+    min-width: 0;
+    --fc-page-bg-color: #ffffff;
+    --fc-neutral-bg-color: #f8fafc;      /* cabecera de días / celdas fuera del mes */
+    --fc-neutral-text-color: #94a3b8;
+    --fc-border-color: #e5e7eb;
+    --fc-today-bg-color: transparent;     /* el resaltado de "hoy" va en el número */
+    --fc-event-text-color: #ffffff;
+    --fc-event-border-color: transparent;
+    --fc-more-link-bg-color: #f1f5f9;
+    --fc-more-link-text-color: #475569;
+    /* Botones sobrios y claros */
+    --fc-button-text-color: #334155;
+    --fc-button-bg-color: #ffffff;
+    --fc-button-border-color: #cbd5e1;
+    --fc-button-hover-bg-color: #f1f5f9;
+    --fc-button-hover-border-color: #94a3b8;
+    --fc-button-active-bg-color: #e2e8f0;
+    --fc-button-active-border-color: #94a3b8;
+}
+
+/* ── Toolbar ── */
+.agenda-calendar .fc .fc-toolbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.agenda-calendar .fc .fc-toolbar-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #334155;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.agenda-calendar .fc .fc-button {
+    font-weight: 600;
+    border-radius: 0.6rem;
+    box-shadow: none;
+}
+
+.agenda-calendar .fc .fc-button:focus {
+    box-shadow: none;
+}
+
+/* ── Cabecera de días ── */
+.agenda-calendar .fc .fc-col-header-cell {
+    background: var(--fc-neutral-bg-color);
+}
+
+.agenda-calendar .fc .fc-col-header-cell-cushion {
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: capitalize;
+}
+
+/* ── Números de día (centrados) y "hoy" ── */
+.agenda-calendar .fc .fc-daygrid-day-top {
+    justify-content: center;
+}
+
+.agenda-calendar .fc .fc-daygrid-day-number {
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.8rem;
+    width: 1.7em;
+    height: 1.7em;
+    display: grid;
+    place-items: center;
+    border-radius: 9999px;
+}
+
+.agenda-calendar .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background: #db2777; /* pink-600 */
+    color: #ffffff;
+}
+
+/* Tinte sutil de fin de semana */
+.agenda-calendar .fc .fc-day-sat,
+.agenda-calendar .fc .fc-day-sun {
+    background: rgba(248, 250, 252, 0.6);
+}
+
+/* ── Eventos como píldoras ── */
+.agenda-calendar .fc .fc-daygrid-event {
+    border: 0;
+    border-radius: 0.5rem;
+    padding: 1px 6px;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    margin-top: 2px;
+}
+
+.agenda-calendar .fc .fc-daygrid-block-event .fc-event-main {
+    padding: 0 2px;
+}
+
+/* Contenido de la píldora en una sola línea: prioriza el título y recorta la
+   hora si no cabe. Evita que el título colapse a 0 en los eventos "dot"
+   (donde FullCalendar aplica flex-grow/min-width:0 al .fc-event-title). */
+.agenda-calendar .fc .agenda-ev {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agenda-calendar .fc .agenda-ev .fc-event-title,
+.agenda-calendar .fc .agenda-ev .fc-event-time {
+    display: inline;
+    min-width: 0;
+    padding: 0;
+    overflow: visible;
+    white-space: nowrap;
+}
+
+.agenda-calendar .fc .agenda-ev .fc-event-title {
+    font-weight: 600;
+}
+
+.agenda-calendar .fc .agenda-ev .fc-event-time {
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+/* ── Vista de semana/día (franja horaria, eje de horas a la izquierda) ── */
+.agenda-calendar .fc .fc-timegrid-axis-cushion,
+.agenda-calendar .fc .fc-timegrid-slot-label-cushion {
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.agenda-calendar .fc .fc-timegrid-slot-minor {
+    border-top-color: #f1f5f9;
+}
+
+.agenda-calendar .fc .fc-timegrid-event {
+    border: 0;
+    border-radius: 0.4rem;
+    padding: 1px 4px;
+    font-size: 0.72rem;
+    box-shadow: none;
+}
+
+.agenda-calendar .fc .fc-timegrid-event .fc-event-main {
+    padding: 0;
+    overflow: hidden;
+}
+
+.agenda-calendar .fc .fc-timegrid-col.fc-day-today {
+    background: rgba(219, 39, 119, 0.04);
+}
+
+.agenda-calendar .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+    color: #db2777;
+    font-weight: 700;
+}
+
+.agenda-calendar .fc .fc-timegrid-now-indicator-line {
+    border-color: #db2777;
+}
+
+.agenda-calendar .fc .fc-timegrid-now-indicator-arrow {
+    border-color: #db2777;
+}
+
+/* ── "Ver más" y popover ── */
+.agenda-calendar .fc .fc-daygrid-more-link {
+    font-weight: 600;
+    color: #475569;
+}
+
+.agenda-calendar .fc .fc-popover {
+    max-width: calc(100vw - 2rem);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.3);
+}
+
+@media (max-width: 767px) {
+    /* El título ocupa su propia fila por encima de los botones. */
+    .agenda-calendar .fc .fc-toolbar {
+        justify-content: center;
+    }
+
+    .agenda-calendar .fc .fc-toolbar-chunk:has(.fc-toolbar-title) {
+        flex-basis: 100%;
+        order: -1;
+    }
+
+    .agenda-calendar .fc .fc-toolbar.fc-header-toolbar {
+        margin-bottom: 0.75rem;
+    }
+
+    .agenda-calendar .fc .fc-toolbar-title {
+        font-size: 1.05rem;
+    }
+
+    .agenda-calendar .fc .fc-button {
+        font-size: 0.78rem;
+        padding: 0.35em 0.6em;
+    }
+
+    .agenda-calendar .fc .fc-col-header-cell-cushion {
+        font-size: 0.68rem;
+        padding: 3px 2px;
+    }
+
+    .agenda-calendar .fc .fc-daygrid-day-number {
+        font-size: 0.72rem;
+    }
+
+    .agenda-calendar .fc .fc-daygrid-day-events {
+        margin-bottom: 0;
+    }
+
+    .agenda-calendar .fc .fc-daygrid-event {
+        font-size: 0.7rem;
+    }
+
+    .agenda-calendar .fc .fc-daygrid-more-link {
+        font-size: 0.7rem;
+    }
+}
+
+/* En pantallas muy angostas la hora deja de caber: se prioriza el título. */
+@media (max-width: 480px) {
+    .agenda-calendar .fc .fc-daygrid-event .fc-event-time {
+        display: none;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SweetAlert2 Botones y Acciones de Diálogos
+   Garantiza contraste nítido, padding adecuado y visibilidad total
+   contra el preflight de Tailwind CSS.
+   ══════════════════════════════════════════════════════════════════════ */
+.swal2-popup {
+    border-radius: 1.25rem !important;
+    padding: 1.75rem 1.5rem !important;
+    font-family: inherit !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.swal2-actions {
+    /* display sin !important: sweetalert2 gestiona la visibilidad con
+       style="display:none|flex" inline; un !important aquí lo pisaría y
+       mostraría botones ocultos (ej. showConfirmButton:false). */
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.875rem !important;
+    margin-top: 1.5rem !important;
+    width: 100% !important;
+}
+
+.swal2-styled {
+    margin: 0 !important;
+    padding: 0.65rem 1.35rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.75rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease-in-out !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 2.6rem !important;
+    text-decoration: none !important;
+}
+
+/* Botón de Confirmación / Eliminación */
+.swal2-styled.swal2-confirm {
+    background-color: #e11d48 !important; /* rose-600 */
+    color: #ffffff !important;
+    border: 1px solid #be123c !important; /* rose-700 */
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35) !important;
+}
+
+.swal2-styled.swal2-confirm:hover {
+    background-color: #be123c !important; /* rose-700 */
+    border-color: #9f1239 !important;
+    box-shadow: 0 6px 16px rgba(225, 29, 72, 0.45) !important;
+    transform: translateY(-1px) !important;
+}
+
+.swal2-styled.swal2-confirm:active {
+    background-color: #9f1239 !important;
+    transform: translateY(0) !important;
+}
+
+/* Botón de Cancelación */
+.swal2-styled.swal2-cancel {
+    background-color: #f1f5f9 !important; /* slate-100 */
+    color: #334155 !important; /* slate-700 */
+    border: 1px solid #cbd5e1 !important; /* slate-300 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.swal2-styled.swal2-cancel:hover {
+    background-color: #e2e8f0 !important; /* slate-200 */
+    color: #0f172a !important; /* slate-900 */
+    border-color: #94a3b8 !important; /* slate-400 */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+    transform: translateY(-1px) !important;
+}
+
+.swal2-styled.swal2-cancel:active {
+    background-color: #cbd5e1 !important;
+    transform: translateY(0) !important;
+}
+

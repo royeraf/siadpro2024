@@ -6,9 +6,13 @@ use App\Http\Controllers\Concerns\HasScopeTabs;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\Agenda;
+use App\Models\AgendaEvidencia;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class AgendaViewController extends Controller
 {
@@ -22,18 +26,92 @@ class AgendaViewController extends Controller
     }
     public function index()
     {
-        $institucion = Auth::user()->institucion;
+        $institucionId = Auth::user()->institucion_id;
         $events = Agenda::select('pro_agendas.*')
             ->join('users', 'users.id', '=', 'pro_agendas.idUser')
-            ->where('users.institucion', $institucion)
+            ->where('users.institucion_id', $institucionId)
             ->where('pro_agendas.estado', '1')
-            ->with('user')
-            ->get();
+            ->with(['user', 'dias'])
+            ->withCount(['evidencias' => fn ($q) => $q->where('pro_agenda_evidencias.estado', 1)])
+            ->get()
+            ->map(fn ($e) => [
+                'id'       => $e->id,
+                'title'    => $e->title,
+                'evento'   => $e->evento,
+                'color'    => $e->color,
+                'seccion'  => $e->seccion,
+                'nomDocente' => $e->nomDocente ?? ($e->user->name ?? ''),
+                'start'    => $this->isoDateTime($e->start),
+                'end'      => $this->isoDateTime($e->end),
+                'evidencias' => (int) ($e->evidencias_count ?? 0),
+                'dias'     => $e->dias->map(fn ($d) => [
+                    'id'          => $d->id,
+                    'fecha'       => $d->fecha?->format('Y-m-d'),
+                    'hora_inicio' => $d->hora_inicio ? substr($d->hora_inicio, 0, 5) : null,
+                    'hora_fin'    => $d->hora_fin ? substr($d->hora_fin, 0, 5) : null,
+                ])->values(),
+            ]);
 
         $tabs = $this->tabsAgenda('view');
 
-        return view('agenda.view', compact('events', 'tabs'));
+        return Inertia::render('Agenda/Director', [
+            'events' => $events,
+            'tabs'   => $tabs,
+        ]);
+    }
 
+    /**
+     * Igual que AgendaController::isoDateTime(): start/end son varchar en el
+     * formato del input datetime-local y FullCalendar necesita ISO 8601.
+     */
+    private function isoDateTime(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        $value = str_replace(' ', 'T', trim($value));
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $value)) {
+            return $value . ':00';
+        }
+
+        return $value;
+    }
+
+    /**
+     * Expresión SQL que deriva "nivelinstitucion" (Escolarizado / No escolarizado -
+     * PRONOEI) desde institucions.nivel (la columna legacy users.nivelinstitucion
+     * ya no existe).
+     */
+    private function nivelInstitucionExpr(): string
+    {
+        return "CASE "
+            . "WHEN institucions.nivel LIKE '%no escolariz%' OR institucions.nivel LIKE '%pronoei%' "
+            . "THEN 'No escolarizado - PRONOEI' "
+            . "WHEN institucions.nivel IS NULL OR TRIM(institucions.nivel) = '' THEN NULL "
+            . "ELSE 'Escolarizado' END as nivelinstitucion";
+    }
+
+    /**
+     * Aplica el filtro por "nivel" (Escolarizado / No escolarizado - PRONOEI)
+     * usando institucions.nivel (requiere que la consulta ya haga join a institucions).
+     */
+    private function aplicarFiltroNivel($query, ?string $nivel): void
+    {
+        if ($nivel === null || $nivel === '') {
+            return;
+        }
+
+        if ($nivel === 'No escolarizado - PRONOEI') {
+            $query->where(function ($q) {
+                $q->where('institucions.nivel', 'LIKE', '%No Escolariz%')
+                  ->orWhere('institucions.nivel', 'LIKE', '%PRONOEI%');
+            });
+        } else {
+            $query->where('institucions.nivel', 'NOT LIKE', '%No Escolariz%')
+                  ->where('institucions.nivel', 'NOT LIKE', '%PRONOEI%');
+        }
     }
 
     /**
@@ -53,29 +131,37 @@ class AgendaViewController extends Controller
 
     public function ugel(Request $request)
     {
-        $ugel = Auth::user()->ugel;
+        $ugelId = Auth::user()->ugel_id;
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
         $query = Agenda::select(
                 "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
                 "pro_agendas.evento", "pro_agendas.color", "pro_agendas.start", "pro_agendas.end",
-                "users.institucion as institucion", "users.nivelinstitucion", "users.provincia",
-                "users.distrito", "users.ugel"
+                "institucions.nomInstitucion as institucion",
+                "institucions.provincia as provincia",
+                "institucions.distrito as distrito",
+                "ugeles.nombre as ugel"
             )
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join("users", "users.id", "=", "pro_agendas.idUser")
-            ->where("users.ugel", $ugel)
+            ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+            ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
+            ->where("users.ugel_id", $ugelId)
             ->where('pro_agendas.estado', '1')
+            // Solo el año de inicio: filtrar también por `end` descartaba los
+            // eventos que cruzan de año (11 en 2026), que no aparecían en
+            // ningún año.
             ->whereYear('pro_agendas.start', $anio)
-            ->whereYear('pro_agendas.end', $anio);
+            ->withCount(['evidencias' => fn ($q) => $q->where('pro_agenda_evidencias.estado', 1)]);
 
         if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+            $query->where('institucions.nomInstitucion', $request->input('instituciones'));
         }
         if ($request->filled('docentes')) {
             $query->where('users.name', $request->input('docentes'));
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $this->aplicarFiltroNivel($query, $request->input('nivel'));
         }
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
@@ -98,7 +184,9 @@ class AgendaViewController extends Controller
 
         $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
 
-        if ($request->ajax()) {
+        $this->adjuntarEvidenciasPreview($agendas);
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('agenda._rows_general', ['agendas' => $agendas])->render(),
                 'pagination' => (string) $agendas->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -109,12 +197,21 @@ class AgendaViewController extends Controller
             ]);
         }
 
-        $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
-        $listaDocentes = \App\Models\User::where('ugel', $ugel)->whereNotNull('name')->where('name', '!=', '')->distinct()->orderBy('name')->pluck('name');
+        $listaInstituciones = Institucion::where('ugel_id', $ugelId)->orderBy('nomInstitucion')->pluck('nomInstitucion');
+        $listaDocentes = \App\Models\User::where('ugel_id', $ugelId)->whereNotNull('name')->where('name', '!=', '')->distinct()->orderBy('name')->pluck('name');
         $listaAnios = $this->listaAniosAgenda($anio);
         $tabs = $this->tabsAgenda('ugel');
 
-        return view('agenda.ugel', compact('agendas', 'anio', 'listaInstituciones', 'listaDocentes', 'listaAnios', 'tabs'));
+        return Inertia::render('Agenda/Ugel', [
+            'agendas'           => $agendas,
+            'anio'              => (string) $anio,
+            'listaInstituciones' => $listaInstituciones,
+            'listaDocentes'     => $listaDocentes,
+            'listaAnios'        => $listaAnios,
+            'scope'             => 'ugel',
+            'tabs'              => $tabs,
+            'filters'           => $request->only(['year', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function buscarUgel(Request $request)
@@ -129,25 +226,31 @@ class AgendaViewController extends Controller
         $query = Agenda::select(
                 "pro_agendas.id", "users.name as nomDocente", "pro_agendas.title",
                 "pro_agendas.evento", "pro_agendas.color", "pro_agendas.start", "pro_agendas.end",
-                "users.institucion as institucion", "users.nivelinstitucion", "users.provincia",
-                "users.distrito", "users.ugel"
+                "institucions.nomInstitucion as institucion",
+                "institucions.provincia as provincia",
+                "institucions.distrito as distrito",
+                "ugeles.nombre as ugel"
             )
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join("users", "users.id", "=", "pro_agendas.idUser")
+            ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+            ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
             ->where('pro_agendas.estado', '1')
+            // Ver comentario en ugel(): solo el año de inicio.
             ->whereYear('pro_agendas.start', $anio)
-            ->whereYear('pro_agendas.end', $anio);
+            ->withCount(['evidencias' => fn ($q) => $q->where('pro_agenda_evidencias.estado', 1)]);
 
         if ($request->filled('ugels')) {
-            $query->where('users.ugel', $request->input('ugels'));
+            $query->where('ugeles.nombre', $request->input('ugels'));
         }
         if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+            $query->where('institucions.nomInstitucion', $request->input('instituciones'));
         }
         if ($request->filled('docentes')) {
             $query->where('users.name', $request->input('docentes'));
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $this->aplicarFiltroNivel($query, $request->input('nivel'));
         }
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
@@ -170,7 +273,9 @@ class AgendaViewController extends Controller
 
         $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
 
-        if ($request->ajax()) {
+        $this->adjuntarEvidenciasPreview($agendas);
+
+        if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
                 'rows' => view('agenda._rows_general', ['agendas' => $agendas])->render(),
                 'pagination' => (string) $agendas->appends($request->except('page'))->links('vendor.pagination.table-tailwind'),
@@ -181,16 +286,72 @@ class AgendaViewController extends Controller
             ]);
         }
 
-        $listaUgels = \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaUgels = Ugel::orderBy('nombre')->pluck('nombre');
         $listaAnios = $this->listaAniosAgenda($anio);
         $tabs = $this->tabsAgenda('general');
 
-        return view('agenda.general', compact('agendas', 'anio', 'listaUgels', 'listaAnios', 'tabs'));
+        return Inertia::render('Agenda/General', [
+            'agendas'            => $agendas,
+            'anio'               => (string) $anio,
+            'listaUgels'         => $listaUgels,
+            'listaAnios'         => $listaAnios,
+            'filterActionRoute'  => 'agenda.general',
+            'exportRoute'        => '/exportar-agendas',
+            'scope'              => 'general',
+            'tabs'               => $tabs,
+            'filters'            => $request->only(['year', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+        ]);
     }
 
     public function buscarGeneral(Request $request)
     {
         return $this->general($request);
+    }
+
+    /**
+     * Adjunta a cada agenda de la página una vista previa (máx. `$limite`) de
+     * sus archivos, para pintar el "stack" de iconos del listado sin cargar
+     * todas las evidencias de todas las agendas. El total real ya viene en
+     * `pro_agendas.evidencias_count` (withCount).
+     */
+    private function adjuntarEvidenciasPreview($agendas, int $limite = 3): void
+    {
+        $items = $agendas instanceof \Illuminate\Contracts\Pagination\Paginator
+            ? $agendas->getCollection()
+            : collect($agendas);
+
+        // Salvaguarda para "per_page=all" (miles de agendas): no tiene sentido
+        // traer la vista previa de todas; el listado muestra el contador.
+        if ($items->isEmpty() || $items->count() > 200) {
+            return;
+        }
+
+        $porAgenda = AgendaEvidencia::query()
+            ->join('pro_agenda_dias', 'pro_agenda_dias.id', '=', 'pro_agenda_evidencias.agenda_dia_id')
+            ->whereIn('pro_agenda_dias.agenda_id', $items->pluck('id')->all())
+            ->where('pro_agenda_evidencias.estado', 1)
+            ->orderBy('pro_agenda_evidencias.id')
+            ->get([
+                'pro_agenda_evidencias.id',
+                'pro_agenda_evidencias.enlace',
+                'pro_agenda_evidencias.nombre_original',
+                'pro_agenda_dias.agenda_id',
+            ])
+            ->groupBy('agenda_id');
+
+        foreach ($items as $agenda) {
+            $preview = ($porAgenda[$agenda->id] ?? collect())
+                ->take($limite)
+                ->map(fn ($ev) => [
+                    'id'              => $ev->id,
+                    'enlace'          => $ev->enlace,
+                    'nombre_original' => $ev->nombre_original,
+                ])
+                ->values()
+                ->all();
+
+            $agenda->setAttribute('evidencias_preview', $preview);
+        }
     }
 
     /**
@@ -200,7 +361,11 @@ class AgendaViewController extends Controller
      */
     private function listaAniosAgenda(string $anioActual = null)
     {
+        // Rango plausible 2010..año actual: sin el límite superior el selector
+        // ofrecía años corruptos (hay eventos con start en 2027 cuyo end está
+        // en 2024/2026 — error de tecla al digitar el año).
         $listaAnios = Agenda::whereYear('start', '>=', 2010)
+            ->whereYear('start', '<=', (int) date('Y'))
             ->selectRaw('DISTINCT YEAR(start) as anio')
             ->orderByDesc('anio')
             ->pluck('anio');
@@ -217,42 +382,43 @@ class AgendaViewController extends Controller
 
     public function obtenerUgels(Request $request)
     {        
-        $year = $request->get('year', '2026'); // Parámetro de año, defecto 2025
+        $year = $request->get('year', date('Y')); // defecto: año en curso
         
         $ugels = DB::table('institucions')
-            ->select('institucions.ugel', DB::raw('count(distinct pro_agendas.idUser) as docentes_count'))
-            ->join('users', 'institucions.nomInstitucion', '=', 'users.institucion')
+            ->select('ugeles.nombre as ugel', DB::raw('count(distinct pro_agendas.idUser) as docentes_count'))
+            ->join('users', 'users.institucion_id', '=', 'institucions.id')
+            ->join('ugeles', 'ugeles.id', '=', 'institucions.ugel_id')
             ->join('pro_agendas', 'users.id', '=', 'pro_agendas.idUser')
             ->where('pro_agendas.estado', '1')
             ->whereYear('start', $year)
             ->whereYear('end', $year)
-            ->groupBy('institucions.ugel')
+            ->groupBy('ugeles.nombre')
             ->get();
 
         return response()->json($ugels);
     }
     public function obtenerInstitucions(Request $request)
     {        
-        $ugel = Auth::user()->ugel;
-        $year = $request->get('year', '2026'); // Parámetro de año, defecto 2025
+        $ugelId = Auth::user()->ugel_id;
+        $year = $request->get('year', date('Y')); // defecto: año en curso
         
         $resultados = DB::table('institucions')
-            ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_agendas', function($join) use ($year) {
                 $join->on('users.id', '=', 'pro_agendas.idUser')
                     ->whereYear('pro_agendas.start', $year)
                     ->whereYear('pro_agendas.end', $year)
                     ->where('pro_agendas.estado', '=', '1');
             })
-            ->where('institucions.ugel', '=', $ugel)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_agendas.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         // Calcular la cantidad total de docentes por institución
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
-            ->where('institucions.ugel', '=', $ugel)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
@@ -269,23 +435,23 @@ class AgendaViewController extends Controller
     public function buscarInstitucionporUgel(Request $request)
     {
         $ugelSeleccionada = $request->input('ugel');
-        $year = $request->input('year', '2026'); // Parámetro de año, defecto 2025
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
+        $year = $request->input('year', date('Y')); // defecto: año en curso
         
         $resultados = DB::table('institucions')
-            ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_agendas', function($join) use ($year) {
                 $join->on('users.id', '=', 'pro_agendas.idUser')
-                    ->whereYear('pro_agendas.start', $year)
-                    ->whereYear('pro_agendas.end', $year);
+                    ->whereYear('pro_agendas.start', $year);
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_agendas.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
@@ -313,26 +479,27 @@ class AgendaViewController extends Controller
                 break;
         }
         
+        $ugelId = Ugel::resolverId($ugel);
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
-        $year = $request->input('year', '2026'); // Obtener año, defecto 2025
+        $year = $request->input('year', date('Y')); // defecto: año en curso
 
         // Realiza una consulta para buscar instituciones que coincidan con $term y tengan información sobre docentes y agendas
         $resultados = DB::table('institucions')
-            ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_agendas', function($join) use ($year) {
                 $join->on('users.id', '=', 'pro_agendas.idUser')
                     ->whereYear('pro_agendas.start', $year)
                     ->whereYear('pro_agendas.end', $year);
             })
-            ->where('institucions.ugel', '=', $ugel)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_agendas.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', 'institucions.nomInstitucion', '=', 'users.institucion')
-            ->where('institucions.ugel', '=', $ugel)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
@@ -360,7 +527,8 @@ class AgendaViewController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
-        $year = $request->input('year', '2026'); // Parámetro de año, defecto 2025
+        $institucionId = Institucion::where('nomInstitucion', $institucionSeleccionada)->value('id');
+        $year = $request->input('year', date('Y')); // defecto: año en curso
         
         \Log::info('Buscando docentes para institución y UGEL:', [
             'institucion' => $institucionSeleccionada, 
@@ -374,15 +542,20 @@ class AgendaViewController extends Controller
                 ->leftJoin('pro_agendas', function($join) use ($year) {
                     $join->on('users.id', '=', 'pro_agendas.idUser')
                         ->where('pro_agendas.estado', '=', '1')
-                        ->whereYear('pro_agendas.start', $year)
-                        ->whereYear('pro_agendas.end', $year);
+                        ->whereYear('pro_agendas.start', $year);
                 })
-                ->where('users.institucion', '=', $institucionSeleccionada)
                 ->where('users.estado', '=', '1');  // Solo usuarios activos
                 
+            if ($institucionId) {
+                $query->where('users.institucion_id', '=', $institucionId);
+            }
+
             // Aplicar filtro por UGEL si está presente
             if (!empty($ugelSeleccionada)) {
-                $query->where('users.ugel', '=', $ugelSeleccionada);
+                $ugelId = Ugel::resolverId($ugelSeleccionada);
+                if ($ugelId) {
+                    $query->where('users.ugel_id', '=', $ugelId);
+                }
             }
             
             // Agrupar por nombre de usuario y contar agendas
@@ -406,8 +579,9 @@ class AgendaViewController extends Controller
     public function buscadordocente(Request $request)
     {
         $institucion = $request->input('institucion'); 
+        $institucionId = Institucion::where('nomInstitucion', $institucion)->value('id');
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
-        $year = $request->input('year', '2026'); // Obtener año, defecto 2025
+        $year = $request->input('year', date('Y')); // defecto: año en curso
 
         $docentes = DB::table('users')
             ->leftJoin('pro_agendas', function($join) use ($year) {
@@ -415,7 +589,7 @@ class AgendaViewController extends Controller
                     ->whereYear('pro_agendas.start', $year)
                     ->whereYear('pro_agendas.end', $year);
             })
-            ->where('users.institucion', '=', $institucion)
+            ->when($institucionId, fn ($q) => $q->where('users.institucion_id', '=', $institucionId))
             ->where('users.name', 'like', '%' . $term . '%')
             ->select('users.name', DB::raw('count(pro_agendas.idUser) as agendas_count'))
             ->groupBy('users.name')
@@ -425,7 +599,7 @@ class AgendaViewController extends Controller
         // Simplificado para la respuesta final
         $docentes = DB::table('users')
             ->where('name', 'like', '%' . $term . '%')
-            ->where('institucion', 'like', '%' . $institucion . '%')
+            ->when($institucionId, fn ($q) => $q->where('institucion_id', $institucionId))
             ->pluck('name');
 
         return response()->json($docentes);
@@ -438,26 +612,31 @@ class AgendaViewController extends Controller
         $instituciones = trim($request->get('instituciones', ''));
         $docentes = trim($request->get('docentes', ''));
         $nivel = trim($request->get('nivel', ''));
-        $year = trim($request->get('year', '2026')); // Añadir año, defecto 2025
+        $year = trim($request->get('year', date('Y'))); // defecto: año en curso
 
         // Construir la consulta
         $query = Agenda::select(
             "users.name as nomDocente", "pro_agendas.title", "pro_agendas.evento", "pro_agendas.color",
-            "pro_agendas.start", "pro_agendas.end", "users.institucion as institucion", 
-            "users.provincia", "users.distrito", "users.ugel", "users.nivelinstitucion"
+            "pro_agendas.start", "pro_agendas.end",
+            "institucions.nomInstitucion as institucion",
+            "institucions.provincia as provincia",
+            "institucions.distrito as distrito",
+            "ugeles.nombre as ugel"
         )
+        ->addSelect(DB::raw($this->nivelInstitucionExpr()))
         ->join("users", "users.id", "=", "pro_agendas.idUser")
+        ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+        ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
         ->where('pro_agendas.estado', '1')
-        ->whereYear('pro_agendas.start', $year)
-        ->whereYear('pro_agendas.end', $year);
+        ->whereYear('pro_agendas.start', $year);
 
         // Aplicar los filtros
         if (!empty($ugel)) {
-            $query->where("users.ugel", $ugel);
+            $query->where("ugeles.nombre", $ugel);
         }
         
         if (!empty($instituciones)) {
-            $query->where("users.institucion", $instituciones);
+            $query->where("institucions.nomInstitucion", $instituciones);
         }
         
         if (!empty($docentes)) {
@@ -466,7 +645,7 @@ class AgendaViewController extends Controller
         
         // Aplicar filtro por nivel
         if (!empty($nivel)) {
-            $query->where("users.nivelinstitucion", $nivel);
+            $this->aplicarFiltroNivel($query, $nivel);
         }
 
         // Obtener TODOS los resultados (sin paginar)
