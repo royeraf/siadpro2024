@@ -12,6 +12,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\InstitucionController;
+use App\Http\Controllers\Security\RoleController;
 
 
 
@@ -164,6 +165,23 @@ Route::get('/users/check-dni/{dni}', [UserController::class, 'checkDni'])
     ->name('users.check-dni')
     ->middleware('auth');
 Route::resource('users','App\Http\Controllers\UserController');
+// Gestión de accesos por usuario (modal "Accesos" de la SPA de Usuarios).
+Route::get('/users/{user}/access', [UserController::class, 'access'])
+    ->middleware('auth')->name('users.access');
+Route::put('/users/{user}/access', [UserController::class, 'syncAccess'])
+    ->middleware('auth')->name('users.access.update');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEGURIDAD (roles + permisos). Acceso solo Admin vía permisos roles.*
+// definidos en config/security.php. El "Catálogo de Permisos" es una pestaña
+// dentro de /security/roles.
+// ─────────────────────────────────────────────────────────────────────────────
+Route::prefix('security')->name('security.')->middleware('auth')->group(function () {
+    Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
+    Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
+    Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+});
 // "Usuarios inhabilitados" ahora es el tab estado=0 dentro de /users.
 Route::get('/usersi', fn () => redirect()->route('users.index', ['estado' => '0']))
     ->middleware('auth')
@@ -194,6 +212,7 @@ Route::resource('dashboard_main','App\Http\Controllers\DashboardController');
 // devolvían una cadena en lugar de una vista.
 Route::get("/dashboard-index", ['App\Http\Controllers\DashboardController'::class, "index"])->middleware('auth')->name('dashboard.index');
 Route::get('/dashboard/resumen-modulos', [App\Http\Controllers\DashboardController::class, 'resumenModulos'])->middleware('auth')->name('dashboard.resumen-modulos');
+Route::get('/dashboard/mapa-participacion', [App\Http\Controllers\DashboardController::class, 'participacionPorUgel'])->middleware('auth')->name('dashboard.mapa-participacion');
 
 Route::get('agendas', [AgendaController::class, 'index'])->middleware('auth')->name('agendas.index');
 Route::post('agendas', [AgendaController::class, 'store'])->middleware('auth')->name('agendas.store');

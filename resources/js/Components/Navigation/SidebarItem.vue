@@ -6,7 +6,7 @@ import {
     House, ChartLine, Landmark, Users, User,
     Megaphone, Radio, LayoutGrid, FileText, 
     BookOpen, BookHeart, NotebookPen, CalendarCheck, 
-    Folder, School, Shield, Settings, HelpCircle
+    Folder, School, Shield, Settings, HelpCircle, KeyRound
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -69,6 +69,8 @@ const iconMap = {
     'school': School,
     'shield': Shield,
     'settings': Settings,
+    'user-shield': Shield,
+    'key': KeyRound,
     'folder': Folder,
 };
 

@@ -25,6 +25,7 @@ export const SPA_PREFIXES = [
     '/plan',
     '/produccion',
     '/agenda',
+    '/security',
 ];
 
 export function isSpaPath(url) {

@@ -137,6 +137,84 @@ class DashboardService
     }
 
     /**
+     * Participación por UGEL para cada módulo: la matriz que alimenta el mapa.
+     *
+     * A diferencia de `resumenModulos()`, que acota por el scope del usuario,
+     * aquí se calcula siempre el panorama regional completo (las 11 UGEL de la
+     * DRE). Es un dato agregado y sin información personal, por eso se expone a
+     * todos los perfiles.
+     *
+     * El denominador (docentes de la UGEL) es común a los siete módulos; solo
+     * cambia el numerador (docentes con al menos un registro del módulo). Se
+     * resuelve con una consulta por módulo, nunca una por fila.
+     *
+     * @return array<string, mixed>
+     */
+    public function participacionPorUgel(): array
+    {
+        try {
+            $docentesPorUgel = $this->docentesQuery(['scope' => 'todo', 'userId' => null])
+                ->whereNotNull('users.ugel_id')
+                ->selectRaw('users.ugel_id as ugel_id')
+                ->selectRaw('COUNT(DISTINCT users.id) as total')
+                ->groupBy('users.ugel_id')
+                ->pluck('total', 'ugel_id');
+
+            $modulos = array_map(function (array $modulo) use ($docentesPorUgel) {
+                $conRegistro = DB::table($modulo['tabla'])
+                    ->join('users', 'users.id', '=', "{$modulo['tabla']}.idUser")
+                    ->where("{$modulo['tabla']}.estado", '1')
+                    ->where('users.estado', '1')
+                    ->whereIn('users.cargo', self::DOCENTES_CARGOS)
+                    ->whereNotNull('users.ugel_id')
+                    ->selectRaw('users.ugel_id as ugel_id')
+                    ->selectRaw('COUNT(DISTINCT users.id) as total')
+                    ->groupBy('users.ugel_id')
+                    ->pluck('total', 'ugel_id');
+
+                $porUgel = [];
+
+                foreach ($docentesPorUgel as $ugelId => $total) {
+                    $tiene = (int) ($conRegistro[$ugelId] ?? 0);
+
+                    $porUgel[(int) $ugelId] = [
+                        'con_registro' => $tiene,
+                        'porcentaje'   => $this->porcentaje($tiene, (int) $total),
+                    ];
+                }
+
+                return [
+                    'key'      => $modulo['key'],
+                    'nombre'   => $modulo['nombre'],
+                    'por_ugel' => $porUgel,
+                ];
+            }, self::MODULOS);
+
+            $ugeles = DB::table('ugeles')
+                ->where('estado', true)
+                ->orderBy('nombre')
+                ->get(['id', 'nombre', 'provincia'])
+                ->map(fn ($u) => [
+                    'id'        => (int) $u->id,
+                    'nombre'    => $u->nombre,
+                    'provincia' => $u->provincia,
+                    'docentes'  => (int) ($docentesPorUgel[$u->id] ?? 0),
+                ])
+                ->all();
+
+            return [
+                'scope'   => 'DRE',
+                'ugels'   => $ugeles,
+                'modulos' => $modulos,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('DashboardService::participacionPorUgel() falló', ['error' => $e->getMessage()]);
+
+            return ['scope' => null, 'ugels' => [], 'modulos' => [], 'error' => true];
+        }
+    }
+
+    /**
      * Resumen por territorio o jerarquía.
      *
      *  - DRE/Admin  → una fila por UGEL: docentes, registros y % con registro.

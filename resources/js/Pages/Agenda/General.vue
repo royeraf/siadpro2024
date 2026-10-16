@@ -2,12 +2,13 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { AgendasService } from '@/Services/agenda';
-import { Paperclip } from 'lucide-vue-next';
+import { Paperclip, Eye } from 'lucide-vue-next';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import DetailModal from '@/Components/UI/DetailModal.vue';
 import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
 import EvidenciaStack from './Partials/EvidenciaStack.vue';
 
@@ -157,16 +158,39 @@ onMounted(() => {
 const columns = [
     { key: 'nomDocente', label: 'Docente', sortable: false },
     { key: 'title', label: 'Nombre de la agenda', sortable: false },
-    { key: 'evento', label: 'Descripción', sortable: false },
     { key: 'start', label: 'Fecha Inicio', width: '110px', sortable: false },
     { key: 'end', label: 'Fecha Fin', width: '110px', sortable: false },
-    { key: 'evidencias_count', label: 'Evidencias', width: '110px', sortable: false },
-    { key: 'institucion', label: 'Institución', sortable: false },
-    { key: 'nivelinstitucion', label: 'Tipo de II.EE', sortable: false },
-    { key: 'provincia', label: 'Provincia', sortable: false },
-    { key: 'distrito', label: 'Distrito', sortable: false },
-    { key: 'ugel', label: 'UGEL', width: '90px', sortable: false },
+    { key: 'evidencias_count', label: 'Evidencias', width: '110px', align: 'center', sortable: false },
+    { key: 'opciones', label: 'Acciones', width: '90px', align: 'center', class: 'no-export' },
 ];
+
+// ── Modal de Detalle genérico (solo lectura) ──
+const ficha = reactive({
+    show: false,
+    title: '',
+    fields: [],
+});
+
+function openDetail(row) {
+    ficha.title = row.title || 'Detalle de la agenda';
+    ficha.fields = [
+        { label: 'Docente', value: row.nomDocente },
+        { label: 'Descripción', value: row.evento, full: true },
+        { label: 'Fecha Inicio', value: formatDate(row.start) },
+        { label: 'Fecha Fin', value: formatDate(row.end) },
+        { label: 'Evidencias', value: row.evidencias_count ?? 0 },
+        { label: 'Institución', value: row.institucion, full: true },
+        { label: 'Tipo de II.EE', value: row.nivelinstitucion },
+        { label: 'UGEL', value: row.ugel },
+        { label: 'Provincia', value: row.provincia },
+        { label: 'Distrito', value: row.distrito },
+    ];
+    ficha.show = true;
+}
+
+function closeDetail() {
+    ficha.show = false;
+}
 
 function formatDate(value) {
     if (!value) return '-';
@@ -356,16 +380,13 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
                 <td class="px-4 py-3 text-slate-700 align-middle min-w-[180px]">
                     {{ row.title || '-' }}
                 </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[220px] max-w-[340px]">
-                    {{ row.evento || '-' }}
-                </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
                     {{ formatDate(row.start) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
                     {{ formatDate(row.end) }}
                 </td>
-                <td class="px-4 py-3 align-middle">
+                <td class="px-4 py-3 align-middle text-center">
                     <EvidenciaStack
                         v-if="row.evidencias_preview?.length"
                         :evidencias="row.evidencias_preview"
@@ -390,20 +411,15 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
                         {{ row.evidencias_count || 0 }}
                     </button>
                 </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[180px]">
-                    {{ row.institucion || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.nivelinstitucion || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.provincia || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.distrito || '-' }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ row.ugel || '-' }}
+                <td class="px-4 py-3 text-center no-export whitespace-nowrap align-middle">
+                    <button
+                        type="button"
+                        @click="openDetail(row)"
+                        class="inline-flex items-center justify-center p-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-xs transition-colors border-0 cursor-pointer"
+                        title="Ver detalle"
+                    >
+                        <Eye class="w-3.5 h-3.5" />
+                    </button>
                 </td>
             </template>
         </BaseTable>
@@ -414,6 +430,17 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
             :can-edit="false"
             :can-evidencia="false"
             @close="detalle.show = false"
+        />
+
+        <!-- ══ MODAL DE DETALLE (SOLO LECTURA) ══ -->
+        <DetailModal
+            :show="ficha.show"
+            :title="ficha.title"
+            subtitle="Detalle de la agenda"
+            icon="CalendarCheck"
+            color="pink"
+            :fields="ficha.fields"
+            @close="closeDetail"
         />
     </AppLayout>
 </template>

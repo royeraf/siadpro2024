@@ -5,6 +5,7 @@ import {
     X, Paperclip, ExternalLink, FileWarning
 } from 'lucide-vue-next';
 import CircularProgress from '@/Components/UI/CircularProgress.vue';
+import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
 import { formatBytes, formatBytesCompact } from '@/Utils/formatBytes';
 
 const props = defineProps({
@@ -111,21 +112,24 @@ function handleDrop(e) {
 
             <div v-if="file" class="flex items-center justify-between bg-blue-50/70 border border-blue-200 p-2.5 rounded-xl">
                 <div class="flex items-center min-w-0">
-                    <CheckCircle2 class="w-4 h-4 text-emerald-600 mr-2 shrink-0" />
+                    <ArchivoIcono :nombre="file.name" class="w-7 h-7 mr-2 shrink-0" />
                     <div class="text-left min-w-0">
                         <p class="text-xs font-bold text-slate-800 truncate m-0">{{ file.name }}</p>
                         <p class="text-[11px] text-slate-500 m-0">{{ sizeLabel }}</p>
                     </div>
                 </div>
-                <button
-                    v-if="!disabled"
-                    type="button"
-                    @click.stop="emit('remove')"
-                    class="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors ml-2 cursor-pointer"
-                    title="Quitar archivo"
-                >
-                    <X class="w-4 h-4" />
-                </button>
+                <div class="flex items-center gap-1 ml-2 shrink-0">
+                    <CheckCircle2 v-if="!error" class="w-4 h-4 text-emerald-600" />
+                    <button
+                        v-if="!disabled"
+                        type="button"
+                        @click.stop="emit('remove')"
+                        class="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                        title="Quitar archivo"
+                    >
+                        <X class="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             <div v-if="uploading" class="mt-3 flex flex-col items-center gap-2">

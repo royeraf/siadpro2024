@@ -2,7 +2,7 @@
 import { ref, reactive, computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { DifusionsService } from '@/Services/difusion';
-import { Pencil, Trash2, CheckCircle, AlertCircle } from 'lucide-vue-next';
+import { Pencil, Trash2, CheckCircle, AlertCircle, Eye } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 
@@ -11,7 +11,9 @@ import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import CreateButton from '@/Components/UI/CreateButton.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import DetailModal from '@/Components/UI/DetailModal.vue';
 import FileViewerModal from '@/Components/UI/FileViewerModal.vue';
+import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
 import DifusionFormModal from './Partials/DifusionFormModal.vue';
 
 const props = defineProps({
@@ -45,22 +47,12 @@ const localFilters = reactive({
 });
 
 const columns = computed(() => {
-    const cols = [
+    return [
         { key: 'nombreAccion', label: 'Nombre de la Acción', sortable: false },
-        { key: 'lugar', label: 'Lugar', sortable: false },
-        { key: 'descripcion', label: 'Descripción', sortable: false },
         { key: 'fecha', label: 'Fecha', width: '110px', sortable: false },
         { key: 'documento', label: 'Documento', width: '90px', align: 'center', class: 'no-export' },
-        { key: 'usuario', label: 'Usuario', sortable: false },
-        { key: 'institucion', label: 'Institución', sortable: false },
-        { key: 'provincia', label: 'Provincia', sortable: false },
-        { key: 'distrito', label: 'Distrito', sortable: false },
-        { key: 'ugel', label: 'UGEL', width: '90px', sortable: false },
+        { key: 'opciones', label: 'Acciones', width: '130px', align: 'center', class: 'no-export' },
     ];
-    if (props.can?.edit || props.can?.destroy) {
-        cols.push({ key: 'opciones', label: 'Opciones', width: '100px', align: 'center', class: 'no-export' });
-    }
-    return cols;
 });
 
 const formModal = reactive({
@@ -81,6 +73,32 @@ function openEditModal(difusion) {
 function closeFormModal() {
     formModal.show = false;
     formModal.difusion = null;
+}
+
+// ── Modal de Detalle (solo lectura) ──
+const detalle = reactive({
+    show: false,
+    title: '',
+    fields: [],
+});
+
+function openDetail(row) {
+    detalle.title = row.nombreAccion || 'Detalle de la difusión';
+    detalle.fields = [
+        { label: 'Descripción', value: row.descripcion, full: true },
+        { label: 'Lugar', value: row.lugar },
+        { label: 'Fecha', value: formatDate(row.fecha) },
+        { label: 'Usuario', value: row.get_user?.name || row.user?.name },
+        { label: 'Institución', value: row.get_user?.institucion || row.user?.institucion, full: true },
+        { label: 'UGEL', value: row.get_user?.ugel || row.user?.ugel },
+        { label: 'Provincia', value: row.get_user?.provincia || row.user?.provincia },
+        { label: 'Distrito', value: row.get_user?.distrito || row.user?.distrito },
+    ];
+    detalle.show = true;
+}
+
+function closeDetail() {
+    detalle.show = false;
 }
 
 const today = computed(() => {
@@ -332,12 +350,6 @@ function confirmDelete(difusion) {
                 <td class="px-4 py-3 font-semibold text-blue-600 align-middle min-w-[200px]">
                     {{ row.nombreAccion }}
                 </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap min-w-[120px]">
-                    {{ row.lugar || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[220px] max-w-[340px]">
-                    {{ row.descripcion || '-' }}
-                </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
                     {{ formatDate(row.fecha) }}
                 </td>
@@ -349,27 +361,20 @@ function confirmDelete(difusion) {
                         class="inline-flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                         :title="`Ver ${row.enlace ? row.enlace.split('/').pop() : 'documento'}`"
                     >
-                        <i :class="row.documento || 'fas fa-file-alt'" :style="{ color: row.color || '#3B82F6', fontSize: '18px' }"></i>
+                        <ArchivoIcono :nombre="row.enlace" class="w-6 h-6" />
                     </button>
                     <span v-else class="text-slate-400 text-xs">-</span>
                 </td>
-                <td class="px-4 py-3 text-slate-700 font-medium align-middle whitespace-nowrap">
-                    {{ row.get_user?.name || row.user?.name || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[180px]">
-                    {{ row.get_user?.institucion || row.user?.institucion || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.get_user?.provincia || row.user?.provincia || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.get_user?.distrito || row.user?.distrito || '-' }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ row.get_user?.ugel || row.user?.ugel || '-' }}
-                </td>
-                <td v-if="can.edit || can.destroy" class="px-4 py-3 text-center no-export whitespace-nowrap align-middle">
+                <td class="px-4 py-3 text-center no-export whitespace-nowrap align-middle">
                     <div class="inline-flex items-center justify-center gap-1.5">
+                        <button
+                            type="button"
+                            @click="openDetail(row)"
+                            class="inline-flex items-center justify-center p-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-xs transition-colors border-0 cursor-pointer"
+                            title="Ver detalle"
+                        >
+                            <Eye class="w-3.5 h-3.5" />
+                        </button>
                         <button 
                             v-if="can.edit"
                             type="button" 
@@ -405,6 +410,16 @@ function confirmDelete(difusion) {
             :show="formModal.show"
             :difusion="formModal.difusion"
             @close="closeFormModal"
+        />
+
+        <DetailModal
+            :show="detalle.show"
+            :title="detalle.title"
+            subtitle="Detalle de la difusión"
+            icon="Radio"
+            color="blue"
+            :fields="detalle.fields"
+            @close="closeDetail"
         />
     </AppLayout>
 </template>

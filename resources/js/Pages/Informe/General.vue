@@ -2,13 +2,15 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { InformesService } from '@/Services/informe';
-import { CheckCircle, AlertCircle } from 'lucide-vue-next';
+import { CheckCircle, AlertCircle, Eye } from 'lucide-vue-next';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import DetailModal from '@/Components/UI/DetailModal.vue';
 import FileViewerModal from '@/Components/UI/FileViewerModal.vue';
+import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
 
 const props = defineProps({
     informes: {
@@ -130,17 +132,38 @@ const textoPlaceholder = computed(() => (isDirector.value ? 'Ej. Biblioteca de a
 
 const columns = [
     { key: 'nombreInforme', label: 'Nombre de la Biblioteca', sortable: false },
-    { key: 'descripcion', label: 'Descripción', sortable: false },
+    { key: 'name', label: 'Usuario', sortable: false },
     { key: 'fecha', label: 'Fecha', width: '110px', sortable: false },
     { key: 'documento', label: 'Documento', width: '90px', align: 'center', class: 'no-export' },
-    { key: 'name', label: 'Usuario', sortable: false },
-    { key: 'cargo', label: 'Cargo', sortable: false },
-    { key: 'institucion', label: 'Institución', sortable: false },
-    { key: 'nivelinstitucion', label: 'Tipo de II.EE', sortable: false },
-    { key: 'provincia', label: 'Provincia', sortable: false },
-    { key: 'distrito', label: 'Distrito', sortable: false },
-    { key: 'ugel', label: 'UGEL', width: '90px', sortable: false },
+    { key: 'opciones', label: 'Acciones', width: '90px', align: 'center', class: 'no-export' },
 ];
+
+// ── Modal de Detalle (solo lectura) ──
+const detalle = reactive({
+    show: false,
+    title: '',
+    fields: [],
+});
+
+function openDetail(row) {
+    detalle.title = row.nombreInforme || 'Detalle de la biblioteca';
+    detalle.fields = [
+        { label: 'Descripción', value: row.descripcion, full: true },
+        { label: 'Fecha', value: formatDate(row.fecha) },
+        { label: 'Usuario', value: row.name },
+        { label: 'Cargo', value: row.cargo },
+        { label: 'Institución', value: row.institucion, full: true },
+        { label: 'Tipo de II.EE', value: row.nivelinstitucion },
+        { label: 'UGEL', value: row.ugel },
+        { label: 'Provincia', value: row.provincia },
+        { label: 'Distrito', value: row.distrito },
+    ];
+    detalle.show = true;
+}
+
+function closeDetail() {
+    detalle.show = false;
+}
 
 const viewer = reactive({
     show: false,
@@ -410,8 +433,8 @@ function handleExportExcel() {
                 <td class="px-4 py-3 font-semibold text-blue-600 align-middle min-w-[200px]">
                     {{ row.nombreInforme }}
                 </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[220px] max-w-[340px]">
-                    {{ row.descripcion || '-' }}
+                <td class="px-4 py-3 text-slate-700 font-medium align-middle whitespace-nowrap">
+                    {{ row.name || '-' }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
                     {{ formatDate(row.fecha) }}
@@ -424,30 +447,19 @@ function handleExportExcel() {
                         class="inline-flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                         :title="`Ver ${row.enlace ? row.enlace.split('/').pop() : 'documento'}`"
                     >
-                        <i :class="row.documento || 'fas fa-file-alt'" :style="{ color: row.color || '#3B82F6', fontSize: '18px' }"></i>
+                        <ArchivoIcono :nombre="row.enlace" class="w-6 h-6" />
                     </button>
                     <span v-else class="text-slate-400 text-xs">-</span>
                 </td>
-                <td class="px-4 py-3 text-slate-700 font-medium align-middle whitespace-nowrap">
-                    {{ row.name || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.cargo || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[180px]">
-                    {{ row.institucion || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.nivelinstitucion || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.provincia || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.distrito || '-' }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ row.ugel || '-' }}
+                <td class="px-4 py-3 text-center no-export whitespace-nowrap align-middle">
+                    <button
+                        type="button"
+                        @click="openDetail(row)"
+                        class="inline-flex items-center justify-center p-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-xs transition-colors border-0 cursor-pointer"
+                        title="Ver detalle"
+                    >
+                        <Eye class="w-3.5 h-3.5" />
+                    </button>
                 </td>
             </template>
         </BaseTable>
@@ -458,6 +470,16 @@ function handleExportExcel() {
             :name="viewer.name"
             :download-url="viewer.downloadUrl"
             @close="viewer.show = false"
+        />
+
+        <DetailModal
+            :show="detalle.show"
+            :title="detalle.title"
+            subtitle="Detalle de la biblioteca del aula"
+            icon="BookOpen"
+            color="orange"
+            :fields="detalle.fields"
+            @close="closeDetail"
         />
     </AppLayout>
 </template>

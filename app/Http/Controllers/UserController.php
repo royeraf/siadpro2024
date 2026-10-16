@@ -10,9 +10,11 @@ use App\Models\Institucion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Services\ReniecService;
+use App\Services\Security\SecurityCatalog;
 
 class UserController extends Controller
 {
@@ -20,7 +22,7 @@ class UserController extends Controller
         $this->middleware('auth');
         $this->middleware('can:users.index')->only('index', 'exportUsers');
         $this->middleware('can:users.create')->only('create', 'store');
-        $this->middleware('can:users.edit')->only('edit', 'update');
+        $this->middleware('can:users.edit')->only('edit', 'update', 'access', 'syncAccess');
         $this->middleware('can:users.destroy')->only('destroy');
     }
 
@@ -30,31 +32,20 @@ class UserController extends Controller
     }
 
     /**
-     * Jerarquía escalonada de asignación de roles: cada rol solo puede
-     * asignar su propio nivel o niveles inferiores, nunca superiores.
-     * Admin no aparece aquí porque isAdmin() ya deja pasar cualquier rol.
-     */
-    private const ROLE_HIERARCHY = [
-        'EspecDRE'  => ['EspecDRE', 'EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
-        'EspecUGEL' => ['EspecUGEL', 'Director', 'Docente', 'PC', 'PEC'],
-        'Director'  => ['Director', 'Docente', 'PC', 'PEC'],
-        'Docente'   => ['Docente', 'PC', 'PEC'],
-        'PC'        => ['Docente', 'PC', 'PEC'],
-        'PEC'       => ['Docente', 'PC', 'PEC'],
-    ];
-
-    /**
      * Roles que el usuario autenticado puede asignar a otros, según la
-     * jerarquía escalonada (nunca por encima de su propio nivel).
+     * jerarquía escalonada de config/security.php (nunca por encima de su
+     * propio nivel). Admin tiene acceso total y se resuelve aparte.
      */
     private function assignableRoles()
     {
+        $catalog = app(SecurityCatalog::class);
+
         if ($this->isAdmin()) {
-            return Role::all();
+            return $catalog->orderedRoles();
         }
 
         $assignableNames = collect(Auth::user()->roles->pluck('name'))
-            ->flatMap(fn ($roleName) => self::ROLE_HIERARCHY[$roleName] ?? [])
+            ->flatMap(fn ($roleName) => $catalog->assignmentFor($roleName))
             ->unique();
 
         return Role::whereIn('name', $assignableNames)->get();
@@ -115,7 +106,7 @@ class UserController extends Controller
 
         $perPage = $this->resolvePerPage($request);
 
-        $users = $usersQuery->with(['roles:id,name', 'institucionRel:id,nomInstitucion,nivel,provincia,distrito', 'ugelRel:id,nombre,provincia,distrito'])
+        $users = $usersQuery->with(['roles:id,name,label', 'institucionRel:id,nomInstitucion,nivel,provincia,distrito', 'ugelRel:id,nombre,provincia,distrito'])
                             ->orderBy('id', 'desc')
                             ->paginate($perPage)
                             ->withQueryString();
@@ -469,6 +460,68 @@ class UserController extends Controller
 
         return redirect()->route('users.index', ['estado' => $user->estado])
             ->with('success', 'Usuario actualizado correctamente.');
+    }
+
+    /**
+     * Acceso efectivo de un usuario (roles + permisos por rol + permisos
+     * directos), agrupado por módulo. Alimenta el modal "Accesos" de la SPA.
+     */
+    public function access(User $user, SecurityCatalog $catalog)
+    {
+        $assignable = $this->assignableRoles();
+
+        // Mapa rol → permisos. Permite que el modal calcule el candado EN VIVO
+        // según los roles que el operador tenga marcados (no solo los que el
+        // usuario tenía al abrir). Se incluyen tanto los roles asignables como
+        // los que ya tiene el usuario (por si alguno no es asignable).
+        $rolePermissions = [];
+        foreach ($assignable->merge($user->roles()->get())->unique('id') as $role) {
+            $rolePermissions[$role->name] = $role->permissions->pluck('name')->all();
+        }
+
+        return response()->json([
+            'user'             => [
+                'id'    => $user->id,
+                'name'  => $user->name,
+                'cargo' => $user->cargo,
+            ],
+            'access'           => $catalog->accessFor($user),
+            'assignable_roles' => $assignable
+                ->map(fn (Role $role) => [
+                    'id'      => $role->id,
+                    'name'    => $role->name,
+                    'label'   => $catalog->labelFor($role),
+                    'level'   => $catalog->roleDefinitions()[$role->name]['level'] ?? 0,
+                ])->values(),
+            'role_permissions' => $rolePermissions,
+        ]);
+    }
+
+    /**
+     * Sincroniza los roles y los permisos directos de un usuario.
+     *
+     * Los roles se filtran por la jerarquía del operador (evita escalada de
+     * privilegios) y los permisos directos se restringen al catálogo canónico.
+     */
+    public function syncAccess(Request $request, User $user, SecurityCatalog $catalog)
+    {
+        $validated = $request->validate([
+            'roles'         => ['sometimes', 'array'],
+            'roles.*'       => ['string', Rule::exists('roles', 'name')->where('guard_name', $catalog->guard())],
+            'permissions'   => ['sometimes', 'array'],
+            'permissions.*' => [Rule::in($catalog->permissionNames())],
+        ]);
+
+        $assignable = $this->assignableRoles()->pluck('name')->all();
+        $roleNames = array_values(array_intersect($validated['roles'] ?? [], $assignable));
+
+        $user->syncRoles($roleNames);
+        $user->syncPermissions($validated['permissions'] ?? []);
+
+        $catalog->forgetCache();
+
+        return redirect()->route('users.index', ['estado' => $user->estado])
+            ->with('success', 'Accesos del usuario actualizados correctamente.');
     }
 
     public function destroy($id)

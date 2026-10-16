@@ -1,35 +1,73 @@
-import {
-    FileText, FileSpreadsheet, FileImage, Presentation, File,
-} from 'lucide-vue-next';
+/**
+ * Iconos de documentos/archivos según su extensión.
+ *
+ * Los SVG viven en `public/img/archivos/` y se sirven desde la raíz del sitio
+ * (`/img/archivos/…`), igual que el resto de imágenes estáticas del proyecto.
+ *
+ * Estilo "Microsoft Office" actual (Word/Excel/PowerPoint 2025) más un icono de
+ * PDF, uno de imagen y un tipo **genérico** para cualquier otra extensión.
+ *
+ * Origen: la colección *Microsoft Office* de Icons8
+ * (https://iconos8.es/icons/set/microsoft-office), que sirvió de referencia de
+ * estilo. Como Icons8 bloquea la descarga de SVG sin cuenta, los SVG se toman de
+ * fuentes libres:
+ *   - Word / Excel / PowerPoint: "Microsoft Office … (2025–present)" (Wikimedia Commons).
+ *   - PDF: "Adobe Acrobat DC logo 2020" (Wikimedia Commons).
+ *   - Imagen: set "Paomedia small-n-flat".
+ *   - Genérico: propio, en el mismo estilo que el resto.
+ */
 
 /**
  * Extensiones que se consideran imagen (se previsualizan con su miniatura real
  * en vez de un icono).
  */
-export const IMAGENES = ['png', 'jpg', 'jpeg'];
+export const IMAGENES = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+
+const BASE = '/img/archivos';
 
 /**
- * Icono (componente lucide) y clase de color por extensión. Mapa compartido por
- * `EvidenciaStack.vue` y el navegador de archivos de `FileViewerModal.vue` para
- * que ambos muestren el mismo aspecto.
+ * Ruta del SVG por extensión. Varias extensiones comparten el mismo icono (por
+ * ejemplo `doc` y `docx` son ambos de Word).
  */
 const ICONOS = {
-    pdf: { cmp: FileText, clase: 'text-rose-600 bg-rose-50 border-rose-200' },
-    doc: { cmp: FileText, clase: 'text-blue-600 bg-blue-50 border-blue-200' },
-    docx: { cmp: FileText, clase: 'text-blue-600 bg-blue-50 border-blue-200' },
-    xls: { cmp: FileSpreadsheet, clase: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    xlsx: { cmp: FileSpreadsheet, clase: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    xlm: { cmp: FileSpreadsheet, clase: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    xlsm: { cmp: FileSpreadsheet, clase: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    ppt: { cmp: Presentation, clase: 'text-orange-600 bg-orange-50 border-orange-200' },
-    pptx: { cmp: Presentation, clase: 'text-orange-600 bg-orange-50 border-orange-200' },
-    pptm: { cmp: Presentation, clase: 'text-orange-600 bg-orange-50 border-orange-200' },
-    png: { cmp: FileImage, clase: 'text-violet-600 bg-violet-50 border-violet-200' },
-    jpg: { cmp: FileImage, clase: 'text-violet-600 bg-violet-50 border-violet-200' },
-    jpeg: { cmp: FileImage, clase: 'text-violet-600 bg-violet-50 border-violet-200' },
+    // PDF
+    pdf: `${BASE}/pdf.svg`,
+
+    // Word
+    doc: `${BASE}/word.svg`,
+    docx: `${BASE}/word.svg`,
+    rtf: `${BASE}/word.svg`,
+
+    // Excel
+    xls: `${BASE}/excel.svg`,
+    xlsx: `${BASE}/excel.svg`,
+    xlm: `${BASE}/excel.svg`,
+    xlsm: `${BASE}/excel.svg`,
+    xlsb: `${BASE}/excel.svg`,
+    csv: `${BASE}/excel.svg`,
+
+    // PowerPoint
+    ppt: `${BASE}/powerpoint.svg`,
+    pptx: `${BASE}/powerpoint.svg`,
+    pptm: `${BASE}/powerpoint.svg`,
+
+    // Imagen
+    png: `${BASE}/image.svg`,
+    jpg: `${BASE}/image.svg`,
+    jpeg: `${BASE}/image.svg`,
+    gif: `${BASE}/image.svg`,
+    webp: `${BASE}/image.svg`,
+    bmp: `${BASE}/image.svg`,
+    svg: `${BASE}/image.svg`,
 };
 
-const ICONO_DEFECTO = { cmp: File, clase: 'text-slate-600 bg-slate-50 border-slate-200' };
+/**
+ * Tipo **genérico**: icono de "archivo" para cualquier extensión que no esté
+ * contemplada en `ICONOS` (por ejemplo `txt`, `zip`, `odt`, `ods`, `mp3`, `mp4`,
+ * `rar`… o archivos sin extensión). Evita que un archivo desconocido se muestre
+ * sin icono.
+ */
+export const ICONO_GENERICO = `${BASE}/file.svg`;
 
 /** Extensión en minúsculas de un nombre o URL (sin query string). */
 export function extensionDe(nombre) {
@@ -42,7 +80,15 @@ export function esImagenArchivo(nombre) {
     return IMAGENES.includes(extensionDe(nombre));
 }
 
-/** Devuelve el componente de icono y su clase de color según la extensión. */
+/**
+ * Devuelve la ruta del icono (SVG) que corresponde a la extensión del archivo.
+ * Si la extensión no está contemplada, devuelve el tipo genérico.
+ */
 export function iconoArchivo(nombre) {
-    return ICONOS[extensionDe(nombre)] || ICONO_DEFECTO;
+    return ICONOS[extensionDe(nombre)] || ICONO_GENERICO;
+}
+
+/** ¿La extensión del archivo está contemplada por un icono específico? */
+export function tieneIconoPropio(nombre) {
+    return extensionDe(nombre) in ICONOS;
 }

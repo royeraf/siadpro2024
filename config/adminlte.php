@@ -345,6 +345,16 @@ return [
             'can' => 'users.index',
         ],
 
+        // Seguridad (solo Admin, vía permisos roles.*)
+        ['header' => 'Seguridad'],
+        [
+            'text' => 'ROLES Y PERMISOS',
+            'url'  => '/security/roles',
+            'icon' => 'fas fa-user-shield',
+            'can'  => 'roles.index',
+            'active' => ['security/roles*'],
+        ],
+
         // Actividades de lectura
         ['header' => 'Actividades'],
         [

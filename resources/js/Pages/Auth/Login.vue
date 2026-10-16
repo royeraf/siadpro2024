@@ -1,10 +1,10 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
 import Swal from 'sweetalert2';
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, LogIn, Mail } from 'lucide-vue-next';
+import { AlertCircle, Eye, EyeOff, Loader2, LogIn, Mail } from 'lucide-vue-next';
 
 const showPassword = ref(false);
 
@@ -32,6 +32,16 @@ const { errors, defineField, handleSubmit } = useVeeForm({
 const [email, emailAttrs] = defineField('email', { validateOnModelUpdate: false });
 const [password, passwordAttrs] = defineField('password', { validateOnModelUpdate: false });
 const [remember, rememberAttrs] = defineField('remember');
+
+// Los errores que devuelve el servidor (Fortify) viven en `form.errors` y no se
+// limpian al editar por sí solos. Los borramos en cuanto el usuario corrige el
+// campo para que el mensaje inline desaparezca en el momento.
+watch(email, () => {
+    if (form.errors.email) form.clearErrors('email');
+});
+watch(password, () => {
+    if (form.errors.password) form.clearErrors('password');
+});
 
 const submit = handleSubmit((values) => {
     form.email = String(values.email || '').trim();
@@ -61,194 +71,155 @@ const submit = handleSubmit((values) => {
     <Head title="Iniciar sesión · SIADPRO" />
 
     <div
-        class="login-bg flex min-h-screen w-full flex-col items-center justify-center bg-white px-5 py-10"
+        class="login-bg flex min-h-screen w-full flex-col items-center justify-center bg-white px-4 py-8 sm:py-10"
     >
-        <div class="w-full max-w-sm login-card">
-                <div class="logo-chip flex items-center justify-center gap-3">
-                    <img
-                        src="/vendor/adminlte/dist/img/inicial.png"
-                        alt="SIADPRO"
-                        class="h-12 w-12 rounded-full object-contain"
-                    />
-                    <span class="text-2xl font-extrabold tracking-wide text-[#192761]">SIADPRO</span>
-                </div>
+        <div class="mb-5 flex items-center justify-center gap-2.5 sm:mb-6 sm:gap-3">
+            <img
+                src="/vendor/adminlte/dist/img/inicial.png"
+                alt="SIADPRO"
+                class="h-10 w-10 object-contain sm:h-12 sm:w-12"
+            />
+            <span class="text-xl font-extrabold tracking-wide text-[#192761] sm:text-2xl">SIADPRO</span>
+        </div>
 
-                <div class="login-divider" role="separator"></div>
-
-                <div class="login-rise-item rounded-none border-0 bg-transparent p-0 shadow-none sm:rounded-2xl sm:border sm:border-slate-200/80 sm:bg-white sm:p-7 sm:shadow-xl">
-                    <h1 class="text-center text-2xl font-extrabold tracking-tight text-slate-900">Inicia sesión</h1>
-                    <p class="mt-1.5 text-center text-sm text-slate-500">
-                        Ingresa tu correo y contraseña para acceder.
-                    </p>
-
-                    <form class="mt-6 space-y-5" novalidate @submit.prevent="submit">
-                        <div>
-                            <div class="relative h-12 w-full sm:h-10">
-                                <input
-                                    id="email"
-                                    v-model="email"
-                                    v-bind="emailAttrs"
-                                    type="email"
-                                    placeholder=" "
-                                    required
-                                    autofocus
-                                    autocomplete="email"
-                                    :disabled="form.processing"
-                                    class="peer h-full w-full rounded-xl border bg-slate-50 pl-12 pr-4 text-base text-slate-900 transition-all focus:border-2 focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:pl-11 sm:text-sm"
-                                    :class="errors.email ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200'"
-                                />
-                                <Mail
-                                    class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 sm:h-4 sm:w-4"
-                                />
-                                <label
-                                    for="email"
-                                    class="pointer-events-none absolute -top-4 left-0 flex h-full w-full select-none text-[11px] font-medium leading-tight text-slate-500 transition-all peer-placeholder-shown:-top-1.5 peer-placeholder-shown:pl-12 sm:peer-placeholder-shown:pl-11 peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75rem] sm:peer-placeholder-shown:leading-[3.25rem] peer-placeholder-shown:text-slate-400 peer-focus:!-top-4 peer-focus:!pl-0 peer-focus:!text-[11px] peer-focus:!leading-tight peer-focus:!text-blue-600"
-                                >
-                                    Correo
-                                </label>
-                            </div>
-                            <p
-                                class="mt-1.5 flex min-h-[1.125rem] items-start text-xs font-semibold leading-[1.125rem] text-rose-600 transition-opacity duration-150"
-                                :class="errors.email ? 'opacity-100' : 'invisible opacity-0'"
-                                role="alert"
-                            >
-                                <AlertCircle class="mr-1 mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                <span>{{ errors.email }}</span>
-                            </p>
-                        </div>
-
-                        <div>
-                            <div class="relative h-12 w-full sm:h-10">
-                                <input
-                                    id="password"
-                                    v-model="password"
-                                    v-bind="passwordAttrs"
-                                    :type="showPassword ? 'text' : 'password'"
-                                    placeholder=" "
-                                    required
-                                    autocomplete="current-password"
-                                    :disabled="form.processing"
-                                    class="peer h-full w-full rounded-xl border bg-slate-50 pl-12 pr-12 text-base text-slate-900 transition-all focus:border-2 focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:pl-11 sm:pr-11 sm:text-sm"
-                                    :class="errors.password ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200'"
-                                />
-                                <Lock
-                                    class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 sm:h-4 sm:w-4"
-                                />
-                                <button
-                                    type="button"
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-400 transition hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:right-3 sm:p-1"
-                                    :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-                                    @click="showPassword = !showPassword"
-                                >
-                                    <EyeOff v-if="showPassword" class="h-5 w-5 sm:h-4 sm:w-4" />
-                                    <Eye v-else class="h-5 w-5 sm:h-4 sm:w-4" />
-                                </button>
-                                <label
-                                    for="password"
-                                    class="pointer-events-none absolute -top-4 left-0 flex h-full w-full select-none text-[11px] font-medium leading-tight text-slate-500 transition-all peer-placeholder-shown:-top-1.5 peer-placeholder-shown:pl-12 sm:peer-placeholder-shown:pl-11 peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75rem] sm:peer-placeholder-shown:leading-[3.25rem] peer-placeholder-shown:text-slate-400 peer-focus:!-top-4 peer-focus:!pl-0 peer-focus:!text-[11px] peer-focus:!leading-tight peer-focus:!text-blue-600"
-                                >
-                                    Contraseña
-                                </label>
-                            </div>
-                            <p
-                                class="mt-1.5 flex min-h-[1.125rem] items-start text-xs font-semibold leading-[1.125rem] text-rose-600 transition-opacity duration-150"
-                                :class="errors.password ? 'opacity-100' : 'invisible opacity-0'"
-                                role="alert"
-                            >
-                                <AlertCircle class="mr-1 mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                <span>{{ errors.password }}</span>
-                            </p>
-                        </div>
-
-                        <div class="flex items-center gap-2.5">
-                            <input
-                                id="remember"
-                                v-model="remember"
-                                v-bind="rememberAttrs"
-                                type="checkbox"
-                                class="h-4 w-4 cursor-pointer rounded border-slate-300 text-[#724ffb] focus:ring-blue-500"
-                            />
-                            <label for="remember" class="cursor-pointer text-sm text-slate-600">
-                                Mantener sesión iniciada
-                            </label>
-                        </div>
-
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#724ffb] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition hover:bg-[#6141e6] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            <Loader2 v-if="form.processing" class="h-4 w-4 animate-spin" />
-                            <LogIn v-else class="h-4 w-4" />
-                            {{ form.processing ? 'Iniciando…' : 'Iniciar sesión' }}
-                        </button>
-                    </form>
-                </div>
+        <div class="w-full max-w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div class="bg-indigo-600 px-5 py-3 text-center">
+                <h1 class="text-sm font-bold tracking-tight text-white sm:text-base">Inicia sesión</h1>
             </div>
+
+            <form class="space-y-5 p-5 sm:p-6" novalidate @submit.prevent="submit">
+                <!-- Correo -->
+                <div>
+                    <div class="relative">
+                        <input
+                            id="email"
+                            v-model="email"
+                            v-bind="emailAttrs"
+                            type="email"
+                            placeholder=" "
+                            required
+                            autofocus
+                            autocomplete="email"
+                            :disabled="form.processing"
+                            class="peer w-full rounded-xl border bg-white px-3 py-2.5 pr-10 text-xs text-slate-800 transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                            :class="errors.email || form.errors.email
+                                ? 'border-rose-400 bg-rose-50/20 focus:border-rose-400 focus:ring-rose-400'
+                                : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'"
+                            :aria-invalid="!!(errors.email || form.errors.email)"
+                            aria-describedby="email-error"
+                        />
+                        <label
+                            for="email"
+                            class="pointer-events-none absolute left-0 -top-1.5 -translate-y-full select-none text-[11px] font-bold leading-none text-slate-700 transition-all duration-150 peer-placeholder-shown:left-3 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-xs peer-placeholder-shown:font-normal peer-placeholder-shown:text-slate-400 peer-focus:!left-0 peer-focus:!-top-1.5 peer-focus:!-translate-y-full peer-focus:!text-[11px] peer-focus:!font-bold peer-focus:!text-indigo-600"
+                        >
+                            Correo
+                        </label>
+                        <Mail
+                            class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                        />
+                    </div>
+                    <p
+                        v-show="!!(errors.email || form.errors.email)"
+                        id="email-error"
+                        class="mt-1.5 flex items-start text-xs font-semibold leading-[1.125rem] text-rose-600"
+                        role="alert"
+                    >
+                        <AlertCircle class="mr-1 mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{{ errors.email || form.errors.email }}</span>
+                    </p>
+                </div>
+
+                <!-- Contraseña -->
+                <div>
+                    <div class="relative">
+                        <input
+                            id="password"
+                            v-model="password"
+                            v-bind="passwordAttrs"
+                            :type="showPassword ? 'text' : 'password'"
+                            placeholder=" "
+                            required
+                            autocomplete="current-password"
+                            :disabled="form.processing"
+                            class="peer w-full rounded-xl border bg-white px-3 py-2.5 pr-10 text-xs text-slate-800 transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                            :class="errors.password || form.errors.password
+                                ? 'border-rose-400 bg-rose-50/20 focus:border-rose-400 focus:ring-rose-400'
+                                : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'"
+                            :aria-invalid="!!(errors.password || form.errors.password)"
+                            aria-describedby="password-error"
+                        />
+                        <label
+                            for="password"
+                            class="pointer-events-none absolute left-0 -top-1.5 -translate-y-full select-none text-[11px] font-bold leading-none text-slate-700 transition-all duration-150 peer-placeholder-shown:left-3 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-xs peer-placeholder-shown:font-normal peer-placeholder-shown:text-slate-400 peer-focus:!left-0 peer-focus:!-top-1.5 peer-focus:!-translate-y-full peer-focus:!text-[11px] peer-focus:!font-bold peer-focus:!text-indigo-600"
+                        >
+                            Contraseña
+                        </label>
+                        <button
+                            type="button"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                            :aria-pressed="showPassword"
+                            @click="showPassword = !showPassword"
+                        >
+                            <EyeOff v-if="showPassword" class="h-4 w-4" />
+                            <Eye v-else class="h-4 w-4" />
+                        </button>
+                    </div>
+                    <p
+                        v-show="!!(errors.password || form.errors.password)"
+                        id="password-error"
+                        class="mt-1.5 flex items-start text-xs font-semibold leading-[1.125rem] text-rose-600"
+                        role="alert"
+                    >
+                        <AlertCircle class="mr-1 mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{{ errors.password || form.errors.password }}</span>
+                    </p>
+                </div>
+
+                <div class="flex flex-col gap-4 pt-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                    <div class="flex items-center gap-2">
+                        <input
+                            id="remember"
+                            v-model="remember"
+                            v-bind="rememberAttrs"
+                            type="checkbox"
+                            class="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label for="remember" class="cursor-pointer whitespace-nowrap text-xs font-medium text-slate-600">
+                            Mantener sesión
+                        </label>
+                    </div>
+
+                    <button
+                        type="submit"
+                        :disabled="form.processing"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 active:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:shrink-0 sm:py-2 sm:text-sm"
+                    >
+                        <Loader2 v-if="form.processing" class="h-4 w-4 shrink-0 animate-spin" />
+                        <LogIn v-else class="h-4 w-4 shrink-0" />
+                        {{ form.processing ? 'Ingresando…' : 'Ingresar' }}
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </template>
 
 <style scoped>
-@keyframes login-rise {    from {
-        opacity: 0;
-        transform: translateY(14px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 /*
- * La entrada animada vive en el panel, nunca en un ancestro de .logo-chip:
- * un ancestro transformado/animado se vuelve backdrop root y mata en silencio
- * el blur del backdrop-filter del chip.
+ * Fondo responsive: en móvil se usa `cover` para no deformar la ilustración
+ * (que es apaisada); en pantallas grandes se estira al 100% para mostrar todo.
  */
-.login-rise-item {
-    animation: login-rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+.login-bg {
+    background-image: url('/vendor/adminlte/dist/img/infantil.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
 }
 
-.logo-chip {
-    width: fit-content;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 0.5rem 1.25rem;
-    border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.65);
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
-    -webkit-backdrop-filter: blur(14px) saturate(150%);
-    backdrop-filter: blur(14px) saturate(150%);
-}
-
-.login-divider {
-    height: 1px;
-    width: 4.5rem;
-    margin: 1.25rem auto;
-    background: linear-gradient(90deg, transparent, rgba(100, 116, 139, 0.5), transparent);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .logo-chip {
-        background: rgba(255, 255, 255, 0.85);
-    }
-}
-
-/*
- * Fondo: en movil se queda blanco y limpio; la imagen entra solo en desktop.
- */
 @media (min-width: 640px) {
     .login-bg {
-        background-image: url('/vendor/adminlte/dist/img/infantil.jpg');
         background-size: 100% 100%;
-        background-repeat: no-repeat;
-        background-position: center;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .login-rise-item {
-        animation: none;
     }
 }
 </style>

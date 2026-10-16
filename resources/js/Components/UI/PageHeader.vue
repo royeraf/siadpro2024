@@ -41,7 +41,9 @@ const icons = {
 };
 
 function getIconComponent() {
-    if (typeof props.icon === 'object') return props.icon;
+    // Un componente de ícono (lucide) es una función/objeto, no un string:
+    // en ese caso se usa tal cual. Solo se resuelve por nombre si es string.
+    if (typeof props.icon !== 'string') return props.icon;
     const name = props.icon.charAt(0).toUpperCase() + props.icon.slice(1);
     return icons[name] || Folder;
 }

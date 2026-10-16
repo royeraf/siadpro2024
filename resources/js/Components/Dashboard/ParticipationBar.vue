@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { useThemeColors } from '@/Composables/useThemeColors';
 import StatsModal from './StatsModal.vue';
 import { 
     CalendarCheck, Megaphone, Radio, FileText, 
-    BookHeart, NotebookPen, BookOpen, Folder 
+    BookHeart, NotebookPen, BookOpen, Folder, Map 
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -33,6 +33,11 @@ const loading = ref(!props.initialStats);
 const error = ref(null);
 const showModal = ref(false);
 
+// Datos del mapa (matriz módulo × UGEL); se cargan una sola vez, al abrir el modal.
+const mapaData = ref(null);
+const mapaLoading = ref(false);
+const mapaError = ref(null);
+
 async function loadStats() {
     try {
         const response = await axios.get('/dashboard/resumen-modulos', {
@@ -46,6 +51,34 @@ async function loadStats() {
     }
 }
 
+async function loadMapa() {
+    if (mapaData.value || mapaLoading.value) return;
+
+    mapaLoading.value = true;
+    mapaError.value = null;
+
+    try {
+        const response = await axios.get('/dashboard/mapa-participacion', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        mapaData.value = response.data;
+    } catch (err) {
+        mapaError.value = err.message || 'Error al cargar el mapa';
+    } finally {
+        mapaLoading.value = false;
+    }
+}
+
+function abrirModal() {
+    showModal.value = true;
+    loadMapa();
+}
+
+// Si el modal ya se pedía por otra vía, aseguramos la carga del mapa.
+watch(showModal, (abierto) => {
+    if (abierto) loadMapa();
+});
+
 onMounted(() => {
     loadStats();
 });
@@ -55,8 +88,8 @@ onMounted(() => {
     <div>
         <div 
             class="participacion-card mb-6 cursor-pointer bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition-all duration-200"
-            @click="showModal = true"
-            title="Haz clic para ver el detalle de participación"
+            @click="abrirModal"
+            title="Haz clic para ver el detalle de participación y el mapa por UGEL"
         >
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <!-- Columna Izquierda: Título y estado -->
@@ -75,6 +108,17 @@ onMounted(() => {
                             {{ statsData?.scope }} · {{ statsData?.totalDocentes?.toLocaleString() }} docentes
                         </span>
                     </small>
+
+                    <!-- Acceso al mapa por UGEL (no propaga el clic de la tarjeta) -->
+                    <button
+                        type="button"
+                        class="inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                        title="Ver mapa de participación por UGEL"
+                        @click.stop="abrirModal"
+                    >
+                        <Map class="w-3.5 h-3.5" />
+                        Ver mapa por UGEL
+                    </button>
                 </div>
 
                 <!-- Columna Derecha: Barras horizontales -->
@@ -122,10 +166,13 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Modal de estadísticas -->
+        <!-- Modal de estadísticas + mapa por UGEL -->
         <StatsModal 
             :show="showModal" 
             :data="statsData" 
+            :mapa="mapaData"
+            :mapa-loading="mapaLoading"
+            :mapa-error="mapaError"
             @close="showModal = false" 
         />
     </div>

@@ -3,7 +3,8 @@ import { ref, computed, watch } from 'vue';
 import { EvidenciasService } from '@/Services/evidencia';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
-import { AlertCircle, Paperclip } from 'lucide-vue-next';
+import { AlertCircle } from 'lucide-vue-next';
+import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
 import BaseModal from '@/Components/UI/BaseModal.vue';
 import FileDropzone from '@/Components/UI/FileDropzone.vue';
 import { useDocumentUpload } from '@/Composables/useDocumentUpload';
@@ -244,7 +245,7 @@ const submit = handleSubmit((values) => {
 
                 <div v-if="isEditing && evidencia.enlace && !selectedFile" class="mb-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                     <div class="flex items-center min-w-0">
-                        <Paperclip class="w-4 h-4 text-slate-500 mr-2 shrink-0" />
+                        <ArchivoIcono :nombre="evidencia.enlace" class="w-5 h-5 mr-2 shrink-0" />
                         <span class="text-xs text-slate-700 font-medium truncate">
                             Archivo actual: <strong class="text-slate-900">{{ evidencia.enlace.split('/').pop() }}</strong>
                         </span>

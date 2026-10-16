@@ -2,7 +2,7 @@
 import { ref, reactive, computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { UsersService } from '@/Services/users';
-import { Pencil, Shield, UserCheck, UserX, CheckCircle, AlertCircle } from 'lucide-vue-next';
+import { Pencil, Shield, UserCheck, UserX, CheckCircle, AlertCircle, Eye } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -10,8 +10,9 @@ import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import CreateButton from '@/Components/UI/CreateButton.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import DetailModal from '@/Components/UI/DetailModal.vue';
 import UserFormModal from './Partials/UserFormModal.vue';
-import UserRolesModal from './Partials/UserRolesModal.vue';
+import UserAccessModal from './Partials/UserAccessModal.vue';
 
 const props = defineProps({
     users: {
@@ -65,23 +66,13 @@ const localFilters = reactive({
 });
 
 const columns = computed(() => {
-    const cols = [
+    return [
         { key: 'estado', label: 'Estado', width: '90px', align: 'center' },
-        { key: 'id', label: 'ID', width: '70px', align: 'center' },
         { key: 'dni', label: 'DNI', width: '120px', align: 'center' },
         { key: 'name', label: 'Usuario' },
-        { key: 'email', label: 'Correo' },
-        { key: 'cargo', label: 'Cargo' },
-        { key: 'institucion', label: 'Institución' },
-        { key: 'ugel', label: 'UGEL', width: '120px' },
-        { key: 'nivelinstitucion', label: 'Tipo de II.EE' },
-        { key: 'provincia', label: 'Provincia' },
-        { key: 'distrito', label: 'Distrito' },
+        { key: 'roles', label: 'Roles', width: '200px' },
+        { key: 'opciones', label: 'Acciones', width: '130px', align: 'center', class: 'no-export' },
     ];
-    if (props.can?.edit || props.can?.destroy) {
-        cols.push({ key: 'opciones', label: 'Opciones', width: '130px', align: 'center', class: 'no-export' });
-    }
-    return cols;
 });
 
 // Descarga server-side: conserva el mismo .xls con BOM que genera
@@ -100,10 +91,38 @@ const formModal = reactive({
     user: null,
 });
 
-const rolesModal = reactive({
+const accessModal = reactive({
     show: false,
     user: null,
 });
+
+const detalle = reactive({
+    show: false,
+    title: '',
+    fields: [],
+});
+
+function openDetail(row) {
+    detalle.title = row.name || 'Detalle del usuario';
+    detalle.fields = [
+        { label: 'DNI', value: row.dni },
+        { label: 'Estado', value: Number(row.estado) === 1 ? 'Activo' : 'Inactivo' },
+        { label: 'Usuario', value: row.name, full: true },
+        { label: 'Roles', value: (row.roles || []).map((r) => r.name), type: 'chips', full: true },
+        { label: 'Correo', value: row.email },
+        { label: 'Cargo', value: row.cargo },
+        { label: 'Institución', value: row.institucion, full: true },
+        { label: 'UGEL', value: row.ugel },
+        { label: 'Tipo de II.EE', value: row.nivelinstitucion },
+        { label: 'Provincia', value: row.provincia },
+        { label: 'Distrito', value: row.distrito },
+    ];
+    detalle.show = true;
+}
+
+function closeDetail() {
+    detalle.show = false;
+}
 
 function openCreateModal() {
     formModal.user = null;
@@ -120,14 +139,14 @@ function closeFormModal() {
     formModal.user = null;
 }
 
-function openRolesModal(row) {
-    rolesModal.user = row;
-    rolesModal.show = true;
+function openAccessModal(row) {
+    accessModal.user = row;
+    accessModal.show = true;
 }
 
-function closeRolesModal() {
-    rolesModal.show = false;
-    rolesModal.user = null;
+function closeAccessModal() {
+    accessModal.show = false;
+    accessModal.user = null;
 }
 
 function getCleanParams() {
@@ -367,9 +386,6 @@ function confirmToggleEstado(row) {
                         Inactivo
                     </span>
                 </td>
-                <td class="px-4 py-3 text-center font-bold text-gray-900 align-middle">
-                    {{ row.id }}
-                </td>
                 <td class="px-4 py-3 text-center align-middle">
                     <span class="inline-block px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800 rounded">
                         {{ row.dni }}
@@ -378,38 +394,34 @@ function confirmToggleEstado(row) {
                 <td class="px-4 py-3 font-semibold text-blue-600 align-middle min-w-[200px]">
                     {{ row.name }}
                 </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[180px]">
-                    {{ row.email }}
+                <td class="px-4 py-3 align-middle min-w-[160px]">
+                    <div class="flex flex-wrap gap-1">
+                        <span
+                            v-for="role in (row.roles || [])"
+                            :key="role.id"
+                            class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        >
+                            {{ role.label || role.name }}
+                        </span>
+                        <span v-if="!(row.roles || []).length" class="text-xs text-slate-400">—</span>
+                    </div>
                 </td>
-                <td class="px-4 py-3 text-slate-600 align-middle">
-                    {{ row.cargo || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle min-w-[180px]">
-                    {{ row.institucion || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.ugel || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle">
-                    {{ row.nivelinstitucion || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.provincia || '-' }}
-                </td>
-                <td class="px-4 py-3 text-slate-600 align-middle whitespace-nowrap">
-                    {{ row.distrito || '-' }}
-                </td>
-                <td
-                    v-if="can.edit || can.destroy"
-                    class="px-4 py-3 text-center no-export whitespace-nowrap align-middle"
-                >
+                <td class="px-4 py-3 text-center no-export whitespace-nowrap align-middle">
                     <div class="inline-flex items-center justify-center gap-1.5">
+                        <button
+                            type="button"
+                            @click="openDetail(row)"
+                            class="inline-flex items-center justify-center p-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-xs transition-colors border-0 cursor-pointer"
+                            title="Ver detalle"
+                        >
+                            <Eye class="w-3.5 h-3.5" />
+                        </button>
                         <button
                             v-if="can.edit"
                             type="button"
-                            @click="openRolesModal(row)"
+                            @click="openAccessModal(row)"
                             class="inline-flex items-center justify-center p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-xs transition-colors border-0 cursor-pointer"
-                            title="Asignar rol"
+                            title="Gestionar accesos"
                         >
                             <Shield class="w-3.5 h-3.5" />
                         </button>
@@ -446,11 +458,21 @@ function confirmToggleEstado(row) {
             @close="closeFormModal"
         />
 
-        <UserRolesModal
-            :show="rolesModal.show"
-            :user="rolesModal.user"
-            :roles="roles"
-            @close="closeRolesModal"
+        <UserAccessModal
+            :show="accessModal.show"
+            :user="accessModal.user"
+            @close="closeAccessModal"
+            @saved="closeAccessModal"
+        />
+
+        <DetailModal
+            :show="detalle.show"
+            :title="detalle.title"
+            subtitle="Información del usuario"
+            icon="Users"
+            color="blue"
+            :fields="detalle.fields"
+            @close="closeDetail"
         />
     </AppLayout>
 </template>

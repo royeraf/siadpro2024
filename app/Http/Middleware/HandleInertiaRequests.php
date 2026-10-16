@@ -79,6 +79,8 @@ class HandleInertiaRequests extends Middleware
                     'provincia'        => $request->user()->provincia,
                     'distrito'         => $request->user()->distrito,
                     'role'             => method_exists($request->user(), 'getRoleNames') ? ($request->user()->getRoleNames()->first() ?? 'Usuario') : 'Usuario',
+                    'roles'            => method_exists($request->user(), 'getRoleNames') ? $request->user()->getRoleNames()->all() : [],
+                    'is_admin'         => method_exists($request->user(), 'hasRole') ? $request->user()->hasRole('Admin') : false,
                 ] : null,
             ],
             'flash' => [
@@ -159,6 +161,7 @@ class HandleInertiaRequests extends Middleware
                             '/agenda-ugel',
                             '/users',
                             '/institucions',
+                            '/security/roles',
                         ];
                         $isSpa = in_array(rtrim($path, '/'), $spaRoutes) || in_array(rtrim($url, '/'), $spaRoutes);
 

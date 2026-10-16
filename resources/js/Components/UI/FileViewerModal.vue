@@ -4,11 +4,12 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
 import { renderAsync as renderDocxAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
-import { 
+import {
     Download, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
-    ZoomIn, ZoomOut, AlertTriangle, FileQuestion, FileText 
+    ZoomIn, ZoomOut, AlertTriangle, FileQuestion, FileText
 } from 'lucide-vue-next';
-import { esImagenArchivo, iconoArchivo } from '@/Utils/archivoIconos';
+import { esImagenArchivo } from '@/Utils/archivoIconos';
+import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -1152,20 +1153,13 @@ onUnmounted(() => {
                                 ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-900 scale-110 opacity-100'
                                 : 'ring-1 ring-white/10 opacity-50 hover:opacity-90'"
                         >
-                            <img
-                                v-if="esImagenArchivo(item.name || item.url)"
-                                :src="item.url"
-                                :alt="item.name || 'imagen'"
-                                loading="lazy"
-                                class="w-full h-full object-cover"
+                            <ArchivoIcono
+                                :nombre="item.name || item.url"
+                                :url="item.url"
+                                :alt="item.name || 'archivo'"
+                                class="w-full h-full"
+                                :class="esImagenArchivo(item.name || item.url) ? '' : 'bg-white p-0.5'"
                             />
-                            <span
-                                v-else
-                                class="w-full h-full flex items-center justify-center border"
-                                :class="iconoArchivo(item.name).clase"
-                            >
-                                <component :is="iconoArchivo(item.name).cmp" class="w-3.5 h-3.5" />
-                            </span>
                         </button>
 
                         <div class="w-1/2 shrink-0" aria-hidden="true"></div>

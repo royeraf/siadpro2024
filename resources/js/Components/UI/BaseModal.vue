@@ -92,7 +92,9 @@ const icons = {
 
 function getIconComponent() {
     if (!props.icon) return null;
-    if (typeof props.icon === 'object') return props.icon;
+    // Un componente de ícono (lucide) es una función/objeto, no un string:
+    // en ese caso se usa tal cual. Solo se resuelve por nombre si es string.
+    if (typeof props.icon !== 'string') return props.icon;
     const name = props.icon.charAt(0).toUpperCase() + props.icon.slice(1);
     return icons[name] || Folder;
 }
@@ -228,17 +230,17 @@ onUnmounted(() => {
 <template>
     <div 
         v-if="show" 
-        class="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-6 transition-all duration-300"
+        class="fixed inset-0 z-[60] overflow-hidden bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-6 transition-all duration-300"
         @click.self="handleClose"
     >
         <div 
-            class="bg-white rounded-t-[28px] rounded-b-none sm:rounded-3xl shadow-2xl w-full border-t border-x sm:border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in fade-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-250 ease-out"
+            class="bg-white rounded-t-[28px] rounded-b-none sm:rounded-3xl shadow-2xl w-full border-t border-x sm:border border-slate-200 overflow-hidden flex flex-col min-h-0 max-h-[92vh] sm:max-h-[90vh] animate-in fade-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-250 ease-out"
             :class="maxWidthClass"
             @click.stop
         >
             <component 
                 :is="isForm ? 'form' : 'div'" 
-                class="flex flex-col h-full overflow-hidden m-0"
+                class="flex flex-col flex-1 min-h-0 overflow-hidden m-0"
                 @submit.prevent="emit('submit')"
             >
                 <!-- ══ TIRADOR / DRAG HANDLE (MÓVIL BOTTOM SHEET) ══ -->
@@ -282,7 +284,7 @@ onUnmounted(() => {
                 </div>
 
                 <!-- ══ CUERPO SCROLLABLE DEL MODAL ══ -->
-                <div class="px-5 py-4 sm:px-6 sm:py-6 overflow-y-auto flex-1 space-y-4 transition-colors duration-200" :style="bodyStyle">
+                <div class="px-5 py-4 sm:px-6 sm:py-6 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4 transition-colors duration-200" :style="bodyStyle">
                     <slot />
                 </div>
 

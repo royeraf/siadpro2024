@@ -5,6 +5,7 @@ import {
     Paperclip, ExternalLink, FileWarning, Plus
 } from 'lucide-vue-next';
 import CircularProgress from '@/Components/UI/CircularProgress.vue';
+import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
 import { formatBytes, formatBytesCompact } from '@/Utils/formatBytes';
 
 const props = defineProps({
@@ -127,11 +128,7 @@ function handleDrop(e) {
                     :class="item.error ? 'bg-rose-50/60 border-rose-200' : 'bg-blue-50/70 border-blue-200'"
                 >
                     <div class="flex items-center min-w-0">
-                        <component
-                            :is="item.error ? AlertCircle : CheckCircle2"
-                            class="w-4 h-4 mr-2 shrink-0"
-                            :class="item.error ? 'text-rose-600' : 'text-emerald-600'"
-                        />
+                        <ArchivoIcono :nombre="item.file.name" class="w-7 h-7 mr-2 shrink-0" />
                         <div class="text-left min-w-0">
                             <p class="text-xs font-bold text-slate-800 truncate m-0">{{ item.file.name }}</p>
                             <p class="text-[11px] m-0" :class="item.error ? 'text-rose-600 font-semibold' : 'text-slate-500'">
@@ -139,15 +136,22 @@ function handleDrop(e) {
                             </p>
                         </div>
                     </div>
-                    <button
-                        v-if="!disabled"
-                        type="button"
-                        @click.stop="emit('remove', index)"
-                        class="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors ml-2 cursor-pointer"
-                        title="Quitar archivo"
-                    >
-                        <X class="w-4 h-4" />
-                    </button>
+                    <div class="flex items-center gap-1 ml-2 shrink-0">
+                        <component
+                            :is="item.error ? AlertCircle : CheckCircle2"
+                            class="w-4 h-4"
+                            :class="item.error ? 'text-rose-600' : 'text-emerald-600'"
+                        />
+                        <button
+                            v-if="!disabled"
+                            type="button"
+                            @click.stop="emit('remove', index)"
+                            class="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                            title="Quitar archivo"
+                        >
+                            <X class="w-4 h-4" />
+                        </button>
+                    </div>
                 </li>
             </ul>
 

@@ -1,7 +1,8 @@
 <script setup>
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { AgendasService } from '@/Services/agenda';
-import { esImagenArchivo, iconoArchivo } from '@/Utils/archivoIconos';
+import { esImagenArchivo } from '@/Utils/archivoIconos';
+import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
 import { X } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -76,8 +77,8 @@ function onChipUp() {
 onBeforeUnmount(onChipUp);
 
 const SIZES = {
-    sm: { box: 'w-7 h-7', icon: 'w-3.5 h-3.5', texto: 'text-[10px]', overlap: '-space-x-2' },
-    md: { box: 'w-9 h-9', icon: 'w-4 h-4', texto: 'text-[11px]', overlap: '-space-x-3' },
+    sm: { box: 'w-7 h-7', texto: 'text-[10px]', overlap: '-space-x-2' },
+    md: { box: 'w-9 h-9', texto: 'text-[11px]', overlap: '-space-x-3' },
 };
 
 const sz = computed(() => SIZES[props.size] || SIZES.md);
@@ -140,24 +141,16 @@ function verMas() {
                     @pointercancel="onChipUp"
                     @contextmenu.prevent
                     :title="ev.nombre_original || ev.enlace"
-                    class="ev-chip relative block rounded-full overflow-hidden ring-2 ring-white shadow-sm transition-transform duration-150 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer select-none"
+                    class="ev-chip relative block rounded-full overflow-hidden ring-2 ring-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:ring-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer select-none"
                     :class="sz.box"
                 >
-                    <img
-                        v-if="esImagenArchivo(ev.enlace)"
-                        :src="thumbUrl(ev.enlace)"
-                        :alt="ev.nombre_original || 'imagen'"
-                        loading="lazy"
-                        draggable="false"
-                        class="w-full h-full object-cover"
+                    <ArchivoIcono
+                        :nombre="ev.enlace"
+                        :url="thumbUrl(ev.enlace)"
+                        :alt="ev.nombre_original || 'archivo'"
+                        class="w-full h-full"
+                        :class="esImagenArchivo(ev.enlace) ? '' : 'bg-white p-1'"
                     />
-                    <span
-                        v-else
-                        class="w-full h-full flex items-center justify-center border"
-                        :class="iconoArchivo(ev.enlace).clase"
-                    >
-                        <component :is="iconoArchivo(ev.enlace).cmp" :class="sz.icon" />
-                    </span>
                 </button>
 
                 <!-- En táctil no hay hover: el botón queda inerte y se elimina con long-press -->

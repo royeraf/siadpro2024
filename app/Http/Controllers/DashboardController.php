@@ -952,6 +952,17 @@ class DashboardController extends Controller
         return response()->json($dashboard->resumenModulos(Auth::user()));
     }
 
+    /**
+     * Participación por UGEL y por módulo: alimenta el mapa de Huánuco.
+     *
+     * Siempre devuelve el panorama regional completo (las 11 UGEL) porque es un
+     * agregado sin información personal; ver `DashboardService::participacionPorUgel()`.
+     */
+    public function participacionPorUgel(DashboardService $dashboard): \Illuminate\Http\JsonResponse
+    {
+        return response()->json($dashboard->participacionPorUgel());
+    }
+
     public function ugel()
     {
         return "ugel";        
