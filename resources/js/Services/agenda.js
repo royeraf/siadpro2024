@@ -36,17 +36,18 @@ export const AgendasService = {
      * (axios/XHR). Así la subida sigue en segundo plano aunque el usuario cierre
      * el modal o navegue, en lugar de cancelarse. Devuelve una promesa y reporta
      * el progreso (0-100) por `onProgress`.
+     *
+     * El token CSRF lo aporta axios desde la cookie `XSRF-TOKEN` (igual que
+     * Inertia). NO se lee del `<meta name="csrf-token">`: al iniciar sesión
+     * Laravel regenera la sesión y su token, pero la SPA no recarga el documento,
+     * así que ese meta queda desactualizado y la subida fallaba con
+     * "CSRF token mismatch" (419). La cookie sí se mantiene sincronizada.
      */
     subirEvidencias(agendaId, formData, { onProgress } = {}) {
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
         return axios.post(`${BASE}/${agendaId}/evidencias`, formData, {
             headers: {
-                // Se elimina la convención "ajax": axios envía Accept JSON y el
-                // backend responde JSON por `expectsJson()`.
-                'X-Requested-With': null,
+                // El backend responde JSON por `expectsJson()`.
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': token,
             },
             onUploadProgress: (e) => {
                 if (onProgress && e.total) {
