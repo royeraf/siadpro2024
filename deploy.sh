@@ -1,12 +1,23 @@
 #!/bin/bash
 set -e
 
+# Ejecuta siempre desde la carpeta del proyecto, sin importar desde dónde se invoque.
+cd "$(dirname "$0")"
+
 echo "----------------------------------------"
 echo "🚀 Iniciando despliegue de SIADPRO..."
 echo "----------------------------------------"
 
-# 1. Poner la app en modo mantenimiento (opcional, evita errores si hay usuarios en ese momento)
-# php artisan down --render="errors::503" || true
+# Asegura que el sitio vuelva a estar operativo aunque el despliegue falle a mitad.
+cleanup() {
+    echo "🔓 Desactivando modo mantenimiento..."
+    php artisan up 2>/dev/null || true
+}
+trap cleanup EXIT
+
+# 1. Poner la app en modo mantenimiento durante el despliegue (evita errores a usuarios)
+echo "🛠️  Activando modo mantenimiento..."
+php artisan down --retry=15 || true
 
 # 2. Descargar los últimos cambios de GitHub
 echo "📥 Descargando últimos cambios desde GitHub..."
@@ -49,7 +60,9 @@ echo "🔒 Verificando permisos de storage y bootstrap/cache..."
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 
 # 8. Desactivar modo mantenimiento
-# php artisan up || true
+echo "🔓 Desactivando modo mantenimiento..."
+php artisan up
+trap - EXIT
 
 echo "----------------------------------------"
 echo "✅ ¡Despliegue completado con éxito!"
