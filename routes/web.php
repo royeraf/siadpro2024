@@ -78,7 +78,7 @@ Route::post('/interInstitucion/buscar', function (Illuminate\Http\Request $reque
     $codModular = $request->input('Codigo_Modular');
 
     //$revision["rev"] = DB::select("select * from internet_institucionesh where codigoModular = $codModular");
-    $data["datos"] = DB::select("select * from institucions where codModular = $codModular");
+    $data["datos"] = DB::table('institucions')->where('codModular', $codModular)->get();
     /*if (count($revision) == 0) {
 
         $data["datos"] = DB::select("select * from institucions where codModular = $codModular");
@@ -96,22 +96,19 @@ Route::post('/interInstitucion/buscar_index', function (Illuminate\Http\Request 
 
     $codModular = $request->input('Codigo_Modular');
 
-    $revision["rev"] = DB::select("select * from internet_institucionesh where codigoModular = $codModular");
-    $data["datos"] = DB::select("select * from institucions where codModular = $codModular");
+    $revision["rev"] = DB::table('internet_institucionesh')->where('codigoModular', $codModular)->get();
+    $data["datos"] = DB::table('institucions')->where('codModular', $codModular)->get();
 
     $usuario = Auth::user()->name;
     $ugel = Auth::user()->provincia;
 
-        $dat_user = DB::select("select roles.name as rol
-                                from users
-                                inner join model_has_roles as m
-                                on m.model_id= users.id
-                                inner join roles
-                                on m.role_id = roles.id
-                                where users.name = '$usuario'");
+        $dat_user = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', Auth::id())
+            ->pluck('roles.name');
 
         $authorizedRoles = ['Admin', 'EspecDRE', 'EspecUGEL', 'Director'];
-        $user_role = $dat_user[0]->rol; // Obt��n el rol del primer registro (siempre deber��a haber al menos uno)
+        $user_role = $dat_user->first(); // Rol del usuario autenticado
 
         if (in_array($user_role, $authorizedRoles)) {
 
@@ -125,13 +122,13 @@ Route::post('/interInstitucion/buscar_index', function (Illuminate\Http\Request 
             } elseif ($user_role == 'EspecUGEL') {
                 $datos_gen = DB::table('internet_institucionesh')
                             ->where('provincia', $ugel)
-                            ->and('codigoModular', $codModular)
+                            ->where('codigoModular', $codModular)
                             ->paginate(9);
 
             } elseif ($user_role == 'Director') {
                 $datos_gen = DB::table('internet_institucionesh')
                             ->where('usuario', $usuario)
-                            ->and('codigoModular', $codModular)
+                            ->where('codigoModular', $codModular)
                             ->paginate(9);
             }
 

@@ -55,27 +55,28 @@ class DashboardController extends Controller
         $totaluserByUgel = User::select(
             DB::raw('COUNT(DISTINCT users.id) as totaldocentes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('users.estado', '1')
         ->where(function ($query) {
             $query->where('users.cargo', 'Director')
                 ->orWhere('users.cargo', 'Docente')
                 ->orWhere('users.cargo', 'Profesor Coordinador');
         })
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsU = [];
@@ -88,25 +89,26 @@ class DashboardController extends Controller
         $totaldirByUgel = User::select(
             DB::raw('COUNT(DISTINCT users.id) as totaldocentes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('users.estado', '1')
         ->where(function ($query) {
             $query->where('users.cargo', 'Director');
         })
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsDir = [];
@@ -119,25 +121,26 @@ class DashboardController extends Controller
         $totaldocByUgel = User::select(
             DB::raw('COUNT(DISTINCT users.id) as totaldocentes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('users.estado', '1')
         ->where(function ($query) {
             $query->where('users.cargo', 'Docente');
         })
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsDoc = [];
@@ -150,25 +153,26 @@ class DashboardController extends Controller
         $totalpcByUgel = User::select(
             DB::raw('COUNT(DISTINCT users.id) as totaldocentes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('users.estado', '1')
         ->where(function ($query) {
             $query->where('users.cargo', 'Profesor Coordinador');
         })
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsPc = [];
@@ -233,22 +237,26 @@ class DashboardController extends Controller
         $totalinstitucionByUgel = Institucion::select(
             DB::raw('COUNT(DISTINCT institucions.id) as totalinstituciones'),
             DB::raw('CASE 
-                WHEN institucions.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN institucions.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN institucions.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN institucions.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN institucions.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN institucions.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN institucions.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN institucions.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN institucions.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN institucions.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN institucions.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'institucions.ugel_id')
         ->where('institucions.estado', '1')
-        ->groupBy('ugel')
+        // institucions todavía tiene la columna legacy `ugel`, que tiene
+        // prioridad sobre el alias `ugel` en GROUP BY; agrupamos explícitamente
+        // por la columna canónica para satisfacer ONLY_FULL_GROUP_BY.
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsI = [];
@@ -273,24 +281,25 @@ class DashboardController extends Controller
         $totalaccionByUgel = Accion::select(
             DB::raw('COUNT(DISTINCT pro_accions.id) as totalacciones'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_accions.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_accions.estado', '1')
         ->where('pro_accions.tipo', 'sensibilizacion')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsAcc = [];
@@ -301,24 +310,25 @@ class DashboardController extends Controller
         $totaldocXaccionByUgel = Accion::select(
             DB::raw('COUNT(DISTINCT pro_accions.idUser) as totaldocacciones'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_accions.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_accions.estado', '1')
         ->where('pro_accions.tipo', 'sensibilizacion')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsdocXAcc = [];
@@ -356,23 +366,24 @@ class DashboardController extends Controller
         $totaldifucionByUgel = Difusion::select(
             DB::raw('COUNT(DISTINCT pro_difusions.id) as totaldifuciones'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_difusions.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_difusions.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsDif = [];
@@ -383,23 +394,24 @@ class DashboardController extends Controller
         $totaldocXdifucionByUgel = Difusion::select(
             DB::raw('COUNT(DISTINCT pro_difusions.idUser) as totaldocdifuciones'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_difusions.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_difusions.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsdocXDif = [];
@@ -436,23 +448,24 @@ class DashboardController extends Controller
         $totalevidenciaByUgel = Evidencia::select(
             DB::raw('COUNT(DISTINCT pro_evidencias.id) as totalevidencias'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_evidencias.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_evidencias.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsEvi = [];
@@ -464,23 +477,24 @@ class DashboardController extends Controller
         $totaldocXevidenciaByUgel = Evidencia::select(
             DB::raw('COUNT(DISTINCT pro_evidencias.idUser) as totaldocevidencias'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_evidencias.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_evidencias.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsdocXEvi = [];
@@ -518,23 +532,24 @@ class DashboardController extends Controller
         $totalinformeByUgel = Informe::select(
             DB::raw('COUNT(DISTINCT pro_informes.id) as totalinformes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_informes.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_informes.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsInf = [];
@@ -546,23 +561,24 @@ class DashboardController extends Controller
         $totaldocXinformeByUgel = Informe::select(
             DB::raw('COUNT(DISTINCT pro_informes.idUser) as totaldocinformes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_informes.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_informes.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsdocXInf = [];
@@ -599,23 +615,24 @@ class DashboardController extends Controller
         $totalplanByUgel = Plan::select(
             DB::raw('COUNT(DISTINCT pro_plans.id) as totalplanes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_plans.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_plans.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsPla = [];
@@ -627,23 +644,24 @@ class DashboardController extends Controller
         $totaldocXplanByUgel = Plan::select(
             DB::raw('COUNT(DISTINCT pro_plans.idUser) as totaldocplanes'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_plans.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_plans.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsdocXPla = [];
@@ -681,23 +699,24 @@ class DashboardController extends Controller
         $totalproduccionByUgel = Produccion::select(
             DB::raw('COUNT(DISTINCT pro_produccions.id) as totalproducciones'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_produccions.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_produccions.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsPro = [];
@@ -709,23 +728,24 @@ class DashboardController extends Controller
         $totaldocXproduccionByUgel = Produccion::select(
             DB::raw('COUNT(DISTINCT pro_produccions.idUser) as totaldocproducciones'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_produccions.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_produccions.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsdocXPro = [];
@@ -763,23 +783,24 @@ class DashboardController extends Controller
         $totalagendaByUgel = Agenda::select(
             DB::raw('COUNT(DISTINCT pro_agendas.id) as totalagendas'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_agendas.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_agendas.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsAge = [];
@@ -791,23 +812,24 @@ class DashboardController extends Controller
         $totaldocXagendaByUgel = Agenda::select(
             DB::raw('COUNT(DISTINCT pro_agendas.idUser) as totaldocagendas'),
             DB::raw('CASE 
-                WHEN users.ugel = "Ugel Ambo" THEN "Ugel Ambo"
-                WHEN users.ugel = "Ugel Huánuco" THEN "Ugel Huánuco"
-                WHEN users.ugel = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
-                WHEN users.ugel = "Ugel Huamalies" THEN "Ugel Huamalies"
-                WHEN users.ugel = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
-                WHEN users.ugel = "Ugel Pachitea" THEN "Ugel Pachitea"
-                WHEN users.ugel = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
-                WHEN users.ugel = "Ugel Yarowilca" THEN "Ugel Yarowilca"
-                WHEN users.ugel = "Ugel Marañon" THEN "Ugel Marañon"
-                WHEN users.ugel = "Ugel Lauricocha" THEN "Ugel Lauricocha"
-                WHEN users.ugel = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
+                WHEN ugeles.nombre = "Ugel Ambo" THEN "Ugel Ambo"
+                WHEN ugeles.nombre = "Ugel Huánuco" THEN "Ugel Huánuco"
+                WHEN ugeles.nombre = "Ugel Dos de Mayo" THEN "Ugel Dos de Mayo"
+                WHEN ugeles.nombre = "Ugel Huamalies" THEN "Ugel Huamalies"
+                WHEN ugeles.nombre = "Ugel Leoncio prado" THEN "Ugel Leoncio prado"
+                WHEN ugeles.nombre = "Ugel Pachitea" THEN "Ugel Pachitea"
+                WHEN ugeles.nombre = "Ugel Puerto Inca" THEN "Ugel Puerto Inca"
+                WHEN ugeles.nombre = "Ugel Yarowilca" THEN "Ugel Yarowilca"
+                WHEN ugeles.nombre = "Ugel Marañon" THEN "Ugel Marañon"
+                WHEN ugeles.nombre = "Ugel Lauricocha" THEN "Ugel Lauricocha"
+                WHEN ugeles.nombre = "Ugel Huacaybamba" THEN "Ugel Huacaybamba"
                 ELSE "Otra UGEL"
             END as ugel')
         )
         ->join('users', 'pro_agendas.idUser', '=', 'users.id')
+        ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
         ->where('pro_agendas.estado', '1')
-        ->groupBy('ugel')
+        ->groupBy('ugeles.nombre')
         ->get();
         // Luego, itera sobre los resultados para obtener los valores deseados
         $totalsdocXAge = [];
@@ -1040,7 +1062,10 @@ class DataExport implements FromCollection{
     function collection() {
         switch ($this->tipo) {
             case 'usuario':
-                return User::select('name', 'email', 'dni', 'cargo', 'institucion', 'ugel')->where('estado', 1)->get();
+                return User::select('users.name', 'users.email', 'users.dni', 'users.cargo', 'institucions.nomInstitucion as institucion', 'ugeles.nombre as ugel')
+                    ->leftJoin('institucions', 'institucions.id', '=', 'users.institucion_id')
+                    ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
+                    ->where('users.estado', 1)->get();
             break;
 
             case 'institucion':
@@ -1049,16 +1074,18 @@ class DataExport implements FromCollection{
             
 
             case 'accion':
-                return Accion::select('pro_accions.nombreAccion', 'pro_accions.descripcion', 'pro_accions.fecha', 'users.name' ,'users.cargo', 'users.institucion')
+                return Accion::select('pro_accions.nombreAccion', 'pro_accions.descripcion', 'pro_accions.fecha', 'users.name' ,'users.cargo', 'institucions.nomInstitucion as institucion')
                             ->join('users','users.id','=','pro_accions.idUser')
+                            ->leftJoin('institucions','institucions.id','=','users.institucion_id')
                             ->where('pro_accions.tipo', 'sensibilizacion')
                             ->where('pro_accions.estado', 1)
                             ->whereBetween('pro_accions.fecha', [$this->start_date, $this->end_date])->get();
             break;
 
             case 'difusion':
-                return Difusion::select('pro_difusions.nombreAccion', 'pro_difusions.descripcion', 'pro_difusions.fecha', 'users.name' ,'users.cargo', 'users.institucion')
+                return Difusion::select('pro_difusions.nombreAccion', 'pro_difusions.descripcion', 'pro_difusions.fecha', 'users.name' ,'users.cargo', 'institucions.nomInstitucion as institucion')
                             ->join('users','users.id','=','pro_difusions.idUser')
+                            ->leftJoin('institucions','institucions.id','=','users.institucion_id')
                             ->where('pro_difusions.estado', 1)
                             ->whereBetween('pro_difusions.fecha', [$this->start_date, $this->end_date])->get();
             break;
@@ -1074,27 +1101,31 @@ class DataExport implements FromCollection{
             break;
 
             case 'evidencia':
-                return Evidencia::select('pro_evidencias.nombreEvidencia', 'pro_evidencias.enlace', 'pro_evidencias.fecha', 'users.name' ,'users.cargo', 'users.institucion')
+                return Evidencia::select('pro_evidencias.nombreEvidencia', 'pro_evidencias.enlace', 'pro_evidencias.fecha', 'users.name' ,'users.cargo', 'institucions.nomInstitucion as institucion')
                             ->join('users','users.id','=','pro_evidencias.idUser')
+                            ->leftJoin('institucions','institucions.id','=','users.institucion_id')
                             ->where('pro_evidencias.estado', 1)
                             ->whereBetween('fecha', [$this->start_date, $this->end_date])->get();
             break;
 
             case 'informe':
-                return Informe::select('pro_informes.nombreInforme', 'pro_informes.enlace', 'pro_informes.descripcion', 'pro_informes.created_at', 'users.name' ,'users.cargo', 'users.institucion')
+                return Informe::select('pro_informes.nombreInforme', 'pro_informes.enlace', 'pro_informes.descripcion', 'pro_informes.created_at', 'users.name' ,'users.cargo', 'institucions.nomInstitucion as institucion')
                             ->join('users','users.id','=','pro_informes.idUser')
+                            ->leftJoin('institucions','institucions.id','=','users.institucion_id')
                             ->where('pro_informes.estado', 1)->get();
             break;
 
             case 'plan':
-                return Plan::select('pro_plans.nombrePlan', 'pro_plans.enlace', 'pro_plans.descripcion', 'pro_plans.created_at', 'users.name' ,'users.cargo', 'users.institucion')
+                return Plan::select('pro_plans.nombrePlan', 'pro_plans.enlace', 'pro_plans.descripcion', 'pro_plans.created_at', 'users.name' ,'users.cargo', 'institucions.nomInstitucion as institucion')
                             ->join('users','users.id','=','pro_plans.idUser')
+                            ->leftJoin('institucions','institucions.id','=','users.institucion_id')
                             ->where('pro_plans.estado', 1)->get();
             break;
 
             case 'produccion':
-                return Produccion::select('pro_produccions.nombreProduccion', 'pro_produccions.enlace', 'pro_produccions.descripcion', 'pro_produccions.created_at', 'users.name' ,'users.cargo', 'users.institucion')
+                return Produccion::select('pro_produccions.nombreProduccion', 'pro_produccions.enlace', 'pro_produccions.descripcion', 'pro_produccions.created_at', 'users.name' ,'users.cargo', 'institucions.nomInstitucion as institucion')
                             ->join('users','users.id','=','pro_produccions.idUser')
+                            ->leftJoin('institucions','institucions.id','=','users.institucion_id')
                             ->where('pro_produccions.estado', 1)->get();
             break;
 

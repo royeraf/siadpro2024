@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
 use App\Models\Produccion;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -161,32 +163,39 @@ class ProduccionController extends Controller
      * usuario — antes este método leía `users.cargo` para autolimitarse, lo que
      * podía divergir del rol real de Spatie (mismo hallazgo que en Accion/Difusion).
      */
-    private function produccionsGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
+    private function produccionsGeneralQuery(Request $request, ?int $forceUgelId = null, ?int $forceInstitucionId = null): array
     {
         $anio = $request->filled('year') ? $request->input('year') : date('Y');
 
         $query = Produccion::select(
-                "pro_produccions.id", "pro_produccions.nombreProduccion", "pro_produccions.descripcion",
-                "pro_produccions.documento", "pro_produccions.color", "pro_produccions.fecha",
-                "pro_produccions.enlace", "users.name", "users.cargo", "users.nivelinstitucion",
-                "users.institucion", "users.provincia", "users.distrito", "users.ugel", "users.dni"
+                'pro_produccions.id', 'pro_produccions.nombreProduccion', 'pro_produccions.descripcion',
+                'pro_produccions.documento', 'pro_produccions.color', 'pro_produccions.fecha',
+                'pro_produccions.enlace',
+                'users.name', 'users.cargo', 'users.dni',
+                'institucions.nomInstitucion as institucion',
+                'institucions.provincia as provincia',
+                'institucions.distrito as distrito',
+                'ugeles.nombre as ugel'
             )
-            ->join("users", "users.id", "=", "pro_produccions.idUser")
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
+            ->join('users', 'users.id', '=', 'pro_produccions.idUser')
+            ->leftJoin('institucions', 'institucions.id', '=', 'users.institucion_id')
+            ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_produccions.estado', '1')
             ->whereYear('pro_produccions.fecha', $anio);
 
-        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
+        $showFullFilters = $forceUgelId === null && $forceInstitucionId === null;
 
-        if ($forceInstitucion !== null) {
-            $query->where('users.institucion', $forceInstitucion);
-        } elseif ($forceUgel !== null) {
-            $query->where('users.ugel', $forceUgel);
+        if ($forceInstitucionId !== null) {
+            $query->where('users.institucion_id', $forceInstitucionId);
+        } elseif ($forceUgelId !== null) {
+            $query->where('users.ugel_id', $forceUgelId);
         } elseif ($showFullFilters) {
             if ($request->filled('ugels')) {
-                $query->where('users.ugel', $request->input('ugels'));
+                $query->where('ugeles.nombre', $request->input('ugels'));
             }
             if ($request->filled('instituciones')) {
-                $query->where('users.institucion', $request->input('instituciones'));
+                $query->where('institucions.nomInstitucion', 'LIKE', '%' . $request->input('instituciones') . '%');
             }
         }
 
@@ -197,7 +206,7 @@ class ProduccionController extends Controller
             $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $query->whereRaw($this->nivelInstitucionCondicion() . ' = ?', [$request->input('nivel')]);
         }
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
@@ -208,6 +217,29 @@ class ProduccionController extends Controller
         }
 
         return [$query, $anio, $showFullFilters];
+    }
+
+    /**
+     * Expresión SQL que deriva "nivelinstitucion" (Escolarizado / No escolarizado -
+     * PRONOEI) desde institucions.nivel, para conservar la salida que antes venía
+     * de la columna legacy users.nivelinstitucion.
+     */
+    private function nivelInstitucionExpr(): string
+    {
+        return $this->nivelInstitucionCondicion() . ' as nivelinstitucion';
+    }
+
+    /**
+     * Condición CASE (sin alias) reutilizable en WHERE para filtrar por el
+     * "nivelinstitucion" derivado.
+     */
+    private function nivelInstitucionCondicion(): string
+    {
+        return "CASE "
+            . "WHEN institucions.nivel LIKE '%no escolariz%' OR institucions.nivel LIKE '%pronoei%' "
+            . "THEN 'No escolarizado - PRONOEI' "
+            . "WHEN institucions.nivel IS NULL OR TRIM(institucions.nivel) = '' THEN NULL "
+            . "ELSE 'Escolarizado' END";
     }
 
     private function paginateProduccions(Request $request, $query)
@@ -250,7 +282,7 @@ class ProduccionController extends Controller
             'produccions' => $produccions,
             'anio' => (string) $anio,
             'showFullFilters' => $showFullFilters,
-            'listaUgels' => \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaUgels' => Ugel::orderBy('nombre')->pluck('nombre'),
             'listaInstituciones' => [],
             'listaAnios' => $this->listaAniosProduccion($anio),
             'filterActionRoute' => 'produccion.general',
@@ -263,7 +295,7 @@ class ProduccionController extends Controller
 
     public function ugel(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, Auth::user()->ugel);
+        [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, Auth::user()->ugel_id);
         $produccions = $this->paginateProduccions($request, $query);
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
@@ -287,7 +319,7 @@ class ProduccionController extends Controller
 
     public function director(Request $request)
     {
-        [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, null, Auth::user()->institucion);
+        [$query, $anio, $showFullFilters] = $this->produccionsGeneralQuery($request, null, Auth::user()->institucion_id);
         $produccions = $this->paginateProduccions($request, $query);
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
@@ -343,13 +375,13 @@ class ProduccionController extends Controller
 
     public function exportProduccionesUgel(Request $request)
     {
-        [$query] = $this->produccionsGeneralQuery($request, Auth::user()->ugel);
+        [$query] = $this->produccionsGeneralQuery($request, Auth::user()->ugel_id);
         return $this->streamProduccionExport($query, 'producciones_ugel');
     }
 
     public function exportProduccionesDirector(Request $request)
     {
-        [$query] = $this->produccionsGeneralQuery($request, null, Auth::user()->institucion);
+        [$query] = $this->produccionsGeneralQuery($request, null, Auth::user()->institucion_id);
         return $this->streamProduccionExport($query, 'producciones_director');
     }
 
@@ -475,12 +507,12 @@ class ProduccionController extends Controller
         $selectedYear = $request->get('year', '2026');
         
         $ugels = DB::table('pro_produccions')
-            ->select('users.ugel', DB::raw('count(distinct pro_produccions.idUser) as docentes_count'))
+            ->select('ugeles.nombre as ugel', DB::raw('count(distinct pro_produccions.idUser) as docentes_count'))
             ->join('users', 'pro_produccions.idUser', '=', 'users.id')
+            ->join('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_produccions.estado', '1')
             ->whereYear('pro_produccions.fecha', $selectedYear) // Usar el año seleccionado
-            ->whereRaw("LENGTH(users.ugel) > 0")
-            ->groupBy('users.ugel')
+            ->groupBy('ugeles.nombre')
             ->get();
 
         return response()->json($ugels);
@@ -490,33 +522,28 @@ class ProduccionController extends Controller
     {
         $ugelSeleccionada = $request->input('ugel');
         $selectedYear = $request->input('year', '2026');
-        
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
+
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_produccions', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_produccions.idUser')
                     ->where('pro_produccions.estado', '=', '1')
                     ->whereYear('pro_produccions.fecha', $selectedYear);
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_produccions.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_produccions', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_produccions.idUser')
                     ->where('pro_produccions.estado', '=', '1')
                     ->whereYear('pro_produccions.fecha', $selectedYear);
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
@@ -545,31 +572,26 @@ class ProduccionController extends Controller
                 break;
         }
         
+        $ugelId = Ugel::resolverId($ugel);
         $term = $request->input('term');
         $selectedYear = $request->input('year', '2026');
         
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_produccions', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_produccions.idUser')
                     ->where('pro_produccions.estado', '=', '1')
                     ->whereYear('pro_produccions.fecha', $selectedYear);
             })
-            ->where('institucions.ugel', '=', $ugel)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_produccions.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
-            ->where('institucions.ugel', '=', $ugel)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
@@ -605,17 +627,24 @@ class ProduccionController extends Controller
             'year' => $selectedYear
         ]);
 
-        $docentes = DB::table('users')
+        $institucionId = Institucion::where('nomInstitucion', $institucionSeleccionada)->value('id');
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
+
+        $query = DB::table('users')
             ->leftJoin('pro_produccions', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_produccions.idUser')
                     ->where('pro_produccions.estado', '=', '1')
                     ->whereYear('pro_produccions.fecha', $selectedYear);
-            })
-            ->where('users.institucion', '=', $institucionSeleccionada)
-            // Aplicar el filtro por UGEL solo si está presente
-            ->when($ugelSeleccionada, function($query) use ($ugelSeleccionada) {
-                return $query->where('users.ugel', 'like', '%' . $ugelSeleccionada . '%');
-            })
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+        if ($ugelId) {
+            $query->where('users.ugel_id', '=', $ugelId);
+        }
+
+        $docentes = $query
             ->select('users.name', DB::raw('count(pro_produccions.id) as agendas_count'))
             ->groupBy('users.name')
             ->having('agendas_count', '>=', 0)
@@ -631,14 +660,20 @@ class ProduccionController extends Controller
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
         $selectedYear = $request->input('year', '2026');
-        
-        $docentes = DB::table('users')
+        $institucionId = Institucion::where('nomInstitucion', $institucion)->value('id');
+
+        $query = DB::table('users')
             ->leftJoin('pro_produccions', function($join) use ($selectedYear) {
                 $join->on('users.id', '=', 'pro_produccions.idUser')
                     ->where('pro_produccions.estado', '=', '1')
                     ->whereYear('pro_produccions.fecha', $selectedYear);
-            })
-            ->where('users.institucion', '=', $institucion)
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+
+        $docentes = $query
             ->where('users.name', 'like', '%' . $term . '%')
             ->select('users.name', DB::raw('count(pro_produccions.idUser) as agendas_count'))
             ->groupBy('users.name')
@@ -662,16 +697,21 @@ class ProduccionController extends Controller
         $query = Produccion::select(
             "pro_produccions.nombreProduccion", "pro_produccions.descripcion",
             "pro_produccions.fecha", "users.name", "users.cargo",
-            "users.nivelinstitucion", "users.institucion",
-            "users.provincia", "users.distrito", "users.ugel"
+            "institucions.nomInstitucion as institucion",
+            "institucions.provincia as provincia",
+            "institucions.distrito as distrito",
+            "ugeles.nombre as ugel"
         )
+        ->addSelect(DB::raw($this->nivelInstitucionExpr()))
         ->join("users", "users.id", "=", "pro_produccions.idUser")
+        ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+        ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
         ->where('pro_produccions.estado', '1')
         ->whereYear('pro_produccions.fecha', $anio);
 
         // Aplicar los mismos filtros
         if (!empty($ugel)) {
-            $query->where("users.ugel", "LIKE", "%$ugel%");
+            $query->where("ugeles.nombre", "LIKE", "%$ugel%");
         }
         if (!empty($dni)) {
             $query->where("users.dni", "LIKE", "%$dni%");
@@ -680,10 +720,10 @@ class ProduccionController extends Controller
             $query->where("users.name", "LIKE", "%$name%");
         }
         if (!empty($nominstitucion)) {
-            $query->where("users.institucion", "LIKE", "%$nominstitucion%");
+            $query->where("institucions.nomInstitucion", "LIKE", "%$nominstitucion%");
         }
         if (!empty($nivel)) {
-            $query->where("users.nivelinstitucion", "=", $nivel);
+            $query->whereRaw($this->nivelInstitucionCondicion() . " = ?", [$nivel]);
         }
 
         // Obtener TODOS los resultados (sin paginar)

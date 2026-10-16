@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Plan;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -155,14 +157,35 @@ class PlanController extends Controller
                 "pro_plans.id", "pro_plans.nombrePlan", "pro_plans.descripcion",
                 "pro_plans.documento", "pro_plans.color", "pro_plans.fecha",
                 "pro_plans.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+                "users.name", "users.cargo",
+                "institucions.nomInstitucion as institucion",
+                "institucions.provincia as provincia",
+                "institucions.distrito as distrito",
+                "ugeles.nombre as ugel", "users.dni"
             )
+            ->addSelect(DB::raw($this->nivelInstitucionExpr() . ' as nivelinstitucion'))
             ->join("users", "users.id", "=", "pro_plans.idUser")
+            ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+            ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
             ->where('pro_plans.estado', '1')
             ->whereYear('pro_plans.fecha', $anio);
 
         return [$query, $anio];
+    }
+
+    /**
+     * Expresión SQL que deriva "nivelinstitucion" (Escolarizado / No escolarizado -
+     * PRONOEI) desde institucions.nivel, para conservar la salida que antes venía
+     * de la columna legacy users.nivelinstitucion. Se usa tanto en el SELECT
+     * (añadiéndole "as nivelinstitucion") como en filtros WHERE con el mismo CASE.
+     */
+    private function nivelInstitucionExpr(): string
+    {
+        return "CASE "
+            . "WHEN institucions.nivel LIKE '%no escolariz%' OR institucions.nivel LIKE '%pronoei%' "
+            . "THEN 'No escolarizado - PRONOEI' "
+            . "WHEN institucions.nivel IS NULL OR TRIM(institucions.nivel) = '' THEN NULL "
+            . "ELSE 'Escolarizado' END";
     }
 
     private function paginatePlans(Request $request, $query)
@@ -203,13 +226,13 @@ class PlanController extends Controller
             $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
         }
         if ($request->filled('ugels')) {
-            $query->where('users.ugel', $request->input('ugels'));
+            $query->where('ugeles.nombre', $request->input('ugels'));
         }
         if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+            $query->where('institucions.nomInstitucion', $request->input('instituciones'));
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $query->whereRaw($this->nivelInstitucionExpr() . ' = ?', [$request->input('nivel')]);
         }
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
@@ -229,7 +252,7 @@ class PlanController extends Controller
             'plans' => $plans,
             'anio' => (string) $anio,
             'showFullFilters' => true,
-            'listaUgels' => \App\Models\User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaUgels' => Ugel::orderBy('nombre')->pluck('nombre'),
             'listaInstituciones' => [],
             'listaAnios' => $this->listaAniosPlan($anio),
             'filterActionRoute' => 'plans.view',
@@ -242,19 +265,17 @@ class PlanController extends Controller
 
     public function ugel(Request $request)
     {
-        $ugel = Auth::user()->ugel;
-
         [$query, $anio] = $this->plansScopeBase($request);
-        $query->where('users.ugel', $ugel);
+        $query->where('users.ugel_id', Auth::user()->ugel_id);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
         }
         if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+            $query->where('institucions.nomInstitucion', $request->input('instituciones'));
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $query->whereRaw($this->nivelInstitucionExpr() . ' = ?', [$request->input('nivel')]);
         }
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
@@ -270,7 +291,7 @@ class PlanController extends Controller
             return $this->ajaxPlansResponse($request, $plans);
         }
 
-        $listaInstituciones = \App\Models\User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
+        $listaInstituciones = Institucion::where('ugel_id', Auth::user()->ugel_id)->orderBy('nomInstitucion')->pluck('nomInstitucion');
 
         return Inertia::render('Plan/General', [
             'plans' => $plans,
@@ -289,10 +310,8 @@ class PlanController extends Controller
 
     public function director(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-
         [$query, $anio] = $this->plansScopeBase($request);
-        $query->where('users.institucion', $institucion);
+        $query->where('users.institucion_id', Auth::user()->institucion_id);
 
         if ($request->filled('texto')) {
             $query->where('pro_plans.nombrePlan', 'LIKE', '%' . $request->input('texto') . '%');
@@ -331,12 +350,15 @@ class PlanController extends Controller
 
     public function profesorcoordinador(Request $request)
     {
-        $institucion = Auth::user()->institucion;
+        $institucionId = Auth::user()->institucion_id;
         $year = $request->get('year', 2026); // Año predeterminado 2026
         
-        $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.documento","pro_plans.fecha","pro_plans.color","pro_plans.descripcion","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
+        $plans = Plan::select("pro_plans.id","pro_plans.nombrePlan","pro_plans.documento","pro_plans.fecha","pro_plans.color","pro_plans.descripcion","users.name","institucions.nomInstitucion as institucion","institucions.provincia as provincia","institucions.distrito as distrito","ugeles.nombre as ugel")
+            ->addSelect(DB::raw($this->nivelInstitucionExpr() . ' as nivelinstitucion'))
             ->join("users","users.id","=","pro_plans.idUser")
-            ->where("users.institucion", $institucion)
+            ->leftJoin("institucions","institucions.id","=","users.institucion_id")
+            ->leftJoin("ugeles","ugeles.id","=","users.ugel_id")
+            ->where("users.institucion_id", $institucionId)
             ->where('pro_plans.estado', '1')
             ->whereYear('fecha', $year)
             ->orderby('pro_plans.id','desc')
@@ -481,12 +503,12 @@ class PlanController extends Controller
         $year = $request->get('year', 2026); // Año predeterminado 2026
         
         $ugels = DB::table('pro_plans')
-            ->select('users.ugel', DB::raw('count(distinct pro_plans.idUser) as docentes_count'))
+            ->select('ugeles.nombre as ugel', DB::raw('count(distinct pro_plans.idUser) as docentes_count'))
             ->join('users', 'pro_plans.idUser', '=', 'users.id')
+            ->join('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_plans.estado', '1')
             ->whereYear('fecha', $year)
-            ->whereRaw("LENGTH(users.ugel) > 0")
-            ->groupBy('users.ugel')
+            ->groupBy('ugeles.nombre')
             ->get();
 
         return response()->json($ugels);
@@ -497,32 +519,28 @@ class PlanController extends Controller
         $ugelSeleccionada = $request->input('ugel');
         $year = $request->get('year', 2026); // Año predeterminado 2026
         
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
+        
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_plans', function($join) use ($year) {
                 $join->on('users.id', '=', 'pro_plans.idUser')
                     ->where('pro_plans.estado', '=', '1')
                     ->whereYear('pro_plans.fecha', $year);
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_plans.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_plans', function($join) use ($year) {
                 $join->on('users.id', '=', 'pro_plans.idUser')
                     ->where('pro_plans.estado', '=', '1')
                     ->whereYear('pro_plans.fecha', $year);
             })
-            ->where('institucions.ugel', '=', $ugelSeleccionada)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
@@ -549,6 +567,8 @@ class PlanController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
+        $institucionId = Institucion::where('nomInstitucion', $institucionSeleccionada)->value('id');
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
         
         \Log::info('Buscando docentes para:', [
             'institucion' => $institucionSeleccionada, 
@@ -556,16 +576,21 @@ class PlanController extends Controller
             'year' => $year
         ]);
 
-        $docentes = DB::table('users')
+        $query = DB::table('users')
             ->leftJoin('pro_plans', function($join) use ($year) {
                 $join->on('users.id', '=', 'pro_plans.idUser')
                     ->where('pro_plans.estado', '=', '1')
                     ->whereYear('pro_plans.fecha', $year);
-            })
-            ->where('users.institucion', '=', $institucionSeleccionada)
-            ->when($ugelSeleccionada, function($query) use ($ugelSeleccionada) {
-                return $query->where('users.ugel', 'like', '%' . $ugelSeleccionada . '%');
-            })
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+        if ($ugelId) {
+            $query->where('users.ugel_id', '=', $ugelId);
+        }
+
+        $docentes = $query
             ->select('users.name', DB::raw('count(pro_plans.id) as agendas_count'))
             ->groupBy('users.name')
             ->having('agendas_count', '>=', 0)
@@ -593,30 +618,25 @@ class PlanController extends Controller
                 break;
         }
         
+        $ugelId = Ugel::resolverId($ugel);
         $term = $request->input('term');
 
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_plans', function($join) use ($year) {
                 $join->on('users.id', '=', 'pro_plans.idUser')
                     ->where('pro_plans.estado', '=', '1')
                     ->whereYear('pro_plans.fecha', $year);
             })
-            ->where('institucions.ugel', '=', $ugel)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_plans.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
-            ->where('institucions.ugel', '=', $ugel)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
@@ -642,17 +662,22 @@ class PlanController extends Controller
         // Construir la misma consulta pero sin paginación
         $query = Plan::select(
             "pro_plans.nombrePlan", "pro_plans.descripcion", 
-            "pro_plans.fecha", "users.name", "users.cargo", 
-            "users.nivelinstitucion", "users.institucion", 
-            "users.provincia", "users.distrito", "users.ugel"
+            "pro_plans.fecha", "users.name", "users.cargo",
+            "institucions.nomInstitucion as institucion",
+            "institucions.provincia as provincia",
+            "institucions.distrito as distrito",
+            "ugeles.nombre as ugel"
         )
+        ->addSelect(DB::raw($this->nivelInstitucionExpr() . ' as nivelinstitucion'))
         ->join("users", "users.id", "=", "pro_plans.idUser")
+        ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+        ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
         ->where('pro_plans.estado', '1')
         ->whereYear('pro_plans.fecha', $year); // Usar el año seleccionado
 
         // Aplicar los mismos filtros
         if (!empty($ugel)) {
-            $query->where("users.ugel", "LIKE", "%$ugel%");
+            $query->where("ugeles.nombre", "LIKE", "%$ugel%");
         }
         
         if (!empty($dni)) {
@@ -664,7 +689,7 @@ class PlanController extends Controller
         }
         
         if (!empty($nominstitucion)) {
-            $query->where("users.institucion", "LIKE", "%$nominstitucion%");
+            $query->where("institucions.nomInstitucion", "LIKE", "%$nominstitucion%");
         }
 
         // Obtener TODOS los resultados (sin paginar)

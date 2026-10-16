@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\Institucion;
 use App\Models\User;
+use App\Models\Ugel;
 use Inertia\Inertia;
 
 class InstitucionController extends Controller
@@ -120,6 +121,7 @@ class InstitucionController extends Controller
         $institucions->distrito = Str::upper($request->get('distrito'));
         $institucions->provincia = Str::upper($request->get('provincia'));
         $institucions->ugel = Str::upper($request->get('ugel'));
+        $institucions->ugel_id = Ugel::resolverId($request->get('ugel'));
         $institucions->save();
 
         return redirect('/institucions')->with('success', '¡Institución registrada con éxito!');
@@ -153,6 +155,7 @@ class InstitucionController extends Controller
         $institucion->distrito = Str::upper($request->get('distrito'));
         $institucion->provincia = Str::upper($request->get('provincia'));
         $institucion->ugel = Str::upper($request->get('ugel'));
+        $institucion->ugel_id = Ugel::resolverId($request->get('ugel'));
         $institucion->save();
 
         return redirect('/institucions')->with('success', '¡Institución actualizada con éxito!');

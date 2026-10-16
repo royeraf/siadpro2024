@@ -153,7 +153,7 @@ class DashboardService
         try {
             return match ($scope['scope']) {
                 'DRE'         => $this->envoltura($this->resumenPorGrupo('ugel', 'UGEL')),
-                'ugel'        => $this->envoltura($this->resumenPorGrupo('institucion', 'Institución', ['ugel' => $user->ugel])),
+                'ugel'        => $this->envoltura($this->resumenPorGrupo('institucion', 'Institución', ['ugel_id' => $user->ugel_id])),
                 'institucion' => $this->jerarquiaPorDocente($user),
                 default       => null,
             };
@@ -175,7 +175,7 @@ class DashboardService
      * @param  array<string, mixed>  $filtros  restricciones sobre `users`.
      * @return array<string, mixed>
      */
-    private function resumenPorGrupo(string $campo, string $prefijo, array $filtros = []): array
+    private function resumenPorGrupo(string $dimension, string $prefijo, array $filtros = []): array
     {
         $vacio = [
             'title'           => "Resumen por {$prefijo}",
@@ -187,14 +187,16 @@ class DashboardService
             'filas'           => [],
         ];
 
-        $expresion = $this->expresionGrupo($campo);
+        $join = $this->dimensionJoin($dimension);
 
-        if ($expresion === null) {
+        if ($join === null) {
             return $vacio;
         }
 
-        $docentesPorGrupo = $this->docentesPor($expresion, $filtros);
-        $registrosPorGrupo = $this->registrosPorGrupo($expresion, $filtros);
+        $expresion = "UPPER(TRIM({$join['columna']}))";
+
+        $docentesPorGrupo = $this->docentesPor($join, $expresion, $filtros);
+        $registrosPorGrupo = $this->registrosPorGrupo($join, $expresion, $filtros);
 
         $grupos = $docentesPorGrupo->keys()
             ->merge($registrosPorGrupo->keys())
@@ -227,27 +229,35 @@ class DashboardService
     }
 
     /**
-     * Expresión SQL con la que se agrupa (y se selecciona) una columna de `users`.
+     * Especificación del JOIN para agrupar por una dimensión territorial.
      *
-     * Hace falta normalizar porque el corpus real mezcla mayúsculas y minúsculas
-     * ("UGEL HUACAYBAMBA" y "Ugel Huacaybamba"). Con la collation por defecto de
-     * MySQL, case-insensitive, un `GROUP BY users.ugel` sobre esas dos formas
-     * devuelve un representante *no determinista*: la misma UGEL podía aparecer
-     * como dos filas distintas según la consulta. Agrupar por la misma expresión
-     * normalizada en SELECT y GROUP BY hace la clave estable.
-     *
-     * Los filtros WHERE siguen usando la columna cruda: es la búsqueda exacta la
-     * que el usuario ya tiene guardada en su perfil.
+     * La agrupación ya no usa las columnas legacy de `users` (eliminadas):
+     * 'ugel' agrupa por `ugeles.nombre` y 'institucion' por
+     * `institucions.nomInstitucion`, uniendo por las claves foráneas.
      */
-    private function expresionGrupo(string $campo): ?string
+    private function dimensionJoin(string $dimension): ?array
     {
-        return Schema::hasColumn('users', $campo) ? "UPPER(TRIM(users.$campo))" : null;
+        return match ($dimension) {
+            'ugel' => [
+                'tabla'   => 'ugeles',
+                'fk'      => 'ugeles.id',
+                'local'   => 'users.ugel_id',
+                'columna' => 'ugeles.nombre',
+            ],
+            'institucion' => [
+                'tabla'   => 'institucions',
+                'fk'      => 'institucions.id',
+                'local'   => 'users.institucion_id',
+                'columna' => 'institucions.nomInstitucion',
+            ],
+            default => null,
+        };
     }
 
     /** Docentes (cargos válidos, estado 1) agrupados por una expresión. */
-    private function docentesPor(string $expresion, array $filtros = []): Collection
+    private function docentesPor(array $join, string $expresion, array $filtros = []): Collection
     {
-        return $this->docentesQuery(['scope' => 'todo', 'userId' => null], $filtros)
+        return $this->docentesQuery(['scope' => 'todo', 'userId' => null], $filtros, $join)
             ->selectRaw("$expresion as grupo")
             ->selectRaw('COUNT(DISTINCT users.id) as total')
             ->groupByRaw($expresion)
@@ -263,10 +273,10 @@ class DashboardService
      * tienen al menos un registro en **cualquier** módulo. Sumar los distinct
      * por módulo contaría varias veces a quien registró en varios módulos.
      */
-    private function registrosPorGrupo(string $columna, array $filtros = []): Collection
+    private function registrosPorGrupo(array $join, string $expresion, array $filtros = []): Collection
     {
-        $registros = $this->registrosTotalesPorGrupo($columna, $filtros);
-        $conRegistro = $this->docentesConRegistroPorGrupo($columna, $filtros);
+        $registros = $this->registrosTotalesPorGrupo($join, $expresion, $filtros);
+        $conRegistro = $this->docentesConRegistroPorGrupo($join, $expresion, $filtros);
 
         $grupos = $registros->keys()->merge($conRegistro->keys())->unique();
 
@@ -279,12 +289,12 @@ class DashboardService
     }
 
     /** Registros totales aportados por cada grupo (suma de los 7 módulos). */
-    private function registrosTotalesPorGrupo(string $expresion, array $filtros = []): Collection
+    private function registrosTotalesPorGrupo(array $join, string $expresion, array $filtros = []): Collection
     {
         $acumulado = [];
 
         foreach (self::MODULOS as $modulo) {
-            $this->registrosQuery($modulo['tabla'], null, ['scope' => 'todo', 'userId' => null], $filtros)
+            $this->registrosQuery($modulo['tabla'], null, ['scope' => 'todo', 'userId' => null], $filtros, $join)
                 ->selectRaw("$expresion as grupo")
                 ->selectRaw('COUNT(*) as registros')
                 ->groupByRaw($expresion)
@@ -306,9 +316,9 @@ class DashboardService
      * con un `UNION`: mantiene el conteo en una sola fila por docente y evita
      * arrastrar decenas de miles de filas al servidor de solo para contarlas.
      */
-    private function docentesConRegistroPorGrupo(string $expresion, array $filtros = []): Collection
+    private function docentesConRegistroPorGrupo(array $join, string $expresion, array $filtros = []): Collection
     {
-        $query = $this->docentesQuery(['scope' => 'todo', 'userId' => null], $filtros)
+        $query = $this->docentesQuery(['scope' => 'todo', 'userId' => null], $filtros, $join)
             ->selectRaw("$expresion as grupo")
             ->selectRaw('COUNT(DISTINCT users.id) as total')
             ->groupByRaw($expresion);
@@ -397,7 +407,7 @@ class DashboardService
 
         $docentes = $this->docentesQuery(
             ['scope' => 'todo', 'userId' => null],
-            ['institucion' => $user->institucion]
+            ['institucion_id' => $user->institucion_id]
         )
             ->select('users.id', 'users.name', 'users.cargo')
             ->groupBy('users.id', 'users.name', 'users.cargo')
@@ -408,7 +418,7 @@ class DashboardService
         $ids = $docentes->pluck('id')->all();
 
         // Una consulta por módulo, en vez de una por docente (que serían cientos).
-        $porUsuario = $this->registrosPorUsuario($ids, ['institucion' => $user->institucion]);
+        $porUsuario = $this->registrosPorUsuario($ids, ['institucion_id' => $user->institucion_id]);
 
         $filas = $docentes->map(function (User $docente) use ($porUsuario, $totalModulos) {
             $datos = $porUsuario[$docente->id] ?? ['registros' => 0, 'modulos' => 0, 'ultima' => null];
@@ -497,7 +507,7 @@ class DashboardService
      * @param  array<string, mixed>  $scope
      * @param  array<string, mixed>  $filtros
      */
-    private function registrosQuery(string $tabla, ?User $user, array $scope, array $filtros = []): Builder
+    private function registrosQuery(string $tabla, ?User $user, array $scope, array $filtros = [], ?array $join = null): Builder
     {
         $query = DB::table($tabla)
             ->join('users', 'users.id', '=', "$tabla.idUser")
@@ -505,12 +515,16 @@ class DashboardService
             ->where('users.estado', '1')
             ->whereIn('users.cargo', self::DOCENTES_CARGOS);
 
+        if ($join !== null) {
+            $query->leftJoin($join['tabla'], $join['fk'], '=', $join['local']);
+        }
+
         if ($scope['scope'] === 'propio' && $user !== null) {
             $query->where("$tabla.idUser", $user->id);
         } elseif ($scope['scope'] === 'ugel' && $user !== null) {
-            $query->where('users.ugel', $user->ugel);
+            $query->where('users.ugel_id', $user->ugel_id);
         } elseif ($scope['scope'] === 'institucion' && $user !== null) {
-            $query->where('users.institucion', $user->institucion);
+            $query->where('users.institucion_id', $user->institucion_id);
         }
 
         foreach ($filtros as $campo => $valor) {
@@ -534,12 +548,16 @@ class DashboardService
      * @param  array<string, mixed>  $scope
      * @param  array<string, mixed>  $filtros
      */
-    private function docentesQuery(array $scope, array $filtros = []): EloquentBuilder
+    private function docentesQuery(array $scope, array $filtros = [], ?array $join = null): EloquentBuilder
     {
         $query = User::query()
             ->from('users')
             ->where('users.estado', '1')
             ->whereIn('users.cargo', self::DOCENTES_CARGOS);
+
+        if ($join !== null) {
+            $query->leftJoin($join['tabla'], $join['fk'], '=', $join['local']);
+        }
 
         if ($scope['scope'] === 'propio') {
             $query->where('users.id', $scope['userId']);
@@ -558,8 +576,8 @@ class DashboardService
     private function filtrosDelScope(User $user): array
     {
         return match ($this->scope($user)['scope']) {
-            'ugel'        => ['ugel' => $user->ugel],
-            'institucion' => ['institucion' => $user->institucion],
+            'ugel'        => ['ugel_id' => $user->ugel_id],
+            'institucion' => ['institucion_id' => $user->institucion_id],
             'propio'      => [],
             default       => [],
         };

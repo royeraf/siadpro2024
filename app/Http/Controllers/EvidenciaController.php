@@ -6,6 +6,8 @@ use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
 use App\Models\Evidencia;
 use App\Models\User;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -149,14 +151,42 @@ class EvidenciaController extends Controller
                 "pro_evidencias.id", "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
                 "pro_evidencias.documento", "pro_evidencias.color", "pro_evidencias.fecha",
                 "pro_evidencias.enlace",
-                "users.name", "users.cargo", "users.nivelinstitucion", "users.institucion",
-                "users.provincia", "users.distrito", "users.ugel", "users.dni"
+                "users.name", "users.cargo", "users.dni",
+                "institucions.nomInstitucion as institucion",
+                "institucions.provincia as provincia",
+                "institucions.distrito as distrito",
+                "ugeles.nombre as ugel"
             )
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join("users", "users.id", "=", "pro_evidencias.idUser")
+            ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+            ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
             ->where('pro_evidencias.estado', '1')
             ->whereYear('pro_evidencias.fecha', $anio);
 
         return [$query, $anio];
+    }
+
+    /**
+     * Expresión SQL que deriva "nivelinstitucion" (Escolarizado / No escolarizado -
+     * PRONOEI) desde institucions.nivel, para conservar la salida que antes venía
+     * de la columna legacy users.nivelinstitucion.
+     */
+    private function nivelInstitucionExpr(): string
+    {
+        return $this->nivelInstitucionCase() . " as nivelinstitucion";
+    }
+
+    /**
+     * CASE SQL sin alias, reutilizable tanto en el SELECT como en filtros WHERE.
+     */
+    private function nivelInstitucionCase(): string
+    {
+        return "CASE "
+            . "WHEN institucions.nivel LIKE '%no escolariz%' OR institucions.nivel LIKE '%pronoei%' "
+            . "THEN 'No escolarizado - PRONOEI' "
+            . "WHEN institucions.nivel IS NULL OR TRIM(institucions.nivel) = '' THEN NULL "
+            . "ELSE 'Escolarizado' END";
     }
 
     private function paginateEvidencias(Request $request, $query)
@@ -197,13 +227,13 @@ class EvidenciaController extends Controller
             $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
         }
         if ($request->filled('ugels')) {
-            $query->where('users.ugel', $request->input('ugels'));
+            $query->where('ugeles.nombre', $request->input('ugels'));
         }
         if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+            $query->where('institucions.nomInstitucion', $request->input('instituciones'));
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $query->whereRaw($this->nivelInstitucionCase() . " = ?", [$request->input('nivel')]);
         }
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
@@ -223,7 +253,7 @@ class EvidenciaController extends Controller
             'evidencias' => $evidencias,
             'anio' => (string) $anio,
             'showFullFilters' => true,
-            'listaUgels' => User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel'),
+            'listaUgels' => Ugel::orderBy('nombre')->pluck('nombre'),
             'listaInstituciones' => [],
             'listaAnios' => $this->listaAniosEvidencia($anio),
             'filterActionRoute' => 'evidencias.view',
@@ -236,19 +266,19 @@ class EvidenciaController extends Controller
 
     public function ugel(Request $request)
     {
-        $ugel = Auth::user()->ugel;
+        $ugelId = Auth::user()->ugel_id;
 
         [$query, $anio] = $this->evidenciasScopeBase($request);
-        $query->where('users.ugel', $ugel);
+        $query->where('users.ugel_id', $ugelId);
 
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
         }
         if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+            $query->where('institucions.nomInstitucion', $request->input('instituciones'));
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $query->whereRaw($this->nivelInstitucionCase() . " = ?", [$request->input('nivel')]);
         }
         if ($request->filled('buscar')) {
             $buscar = trim($request->input('buscar'));
@@ -264,7 +294,7 @@ class EvidenciaController extends Controller
             return $this->ajaxEvidenciasResponse($request, $evidencias);
         }
 
-        $listaInstituciones = User::where('ugel', $ugel)->whereNotNull('institucion')->where('institucion', '!=', '')->distinct()->orderBy('institucion')->pluck('institucion');
+        $listaInstituciones = Institucion::where('ugel_id', $ugelId)->orderBy('nomInstitucion')->pluck('nomInstitucion');
 
         return Inertia::render('Evidencia/General', [
             'evidencias' => $evidencias,
@@ -283,10 +313,8 @@ class EvidenciaController extends Controller
 
     public function director(Request $request)
     {
-        $institucion = Auth::user()->institucion;
-
         [$query, $anio] = $this->evidenciasScopeBase($request);
-        $query->where('users.institucion', $institucion);
+        $query->where('users.institucion_id', Auth::user()->institucion_id);
 
         if ($request->filled('texto')) {
             $query->where('pro_evidencias.nombreEvidencia', 'LIKE', '%' . $request->input('texto') . '%');
@@ -325,12 +353,15 @@ class EvidenciaController extends Controller
 
     public function profesorcoordinador()
     {
-        $institucion = Auth::user()->institucion;
+        $institucionId = Auth::user()->institucion_id;
         $anio = request()->get('anio') ?: '2026';
         
-        $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
+        $evidencias = Evidencia::select("pro_evidencias.id","pro_evidencias.nombreEvidencia","pro_evidencias.documento","pro_evidencias.color","pro_evidencias.descripcion","pro_evidencias.fecha","users.name","institucions.nomInstitucion as institucion","institucions.provincia as provincia","institucions.distrito as distrito","ugeles.nombre as ugel")
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join("users","users.id","=","pro_evidencias.idUser")
-            ->where("users.institucion", $institucion)
+            ->leftJoin("institucions","institucions.id","=","users.institucion_id")
+            ->leftJoin("ugeles","ugeles.id","=","users.ugel_id")
+            ->where("users.institucion_id", $institucionId)
             ->where('pro_evidencias.estado', '1')
             ->whereYear('pro_evidencias.fecha', $anio)
             ->orderby('fecha','desc')
@@ -510,12 +541,12 @@ class EvidenciaController extends Controller
         $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023 si no se proporciona
         
         $ugels = DB::table('pro_evidencias')
-            ->select('users.ugel', DB::raw('count(distinct pro_evidencias.idUser) as docentes_count'))
+            ->select('ugeles.nombre as ugel', DB::raw('count(distinct pro_evidencias.idUser) as docentes_count'))
             ->join('users', 'pro_evidencias.idUser', '=', 'users.id')
+            ->join('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_evidencias.estado', '1')
             ->whereYear('fecha', $anio)
-            ->whereRaw("LENGTH(users.ugel) > 0")
-            ->groupBy('users.ugel')
+            ->groupBy('ugeles.nombre')
             ->get();
     
         return response()->json($ugels);
@@ -525,34 +556,30 @@ class EvidenciaController extends Controller
     {
         $ugelSeleccionada = $request->input('ugel');
         $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023 si no se proporciona
+
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
         
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             
             ->leftJoin('pro_evidencias', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_evidencias.idUser')
                     ->where('pro_evidencias.estado', '=', '1')
                     ->whereYear('pro_evidencias.fecha', $anio);
             })
-            ->where('institucions.ugel', '=',$ugelSeleccionada)
+            ->where('institucions.ugel_id', '=',$ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_evidencias.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_evidencias', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_evidencias.idUser')
                     ->where('pro_evidencias.estado', '=', '1')
                     ->whereYear('pro_evidencias.fecha', $anio);
             })
-            ->where('institucions.ugel', '=',$ugelSeleccionada)
+            ->where('institucions.ugel_id', '=',$ugelId)
             ->select('institucions.nomInstitucion', DB::raw('count(distinct users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
@@ -581,32 +608,27 @@ class EvidenciaController extends Controller
                 break;
         }
         
+        $ugelId = Ugel::resolverId($ugel);
         $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023
         $term = $request->input('term'); // Obtén el término de búsqueda del formulario
 
         // Realiza una consulta para buscar instituciones que coincidan con $term y tengan información sobre docentes y agendas
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_evidencias', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_evidencias.idUser')
                     ->where('pro_evidencias.estado', '=', '1')
                     ->whereYear('pro_evidencias.fecha', $anio);
             })
-            ->where('institucions.ugel', '=', $ugel)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_evidencias.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
-            ->where('institucions.ugel', '=', $ugel)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
@@ -635,15 +657,25 @@ class EvidenciaController extends Controller
 
         $institucionSeleccionada = $request->input('docente');
         $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023
+
+        $institucionId = Institucion::where('nomInstitucion', $institucionSeleccionada)->value('id');
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
         
-        $docentes = DB::table('users')
+        $query = DB::table('users')
             ->leftJoin('pro_evidencias', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_evidencias.idUser')
                     ->where('pro_evidencias.estado', '=', '1')
                     ->whereYear('pro_evidencias.fecha', $anio);
-            })
-            ->where('users.institucion', '=', $institucionSeleccionada)
-            ->where('users.ugel', 'like', '%' . $ugelSeleccionada . '%')
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+        if ($ugelId) {
+            $query->where('users.ugel_id', '=', $ugelId);
+        }
+
+        $docentes = $query
             ->select('users.name', DB::raw('count(pro_evidencias.id) as agendas_count'))
             ->groupBy('users.name')
             ->having('agendas_count', '>=', 0)
@@ -657,14 +689,20 @@ class EvidenciaController extends Controller
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
         $anio = $request->input('anio') ?: '2026'; // Valor por defecto 2023
+        $institucionId = Institucion::where('nomInstitucion', $institucion)->value('id');
         
-        $docentes = DB::table('users')
+        $query = DB::table('users')
             ->leftJoin('pro_evidencias', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_evidencias.idUser')
                     ->where('pro_evidencias.estado', '=', '1')
                     ->whereYear('pro_evidencias.fecha', $anio);
-            })
-            ->where('users.institucion', '=', $institucion)
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+
+        $docentes = $query
             ->where('users.name', 'like', '%' . $term . '%')
             ->select('users.name', DB::raw('count(pro_evidencias.idUser) as agendas_count'))
             ->groupBy('users.name')
@@ -682,15 +720,20 @@ class EvidenciaController extends Controller
         $query = Evidencia::select(
             "pro_evidencias.nombreEvidencia", "pro_evidencias.descripcion",
             "pro_evidencias.fecha", "users.name", "users.cargo",
-            "users.nivelinstitucion", "users.institucion",
-            "users.provincia", "users.distrito", "users.ugel"
+            "institucions.nomInstitucion as institucion",
+            "institucions.provincia as provincia",
+            "institucions.distrito as distrito",
+            "ugeles.nombre as ugel"
         )
+        ->addSelect(DB::raw($this->nivelInstitucionExpr()))
         ->join("users", "users.id", "=", "pro_evidencias.idUser")
+        ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+        ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
         ->where('pro_evidencias.estado', '1')
         ->whereYear('pro_evidencias.fecha', $anio);
 
         if ($request->filled('ugels')) {
-            $query->where('users.ugel', $request->input('ugels'));
+            $query->where('ugeles.nombre', $request->input('ugels'));
         }
         if ($request->filled('texto')) {
             $query->where('users.dni', 'LIKE', '%' . $request->input('texto') . '%');
@@ -699,10 +742,10 @@ class EvidenciaController extends Controller
             $query->where('users.name', 'LIKE', '%' . $request->input('docentes') . '%');
         }
         if ($request->filled('instituciones')) {
-            $query->where('users.institucion', $request->input('instituciones'));
+            $query->where('institucions.nomInstitucion', $request->input('instituciones'));
         }
         if ($request->filled('nivel')) {
-            $query->where('users.nivelinstitucion', $request->input('nivel'));
+            $query->whereRaw($this->nivelInstitucionCase() . " = ?", [$request->input('nivel')]);
         }
 
         $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->get();

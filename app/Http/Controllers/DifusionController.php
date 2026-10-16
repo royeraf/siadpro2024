@@ -7,6 +7,8 @@ use App\Http\Controllers\Concerns\ValidaDocumento;
 use Illuminate\Http\Request;
 use App\Models\Difusion;
 use App\Models\User;
+use App\Models\Ugel;
+use App\Models\Institucion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -122,7 +124,7 @@ class DifusionController extends Controller
     /**
      * Consulta base compartida por los tres alcances agregados.
      */
-    private function difusionGeneralQuery(Request $request, ?string $forceUgel = null, ?string $forceInstitucion = null): array
+    private function difusionGeneralQuery(Request $request, ?int $forceUgelId = null, ?int $forceInstitucionId = null): array
     {
         $anio = $request->filled('anio') ? $request->input('anio') : date('Y');
 
@@ -130,25 +132,31 @@ class DifusionController extends Controller
                 'pro_difusions.id', 'pro_difusions.nombreAccion', 'pro_difusions.lugar',
                 'pro_difusions.descripcion',
                 'pro_difusions.fecha', 'pro_difusions.enlace',
-                'users.name', 'users.institucion', 'users.provincia', 'users.cargo',
-                'users.nivelinstitucion', 'users.distrito', 'users.ugel', 'users.dni'
+                'users.name', 'users.cargo', 'users.dni',
+                'institucions.nomInstitucion as institucion',
+                'institucions.provincia as provincia',
+                'institucions.distrito as distrito',
+                'ugeles.nombre as ugel'
             )
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join('users', 'users.id', '=', 'pro_difusions.idUser')
+            ->leftJoin('institucions', 'institucions.id', '=', 'users.institucion_id')
+            ->leftJoin('ugeles', 'ugeles.id', '=', 'users.ugel_id')
             ->where('pro_difusions.estado', '1')
             ->whereYear('pro_difusions.fecha', $anio);
 
-        $showFullFilters = $forceUgel === null && $forceInstitucion === null;
+        $showFullFilters = $forceUgelId === null && $forceInstitucionId === null;
 
-        if ($forceInstitucion !== null) {
-            $query->where('users.institucion', $forceInstitucion);
-        } elseif ($forceUgel !== null) {
-            $query->where('users.ugel', $forceUgel);
+        if ($forceInstitucionId !== null) {
+            $query->where('users.institucion_id', $forceInstitucionId);
+        } elseif ($forceUgelId !== null) {
+            $query->where('users.ugel_id', $forceUgelId);
         } elseif ($showFullFilters) {
             if ($request->filled('ugels')) {
-                $query->where('users.ugel', $request->input('ugels'));
+                $query->where('ugeles.nombre', $request->input('ugels'));
             }
             if ($request->filled('instituciones')) {
-                $query->where('users.institucion', 'LIKE', '%' . $request->input('instituciones') . '%');
+                $query->where('institucions.nomInstitucion', 'LIKE', '%' . $request->input('instituciones') . '%');
             }
         }
 
@@ -174,6 +182,20 @@ class DifusionController extends Controller
         }
 
         return [$query, $anio, $showFullFilters];
+    }
+
+    /**
+     * Expresión SQL que deriva "nivelinstitucion" (Escolarizado / No escolarizado -
+     * PRONOEI) desde institucions.nivel, para conservar la salida que antes venía
+     * de la columna legacy users.nivelinstitucion.
+     */
+    private function nivelInstitucionExpr(): string
+    {
+        return "CASE "
+            . "WHEN institucions.nivel LIKE '%no escolariz%' OR institucions.nivel LIKE '%pronoei%' "
+            . "THEN 'No escolarizado - PRONOEI' "
+            . "WHEN institucions.nivel IS NULL OR TRIM(institucions.nivel) = '' THEN NULL "
+            . "ELSE 'Escolarizado' END as nivelinstitucion";
     }
 
     private function paginateDifusion(Request $request, $query)
@@ -225,7 +247,7 @@ class DifusionController extends Controller
             return $this->ajaxDifusionResponse($request, $accions);
         }
 
-        $listaUgels = User::whereNotNull('ugel')->where('ugel', '!=', '')->distinct()->orderBy('ugel')->pluck('ugel');
+        $listaUgels = Ugel::orderBy('nombre')->pluck('nombre');
         $listaAnios = $this->listaAniosDifusion($anio);
 
         return Inertia::render('Difusion/General', [
@@ -244,7 +266,7 @@ class DifusionController extends Controller
 
     public function ugel(Request $request)
     {
-        [$query, $anio] = $this->difusionGeneralQuery($request, Auth::user()->ugel);
+        [$query, $anio] = $this->difusionGeneralQuery($request, Auth::user()->ugel_id);
         $accions = $this->paginateDifusion($request, $query);
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
@@ -267,7 +289,7 @@ class DifusionController extends Controller
 
     public function director(Request $request)
     {
-        [$query, $anio] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion);
+        [$query, $anio] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion_id);
         $accions = $this->paginateDifusion($request, $query);
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
@@ -351,24 +373,27 @@ class DifusionController extends Controller
 
     public function exportDifusionUgel(Request $request)
     {
-        [$query] = $this->difusionGeneralQuery($request, Auth::user()->ugel);
+        [$query] = $this->difusionGeneralQuery($request, Auth::user()->ugel_id);
         return $this->streamDifusionExport($query, 'acciones_difusion_ugel');
     }
 
     public function exportDifusionDirector(Request $request)
     {
-        [$query] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion);
+        [$query] = $this->difusionGeneralQuery($request, null, Auth::user()->institucion_id);
         return $this->streamDifusionExport($query, 'acciones_difusion_director');
     }
 
     public function profesorcoordinador()
     {
-        $institucion = Auth::user()->institucion;
+        $institucionId = Auth::user()->institucion_id;
         $anioActual = request()->get('anio', date('Y'));
         
-        $accions = Difusion::select("pro_difusions.id","pro_difusions.nombreAccion","pro_difusions.lugar","pro_difusions.enlace","pro_difusions.descripcion","pro_difusions.updated_at","pro_difusions.fecha","users.name","users.institucion","users.provincia","users.distrito","users.ugel")
+        $accions = Difusion::select("pro_difusions.id","pro_difusions.nombreAccion","pro_difusions.lugar","pro_difusions.enlace","pro_difusions.descripcion","pro_difusions.updated_at","pro_difusions.fecha","users.name","institucions.nomInstitucion as institucion","institucions.provincia as provincia","institucions.distrito as distrito","ugeles.nombre as ugel")
+            ->addSelect(DB::raw($this->nivelInstitucionExpr()))
             ->join("users","users.id","=","pro_difusions.idUser")
-            ->where("users.institucion", $institucion)
+            ->leftJoin("institucions","institucions.id","=","users.institucion_id")
+            ->leftJoin("ugeles","ugeles.id","=","users.ugel_id")
+            ->where("users.institucion_id", $institucionId)
             ->where('pro_difusions.estado', '1')
             ->orderby('pro_difusions.fecha','desc')
             ->whereYear('fecha', $anioActual)
@@ -499,14 +524,14 @@ class DifusionController extends Controller
         $anio = $request->input('anio', date('Y'));
         
         try {
-            $ugels = DB::table('pro_difusions')
-                ->select('users.ugel', DB::raw('count(distinct pro_difusions.idUser) as docentes_count'))
+            $query = DB::table('pro_difusions')
+                ->select('ugeles.nombre as ugel', DB::raw('count(distinct pro_difusions.idUser) as docentes_count'))
                 ->join('users', 'pro_difusions.idUser', '=', 'users.id')
+                ->join('ugeles', 'ugeles.id', '=', 'users.ugel_id')
                 ->where('pro_difusions.estado', '1')
-                ->whereYear('pro_difusions.fecha', $anio)
-                ->whereRaw("LENGTH(users.ugel) > 0")
-                ->groupBy('users.ugel')
-                ->get();
+                ->whereYear('pro_difusions.fecha', $anio);
+
+            $ugels = $query->groupBy('ugeles.nombre')->get();
             
             return response()->json($ugels);
         } catch (\Exception $e) {
@@ -518,29 +543,24 @@ class DifusionController extends Controller
     {
         $ugelSeleccionada = $request->input('ugel');
         $anio = $request->input('anio', date('Y'));
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
         
         try {
             $resultados = DB::table('institucions')
-                ->leftJoin('users', function($join) {
-                    $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                        ->on('institucions.ugel', '=', 'users.ugel');
-                })
+                ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
                 ->leftJoin('pro_difusions', function($join) use ($anio) {
                     $join->on('users.id', '=', 'pro_difusions.idUser')
                         ->where('pro_difusions.estado', '=', '1')
                         ->whereYear('pro_difusions.fecha', $anio);
                 })
-                ->where('institucions.ugel', '=', $ugelSeleccionada)
+                ->where('institucions.ugel_id', '=', $ugelId)
                 ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_difusions.idUser) as agendas_count'))
                 ->groupBy('institucions.nomInstitucion')
                 ->get();
 
             $totalDocentes = DB::table('institucions')
-                ->leftJoin('users', function($join) {
-                    $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                        ->on('institucions.ugel', '=', 'users.ugel');
-                })
-                ->where('institucions.ugel', '=', $ugelSeleccionada)
+                ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+                ->where('institucions.ugel_id', '=', $ugelId)
                 ->select('institucions.nomInstitucion', DB::raw('count(distinct users.id) as total_docentes'))
                 ->groupBy('institucions.nomInstitucion')
                 ->get();
@@ -572,30 +592,25 @@ class DifusionController extends Controller
                 break;
         }
         
+        $ugelId = Ugel::resolverId($ugel);
         $term = $request->input('term');
 
         $resultados = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
             ->leftJoin('pro_difusions', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_difusions.idUser')
                     ->where('pro_difusions.estado', '=', '1')
                     ->whereYear('pro_difusions.fecha', '=', $anio);
             })
-            ->where('institucions.ugel', '=', $ugel)
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(distinct pro_difusions.idUser) as agendas_count'))
             ->groupBy('institucions.nomInstitucion')
             ->get();
 
         $totalDocentes = DB::table('institucions')
-            ->leftJoin('users', function($join) {
-                $join->on('institucions.nomInstitucion', '=', 'users.institucion')
-                    ->on('institucions.ugel', '=', 'users.ugel');
-            })
-            ->where('institucions.ugel', '=', $ugel)
+            ->leftJoin('users', 'users.institucion_id', '=', 'institucions.id')
+            ->where('institucions.ugel_id', '=', $ugelId)
             ->where('institucions.nomInstitucion', 'like', '%' . $term . '%')
             ->select('institucions.nomInstitucion', DB::raw('count(users.id) as total_docentes'))
             ->groupBy('institucions.nomInstitucion')
@@ -622,16 +637,25 @@ class DifusionController extends Controller
         }
 
         $institucionSeleccionada = $request->input('docente');
+        $institucionId = Institucion::where('nomInstitucion', $institucionSeleccionada)->value('id');
+        $ugelId = Ugel::resolverId($ugelSeleccionada);
         
         try {
-            $docentes = DB::table('users')
+            $query = DB::table('users')
                 ->leftJoin('pro_difusions', function($join) use ($anio) {
                     $join->on('users.id', '=', 'pro_difusions.idUser')
                         ->where('pro_difusions.estado', '=', '1')
                         ->whereYear('pro_difusions.fecha', $anio);
-                })
-                ->where('users.institucion', '=', $institucionSeleccionada)
-                ->where('users.ugel', 'like', '%' . $ugelSeleccionada . '%')
+                });
+
+            if ($institucionId) {
+                $query->where('users.institucion_id', '=', $institucionId);
+            }
+            if ($ugelId) {
+                $query->where('users.ugel_id', '=', $ugelId);
+            }
+
+            $docentes = $query
                 ->select('users.name', DB::raw('count(pro_difusions.id) as agendas_count'))
                 ->groupBy('users.name')
                 ->having('agendas_count', '>=', 0)
@@ -648,14 +672,20 @@ class DifusionController extends Controller
         $institucion = $request->input('institucion'); 
         $term = $request->input('term');
         $anio = $request->input('anio', date('Y'));
+        $institucionId = Institucion::where('nomInstitucion', $institucion)->value('id');
         
-        $docentes = DB::table('users')
+        $query = DB::table('users')
             ->leftJoin('pro_difusions', function($join) use ($anio) {
                 $join->on('users.id', '=', 'pro_difusions.idUser')
                     ->where('pro_difusions.estado', '=', '1')
                     ->whereYear('pro_difusions.fecha', '=', $anio);
-            })
-            ->where('users.institucion', '=', $institucion)
+            });
+
+        if ($institucionId) {
+            $query->where('users.institucion_id', '=', $institucionId);
+        }
+
+        $docentes = $query
             ->where('users.name', 'like', '%' . $term . '%')
             ->select('users.name', DB::raw('count(pro_difusions.idUser) as agendas_count'))
             ->groupBy('users.name')
@@ -684,16 +714,21 @@ class DifusionController extends Controller
 
         $query = Difusion::select(
             "pro_difusions.nombreAccion", "pro_difusions.lugar", "pro_difusions.descripcion", 
-            "pro_difusions.fecha", "users.name", "users.cargo", 
-            "users.nivelinstitucion", "users.institucion", 
-            "users.provincia", "users.distrito", "users.ugel"
+            "pro_difusions.fecha", "users.name", "users.cargo",
+            "institucions.nomInstitucion as institucion",
+            "institucions.provincia as provincia",
+            "institucions.distrito as distrito",
+            "ugeles.nombre as ugel"
         )
+        ->addSelect(DB::raw($this->nivelInstitucionExpr()))
         ->join("users", "users.id", "=", "pro_difusions.idUser")
+        ->leftJoin("institucions", "institucions.id", "=", "users.institucion_id")
+        ->leftJoin("ugeles", "ugeles.id", "=", "users.ugel_id")
         ->where('pro_difusions.estado', '1')
         ->whereYear('pro_difusions.fecha', $anio);
 
         if (!empty($ugel)) {
-            $query->where("users.ugel", "LIKE", "%$ugel%");
+            $query->where("ugeles.nombre", "LIKE", "%$ugel%");
         }
         if (!empty($dni)) {
             $query->where("users.dni", "LIKE", "%$dni%");
@@ -702,7 +737,7 @@ class DifusionController extends Controller
             $query->where("users.name", "LIKE", "%$name%");
         }
         if (!empty($nominstitucion)) {
-            $query->where("users.institucion", "LIKE", "%$nominstitucion%");
+            $query->where("institucions.nomInstitucion", "LIKE", "%$nominstitucion%");
         }
 
         $accions = $query->orderBy('pro_difusions.fecha', 'desc')->get();
