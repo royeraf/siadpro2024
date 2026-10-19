@@ -8,6 +8,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import { formatFecha } from '@/Utils/fecha';
 import DetailModal from '@/Components/UI/DetailModal.vue';
 import FileViewerModal from '@/Components/UI/FileViewerModal.vue';
 import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
@@ -71,14 +72,16 @@ const localFilters = reactive({
     docentes: props.filters.docentes || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const niveles = ['', 'Escolarizado', 'No escolarizado - PRONOEI'];
 
 const columns = [
-    { key: 'nombreSector', label: 'Nombre del Sector', sortable: false },
-    { key: 'name', label: 'Docente', sortable: false },
-    { key: 'fecha', label: 'Fecha', width: '110px', sortable: false },
+    { key: 'nombreSector', label: 'Nombre del Sector', sortable: true },
+    { key: 'name', label: 'Docente', sortable: true },
+    { key: 'fecha', label: 'Fecha', width: '110px', sortable: true },
     { key: 'documento', label: 'Documento', width: '90px', align: 'center', class: 'no-export' },
     { key: 'opciones', label: 'Acciones', width: '90px', align: 'center', class: 'no-export' },
 ];
@@ -94,7 +97,7 @@ function openDetail(row) {
     detalle.title = row.nombreSector || 'Detalle del sector';
     detalle.fields = [
         { label: 'Descripción', value: row.descripcion, full: true },
-        { label: 'Fecha', value: formatDate(row.fecha) },
+        { label: 'Fecha', value: formatFecha(row.fecha) },
         { label: 'Docente', value: row.name },
         { label: 'Cargo', value: row.cargo },
         { label: 'Institución', value: row.institucion, full: true },
@@ -126,18 +129,6 @@ function openViewer(sector) {
     viewer.show = true;
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    try {
-        const parts = dateStr.split(' ')[0].split('-');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    } catch (e) {
-    }
-    return dateStr;
-}
-
 function getCleanParams() {
     const params = {};
     if (localFilters.year) params.year = localFilters.year;
@@ -148,6 +139,8 @@ function getCleanParams() {
     if (localFilters.docentes) params.docentes = localFilters.docentes;
     if (localFilters.buscar) params.buscar = localFilters.buscar;
     if (localFilters.per_page && localFilters.per_page !== 10) params.per_page = localFilters.per_page;
+    if (localFilters.sort) params.sort = localFilters.sort;
+    if (localFilters.direction) params.direction = localFilters.direction;
     return params;
 }
 
@@ -173,6 +166,12 @@ function handleClearFilters() {
     localFilters.instituciones = '';
     localFilters.docentes = '';
     localFilters.buscar = '';
+    applyFilters();
+}
+
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
     applyFilters();
 }
 
@@ -251,6 +250,9 @@ function handleExportExcel() {
             :rows="sectores.data || []"
             :pagination="sectores"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar en todos los registros..."
             :loading="loading"
             @search="handleSearch"
@@ -338,7 +340,7 @@ function handleExportExcel() {
                     {{ row.name || '-' }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.fecha) }}
+                    {{ formatFecha(row.fecha) }}
                 </td>
                 <td class="px-4 py-3 text-center no-export align-middle whitespace-nowrap">
                     <button

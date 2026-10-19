@@ -12,12 +12,15 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use App\Http\Controllers\Concerns\HasSorting;
 use Spatie\Permission\Models\Role;
 use App\Services\ReniecService;
 use App\Services\Security\SecurityCatalog;
 
 class UserController extends Controller
 {
+    use HasSorting;
+
     public function __construct(){
         $this->middleware('auth');
         $this->middleware('can:users.index')->only('index', 'exportUsers');
@@ -106,10 +109,13 @@ class UserController extends Controller
 
         $perPage = $this->resolvePerPage($request);
 
-        $users = $usersQuery->with(['roles:id,name,label', 'institucionRel:id,nomInstitucion,nivel,provincia,distrito', 'ugelRel:id,nombre,provincia,distrito'])
-                            ->orderBy('id', 'desc')
-                            ->paginate($perPage)
-                            ->withQueryString();
+        $usersQuery->with(['roles:id,name,label', 'institucionRel:id,nomInstitucion,nivel,provincia,distrito', 'ugelRel:id,nombre,provincia,distrito']);
+        $usersQuery = $this->applySort($request, $usersQuery, [
+            'dni' => 'users.dni',
+            'name' => 'users.name',
+        ], 'users.id');
+
+        $users = $usersQuery->paginate($perPage)->withQueryString();
 
         $listaUgels = $this->listaUgels($estado);
         $listaInstituciones = $this->listaInstituciones($estado, $request->input('ugel'));
@@ -145,7 +151,7 @@ class UserController extends Controller
             'listaUgels' => $listaUgels,
             'listaInstituciones' => $listaInstituciones,
             'roles' => $this->assignableRoles(),
-            'filters' => $request->only(['estado', 'texto', 'cargos', 'ugel', 'institucion', 'buscar', 'per_page']),
+            'filters' => $request->only(['estado', 'texto', 'cargos', 'ugel', 'institucion', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs' => $this->tabsUsuarios($estado, $conteos, $request->only(['texto', 'cargos', 'ugel', 'institucion', 'buscar'])),
             'can' => [
                 'create' => Auth::user()->can('users.create'),

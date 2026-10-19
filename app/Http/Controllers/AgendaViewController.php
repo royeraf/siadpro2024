@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
+use App\Http\Controllers\Concerns\HasSorting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\Agenda;
@@ -18,6 +19,7 @@ use Inertia\Inertia;
 class AgendaViewController extends Controller
 {
     use HasScopeTabs;
+    use HasSorting;
 
     public function __construct(){
         $this->middleware('auth');
@@ -238,7 +240,19 @@ class AgendaViewController extends Controller
             }
         }
 
-        $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nomDocente' => 'users.name',
+            'title' => 'pro_agendas.title',
+            'evento' => 'pro_agendas.evento',
+            'start' => 'pro_agendas.start',
+            'end' => 'pro_agendas.end',
+            'institucion' => 'institucions.nomInstitucion',
+            'provincia' => 'institucions.provincia',
+            'distrito' => 'institucions.distrito',
+            'ugel' => 'ugeles.nombre',
+        ], 'pro_agendas.start');
+
+        $agendas = $query->paginate($perPage)->withQueryString();
 
         $this->adjuntarEvidenciasPreview($agendas);
 
@@ -266,7 +280,7 @@ class AgendaViewController extends Controller
             'listaAnios'        => $listaAnios,
             'scope'             => 'ugel',
             'tabs'              => $tabs,
-            'filters'           => $request->only(['year', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters'           => $request->only(['year', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -327,7 +341,19 @@ class AgendaViewController extends Controller
             }
         }
 
-        $agendas = $query->orderBy('pro_agendas.start', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nomDocente' => 'users.name',
+            'title' => 'pro_agendas.title',
+            'evento' => 'pro_agendas.evento',
+            'start' => 'pro_agendas.start',
+            'end' => 'pro_agendas.end',
+            'institucion' => 'institucions.nomInstitucion',
+            'provincia' => 'institucions.provincia',
+            'distrito' => 'institucions.distrito',
+            'ugel' => 'ugeles.nombre',
+        ], 'pro_agendas.start');
+
+        $agendas = $query->paginate($perPage)->withQueryString();
 
         $this->adjuntarEvidenciasPreview($agendas);
 
@@ -355,7 +381,7 @@ class AgendaViewController extends Controller
             'exportRoute'        => '/exportar-agendas',
             'scope'              => 'general',
             'tabs'               => $tabs,
-            'filters'            => $request->only(['year', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters'            => $request->only(['year', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

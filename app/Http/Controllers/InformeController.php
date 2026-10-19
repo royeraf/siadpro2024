@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Models\Informe;
 use App\Models\User;
 use App\Models\Ugel;
@@ -18,6 +19,7 @@ class InformeController extends Controller
 {
     use HasScopeTabs;
     use ValidaDocumento;
+    use HasSorting;
 
     /** Regla de tipo de archivo admitida por este recurso. */
     protected $documentoTypeRule = 'mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -69,7 +71,12 @@ class InformeController extends Controller
             $perPage = 10;
         }
 
-        $informes = $query->orderBy('id', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreInforme' => 'pro_informes.nombreInforme',
+            'fecha' => 'pro_informes.fecha',
+        ], 'pro_informes.id');
+
+        $informes = $query->paginate($perPage)->withQueryString();
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -85,7 +92,7 @@ class InformeController extends Controller
         return Inertia::render('Informe/Index', [
             'informes' => $informes,
             'listaAnios' => $this->listaAniosInforme(),
-            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs' => $this->tabsInforme('index'),
             'can' => [
                 'create'  => Auth::user()->can('informes.create'),
@@ -200,7 +207,13 @@ class InformeController extends Controller
             }
         }
 
-        return $query->orderBy('pro_informes.fecha', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreInforme' => 'pro_informes.nombreInforme',
+            'name' => 'users.name',
+            'fecha' => 'pro_informes.fecha',
+        ], 'pro_informes.fecha');
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     private function ajaxInformesResponse(Request $request, $informes)
@@ -268,7 +281,7 @@ class InformeController extends Controller
             'exportRoute' => '/exportar-biblioteca',
             'scope' => 'general',
             'tabs' => $this->tabsInforme('general'),
-            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -322,7 +335,7 @@ class InformeController extends Controller
             'exportRoute' => '/exportar-biblioteca',
             'scope' => 'ugel',
             'tabs' => $this->tabsInforme('ugel'),
-            'filters' => $request->only(['year', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -362,7 +375,7 @@ class InformeController extends Controller
             'exportRoute' => '/exportar-biblioteca',
             'scope' => 'director',
             'tabs' => $this->tabsInforme('director'),
-            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

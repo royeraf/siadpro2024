@@ -9,6 +9,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import { formatFecha } from '@/Utils/fecha';
 import DetailModal from '@/Components/UI/DetailModal.vue';
 import FileViewerModal from '@/Components/UI/FileViewerModal.vue';
 import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
@@ -68,12 +69,14 @@ const localFilters = reactive({
     lugar: props.filters.lugar || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const columns = [
-    { key: 'nombreAccion', label: 'Nombre de la Acción', sortable: false },
-    { key: 'name', label: 'Docente', sortable: false },
-    { key: 'fecha', label: 'Fecha', width: '110px', sortable: false },
+    { key: 'nombreAccion', label: 'Nombre de la Acción', sortable: true },
+    { key: 'name', label: 'Docente', sortable: true },
+    { key: 'fecha', label: 'Fecha', width: '110px', sortable: true },
     { key: 'documento', label: 'Documento', width: '90px', align: 'center', class: 'no-export' },
     { key: 'opciones', label: 'Acciones', width: '90px', align: 'center', class: 'no-export' },
 ];
@@ -90,7 +93,7 @@ function openDetail(row) {
     detalle.fields = [
         { label: 'Descripción', value: row.descripcion, full: true },
         { label: 'Lugar', value: row.lugar },
-        { label: 'Fecha', value: formatDate(row.fecha) },
+        { label: 'Fecha', value: formatFecha(row.fecha) },
         { label: 'Docente', value: row.name },
         { label: 'Cargo', value: row.cargo },
         { label: 'Institución', value: row.institucion, full: true },
@@ -123,19 +126,6 @@ function openViewer(accion) {
     viewer.show = true;
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    try {
-        const parts = dateStr.split(' ')[0].split('-');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    } catch (e) {
-        // Fallback
-    }
-    return dateStr;
-}
-
 // ── Manejo de Filtros y Búsqueda con Inertia ──
 function getCleanParams() {
     const params = {};
@@ -147,6 +137,8 @@ function getCleanParams() {
     if (localFilters.lugar) params.lugar = localFilters.lugar;
     if (localFilters.buscar) params.buscar = localFilters.buscar;
     if (localFilters.per_page && localFilters.per_page !== 10) params.per_page = localFilters.per_page;
+    if (localFilters.sort) params.sort = localFilters.sort;
+    if (localFilters.direction) params.direction = localFilters.direction;
     return params;
 }
 
@@ -172,6 +164,12 @@ function handleClearFilters() {
     localFilters.instituciones = '';
     localFilters.lugar = '';
     localFilters.buscar = '';
+    applyFilters();
+}
+
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
     applyFilters();
 }
 
@@ -255,6 +253,9 @@ function handleExportExcel() {
             :rows="accions.data || []"
             :pagination="accions"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar en todos los registros..."
             :loading="loading"
             @search="handleSearch"
@@ -342,7 +343,7 @@ function handleExportExcel() {
                     {{ row.name || '-' }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.fecha) }}
+                    {{ formatFecha(row.fecha) }}
                 </td>
                 <td class="px-4 py-3 text-center no-export align-middle whitespace-nowrap">
                     <button

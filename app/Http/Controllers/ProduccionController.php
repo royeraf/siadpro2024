@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Models\Produccion;
 use App\Models\Ugel;
 use App\Models\Institucion;
@@ -18,6 +19,7 @@ class ProduccionController extends Controller
 {
     use HasScopeTabs;
     use ValidaDocumento;
+    use HasSorting;
 
     /** Regla de tipo de archivo admitida por este recurso. */
     protected $documentoTypeRule = 'mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -68,7 +70,12 @@ class ProduccionController extends Controller
             $perPage = 10;
         }
 
-        $produccions = $query->orderBy('id', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreProduccion' => 'pro_produccions.nombreProduccion',
+            'fecha' => 'pro_produccions.fecha',
+        ], 'pro_produccions.id');
+
+        $produccions = $query->paginate($perPage)->withQueryString();
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -84,7 +91,7 @@ class ProduccionController extends Controller
         return Inertia::render('Produccion/Index', [
             'produccions' => $produccions,
             'listaAnios' => $this->listaAniosProduccion(),
-            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs' => $this->tabsProduccion('index'),
             'can' => [
                 'create'  => Auth::user()->can('produccions.create'),
@@ -254,7 +261,13 @@ class ProduccionController extends Controller
             }
         }
 
-        return $query->orderBy('pro_produccions.fecha', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreProduccion' => 'pro_produccions.nombreProduccion',
+            'name' => 'users.name',
+            'fecha' => 'pro_produccions.fecha',
+        ], 'pro_produccions.fecha');
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     private function ajaxProduccionsResponse(Request $request, $produccions)
@@ -289,7 +302,7 @@ class ProduccionController extends Controller
             'exportRoute' => '/exportar-producciones',
             'scope' => 'general',
             'tabs' => $this->tabsProduccion('general'),
-            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -313,7 +326,7 @@ class ProduccionController extends Controller
             'exportRoute' => '/export-producciones-ugel',
             'scope' => 'ugel',
             'tabs' => $this->tabsProduccion('ugel'),
-            'filters' => $request->only(['year', 'texto', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -337,7 +350,7 @@ class ProduccionController extends Controller
             'exportRoute' => '/export-producciones-director',
             'scope' => 'director',
             'tabs' => $this->tabsProduccion('director'),
-            'filters' => $request->only(['year', 'texto', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

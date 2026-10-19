@@ -8,6 +8,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import { formatFecha } from '@/Utils/fecha';
 import DetailModal from '@/Components/UI/DetailModal.vue';
 import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
 import EvidenciaStack from './Partials/EvidenciaStack.vue';
@@ -78,6 +79,8 @@ const localFilters = reactive({
     nivel: props.filters.nivel || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const niveles = ['Escolarizado', 'No escolarizado - PRONOEI'];
@@ -143,6 +146,8 @@ watch(() => props.filters, (f) => {
     localFilters.nivel = f.nivel || '';
     localFilters.buscar = f.buscar || '';
     localFilters.per_page = f.per_page || 10;
+    localFilters.sort = f.sort || '';
+    localFilters.direction = f.direction || '';
 
     if (localFilters.ugels && !instOptions.value.length) {
         reloadChain();
@@ -156,10 +161,10 @@ onMounted(() => {
 });
 
 const columns = [
-    { key: 'nomDocente', label: 'Docente', sortable: false },
-    { key: 'title', label: 'Nombre de la agenda', sortable: false },
-    { key: 'start', label: 'Fecha Inicio', width: '110px', sortable: false },
-    { key: 'end', label: 'Fecha Fin', width: '110px', sortable: false },
+    { key: 'nomDocente', label: 'Docente', sortable: true },
+    { key: 'title', label: 'Nombre de la agenda', sortable: true },
+    { key: 'start', label: 'Fecha Inicio', width: '110px', sortable: true },
+    { key: 'end', label: 'Fecha Fin', width: '110px', sortable: true },
     { key: 'evidencias_count', label: 'Evidencias', width: '110px', align: 'center', sortable: false },
     { key: 'opciones', label: 'Acciones', width: '90px', align: 'center', class: 'no-export' },
 ];
@@ -176,8 +181,8 @@ function openDetail(row) {
     ficha.fields = [
         { label: 'Docente', value: row.nomDocente },
         { label: 'Descripción', value: row.evento, full: true },
-        { label: 'Fecha Inicio', value: formatDate(row.start) },
-        { label: 'Fecha Fin', value: formatDate(row.end) },
+        { label: 'Fecha Inicio', value: formatFecha(row.start) },
+        { label: 'Fecha Fin', value: formatFecha(row.end) },
         { label: 'Evidencias', value: row.evidencias_count ?? 0 },
         { label: 'Institución', value: row.institucion, full: true },
         { label: 'Tipo de II.EE', value: row.nivelinstitucion },
@@ -192,14 +197,6 @@ function closeDetail() {
     ficha.show = false;
 }
 
-function formatDate(value) {
-    if (!value) return '-';
-    const fecha = new Date(String(value).replace(' ', 'T'));
-    if (Number.isNaN(fecha.getTime())) return String(value);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(fecha.getDate())}-${pad(fecha.getMonth() + 1)}-${fecha.getFullYear()}`;
-}
-
 function getCleanParams() {
     const params = {};
     if (localFilters.year) params.year = localFilters.year;
@@ -209,6 +206,8 @@ function getCleanParams() {
     if (localFilters.nivel) params.nivel = localFilters.nivel;
     if (localFilters.buscar) params.buscar = localFilters.buscar;
     if (localFilters.per_page && localFilters.per_page !== 10) params.per_page = localFilters.per_page;
+    if (localFilters.sort) params.sort = localFilters.sort;
+    if (localFilters.direction) params.direction = localFilters.direction;
     return params;
 }
 
@@ -260,6 +259,12 @@ function handleClearFilters() {
     applyFilters();
 }
 
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
+    applyFilters();
+}
+
 function handlePageChange(newPage) {
     loading.value = true;
     AgendasService.list({
@@ -299,6 +304,9 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
             :rows="agendas.data || []"
             :pagination="agendas"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar en todos los registros..."
             :export-url="exportUrl"
             :loading="loading"
@@ -380,10 +388,10 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
                     {{ row.title || '-' }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.start) }}
+                    {{ formatFecha(row.start) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.end) }}
+                    {{ formatFecha(row.end) }}
                 </td>
                 <td class="px-4 py-3 align-middle text-center">
                     <EvidenciaStack

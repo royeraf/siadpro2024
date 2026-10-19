@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
+use App\Http\Controllers\Concerns\HasSorting;
 use Illuminate\Http\Request;
 use App\Models\Difusion;
 use App\Models\User;
@@ -18,6 +19,7 @@ class DifusionController extends Controller
 {
     use HasScopeTabs;
     use ValidaDocumento;
+    use HasSorting;
 
     /** Regla de tipo de archivo admitida por este recurso. */
     protected $documentoTypeRule = 'mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg';
@@ -70,7 +72,12 @@ class DifusionController extends Controller
             $perPage = 10;
         }
 
-        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+        $accionsQuery = $this->applySort($request, $accionsQuery, [
+            'nombreAccion' => 'pro_difusions.nombreAccion',
+            'fecha' => 'pro_difusions.fecha',
+        ], 'pro_difusions.fecha');
+
+        $accions = $accionsQuery->paginate($perPage)->withQueryString();
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -85,7 +92,7 @@ class DifusionController extends Controller
 
         return Inertia::render('Difusion/Index', [
             'difusions' => $accions,
-            'filters' => $request->only(['texto', 'lugar', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['texto', 'lugar', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs' => $this->tabsDifusion('index'),
             'can' => [
                 'create'  => Auth::user()->can('difusions.create'),
@@ -210,7 +217,13 @@ class DifusionController extends Controller
             }
         }
 
-        return $query->orderBy('pro_difusions.fecha', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreAccion' => 'pro_difusions.nombreAccion',
+            'name' => 'users.name',
+            'fecha' => 'pro_difusions.fecha',
+        ], 'pro_difusions.fecha');
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     private function listaAniosDifusion(string $anio): \Illuminate\Support\Collection
@@ -260,7 +273,7 @@ class DifusionController extends Controller
             'exportRoute' => 'exportDifusionGeneral',
             'scope' => 'general',
             'tabs' => $this->tabsDifusion('general'),
-            'filters' => $request->only(['anio', 'texto', 'docentes', 'ugels', 'instituciones', 'lugar', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'ugels', 'instituciones', 'lugar', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -283,7 +296,7 @@ class DifusionController extends Controller
             'exportRoute' => 'exportDifusionUgel',
             'scope' => 'ugel',
             'tabs' => $this->tabsDifusion('ugel'),
-            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -306,7 +319,7 @@ class DifusionController extends Controller
             'exportRoute' => 'exportDifusionDirector',
             'scope' => 'director',
             'tabs' => $this->tabsDifusion('director'),
-            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

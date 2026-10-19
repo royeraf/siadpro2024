@@ -2,7 +2,8 @@
 import { ref, watch, computed } from 'vue';
 import { 
     Search, X, Eraser, FileSpreadsheet, Inbox, 
-    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2
+    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2,
+    ArrowUp, ArrowDown, ArrowUpDown
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -58,9 +59,17 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    sortKey: {
+        type: String,
+        default: null,
+    },
+    sortOrder: {
+        type: String,
+        default: 'asc',
+    },
 });
 
-const emit = defineEmits(['search', 'clear', 'pageChange', 'perPageChange', 'export']);
+const emit = defineEmits(['search', 'clear', 'pageChange', 'perPageChange', 'export', 'sort']);
 
 const search = ref(props.searchValue);
 let debounceTimer = null;
@@ -101,6 +110,14 @@ function changePage(page) {
     if (page >= 1 && page <= totalPages.value) {
         emit('pageChange', page);
     }
+}
+
+function handleSort(col) {
+    if (!col.sortable) return;
+    const sameColumn = props.sortKey === col.key;
+    // Primer clic en una columna: ascendente. Si ya estaba ascendente, baja.
+    const order = sameColumn && props.sortOrder === 'asc' ? 'desc' : 'asc';
+    emit('sort', { key: col.key, order });
 }
 
 function getRowIndex(idx) {
@@ -253,11 +270,29 @@ const visiblePages = computed(() => {
                                 class="px-4 py-3 font-bold transition-colors whitespace-nowrap align-middle"
                                 :class="[
                                     col.class || '',
-                                    col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'
+                                    col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
+                                    col.sortable ? 'cursor-pointer select-none hover:bg-slate-200' : ''
                                 ]"
                                 :style="col.width ? { width: col.width } : {}"
+                                @click="handleSort(col)"
                             >
-                                <span>{{ col.label }}</span>
+                                <span class="inline-flex items-center gap-1">
+                                    {{ col.label }}
+                                    <template v-if="col.sortable">
+                                        <ArrowUp
+                                            v-if="sortKey === col.key && sortOrder === 'asc'"
+                                            class="w-3.5 h-3.5 shrink-0 text-blue-600"
+                                        />
+                                        <ArrowDown
+                                            v-else-if="sortKey === col.key"
+                                            class="w-3.5 h-3.5 shrink-0 text-blue-600"
+                                        />
+                                        <ArrowUpDown
+                                            v-else
+                                            class="w-3.5 h-3.5 shrink-0 text-slate-400"
+                                        />
+                                    </template>
+                                </span>
                             </th>
                         </tr>
                     </slot>

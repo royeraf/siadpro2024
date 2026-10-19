@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Models\Sector;
 use App\Models\User;
 use App\Models\Ugel;
@@ -19,6 +20,7 @@ class SectorController extends Controller
 {
     use HasScopeTabs;
     use ValidaDocumento;
+    use HasSorting;
 
     public function __construct(){
         $this->middleware('auth');
@@ -63,7 +65,12 @@ class SectorController extends Controller
             $perPage = 10;
         }
 
-        $sectores = $sectoresQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+        $sectoresQuery = $this->applySort($request, $sectoresQuery, [
+            'nombreSector' => 'pro_sectores.nombreSector',
+            'fecha' => 'pro_sectores.fecha',
+        ], 'pro_sectores.fecha');
+
+        $sectores = $sectoresQuery->paginate($perPage)->withQueryString();
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -78,7 +85,7 @@ class SectorController extends Controller
 
         return Inertia::render('Sector/Index', [
             'sectores' => $sectores,
-            'filters' => $request->only(['texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs' => $this->tabsSector('index'),
             'can' => [
                 'create'  => Auth::user()->can('sectores.create'),
@@ -217,7 +224,13 @@ class SectorController extends Controller
             }
         }
 
-        return $query->orderBy('pro_sectores.fecha', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreSector' => 'pro_sectores.nombreSector',
+            'name' => 'users.name',
+            'fecha' => 'pro_sectores.fecha',
+        ], 'pro_sectores.fecha');
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     /**
@@ -287,7 +300,7 @@ class SectorController extends Controller
             'exportRoute' => 'exportSectoresGeneral',
             'scope' => 'general',
             'tabs' => $this->tabsSector('general'),
-            'filters' => $request->only(['year', 'texto', 'nivel', 'ugels', 'instituciones', 'docentes', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'ugels', 'instituciones', 'docentes', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -311,7 +324,7 @@ class SectorController extends Controller
             'exportRoute' => 'exportSectoresUgel',
             'scope' => 'ugel',
             'tabs' => $this->tabsSector('ugel'),
-            'filters' => $request->only(['year', 'texto', 'nivel', 'instituciones', 'docentes', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'instituciones', 'docentes', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -408,7 +421,7 @@ class SectorController extends Controller
             'exportRoute' => 'exportSectoresDirector',
             'scope' => 'director',
             'tabs' => $this->tabsSector('director'),
-            'filters' => $request->only(['year', 'texto', 'nivel', 'docentes', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'nivel', 'docentes', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
+use App\Http\Controllers\Concerns\HasSorting;
 use Illuminate\Http\Request;
 use App\Models\Accion;
 use App\Models\User;
@@ -19,6 +20,7 @@ class AccionController extends Controller
 {
     use HasScopeTabs;
     use ValidaDocumento;
+    use HasSorting;
 
     /** Regla de tipo de archivo admitida por este recurso. */
     protected $documentoTypeRule = 'mimes:pdf,doc,docx,xls,xlsx,xlm,xlsm,ppt,pptx,pptm,png,jpg,jpeg';
@@ -76,7 +78,12 @@ class AccionController extends Controller
             $perPage = 10;
         }
 
-        $accions = $accionsQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+        $accionsQuery = $this->applySort($request, $accionsQuery, [
+            'nombreAccion' => 'pro_accions.nombreAccion',
+            'fecha' => 'pro_accions.fecha',
+        ], 'pro_accions.fecha');
+
+        $accions = $accionsQuery->paginate($perPage)->withQueryString();
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -93,7 +100,7 @@ class AccionController extends Controller
 
         return Inertia::render('Accion/Index', [
             'accions' => $accions,
-            'filters' => $request->only(['texto', 'lugar', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['texto', 'lugar', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs'    => $tabs,
             'can'     => [
                 'create'  => Auth::user()->can('accions.create'),
@@ -228,7 +235,13 @@ class AccionController extends Controller
             }
         }
 
-        return $query->orderBy('pro_accions.fecha', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreAccion' => 'pro_accions.nombreAccion',
+            'name' => 'users.name',
+            'fecha' => 'pro_accions.fecha',
+        ], 'pro_accions.fecha');
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     private function listaAniosAccion(string $anio): \Illuminate\Support\Collection
@@ -283,7 +296,7 @@ class AccionController extends Controller
             'exportRoute' => 'exportAccionsGeneral',
             'scope' => 'general',
             'tabs' => $tabs,
-            'filters' => $request->only(['anio', 'texto', 'docentes', 'ugels', 'instituciones', 'lugar', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'ugels', 'instituciones', 'lugar', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -309,7 +322,7 @@ class AccionController extends Controller
             'exportRoute' => 'exportAccionsUgel',
             'scope' => 'ugel',
             'tabs' => $tabs,
-            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -335,7 +348,7 @@ class AccionController extends Controller
             'exportRoute' => 'exportAccionsDirector',
             'scope' => 'director',
             'tabs' => $tabs,
-            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'docentes', 'lugar', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

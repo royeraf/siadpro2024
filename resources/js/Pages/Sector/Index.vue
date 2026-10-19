@@ -11,6 +11,7 @@ import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import CreateButton from '@/Components/UI/CreateButton.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import { formatFecha } from '@/Utils/fecha';
 import DetailModal from '@/Components/UI/DetailModal.vue';
 import FileViewerModal from '@/Components/UI/FileViewerModal.vue';
 import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
@@ -43,12 +44,14 @@ const localFilters = reactive({
     fecha: props.filters.fecha || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const columns = computed(() => {
     return [
-        { key: 'nombreSector', label: 'Nombre del Sector', sortable: false },
-        { key: 'fecha', label: 'Fecha', width: '110px', sortable: false },
+        { key: 'nombreSector', label: 'Nombre del Sector', sortable: true },
+        { key: 'fecha', label: 'Fecha', width: '110px', sortable: true },
         { key: 'documento', label: 'Documento', width: '90px', align: 'center', class: 'no-export' },
         { key: 'opciones', label: 'Acciones', width: '130px', align: 'center', class: 'no-export' },
     ];
@@ -85,7 +88,7 @@ function openDetail(row) {
     detalle.title = row.nombreSector || 'Detalle del sector';
     detalle.fields = [
         { label: 'Descripción', value: row.descripcion, full: true },
-        { label: 'Fecha', value: formatDate(row.fecha) },
+        { label: 'Fecha', value: formatFecha(row.fecha) },
         { label: 'Usuario', value: row.get_user?.name || row.user?.name },
         { label: 'Institución', value: row.get_user?.institucion || row.user?.institucion, full: true },
         { label: 'UGEL', value: row.get_user?.ugel || row.user?.ugel },
@@ -115,18 +118,6 @@ function openViewer(sector) {
     viewer.show = true;
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    try {
-        const parts = dateStr.split('-');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    } catch (e) {
-    }
-    return dateStr;
-}
-
 function applyFilters() {
     loading.value = true;
     SectoresService.list({
@@ -134,6 +125,8 @@ function applyFilters() {
         fecha: localFilters.fecha || undefined,
         buscar: localFilters.buscar || undefined,
         per_page: localFilters.per_page !== 10 ? localFilters.per_page : undefined,
+        sort: localFilters.sort || undefined,
+        direction: localFilters.direction || undefined,
     }, {
         onFinish: () => {
             loading.value = false;
@@ -150,6 +143,12 @@ function handleClearFilters() {
     localFilters.texto = '';
     localFilters.fecha = '';
     localFilters.buscar = '';
+    applyFilters();
+}
+
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
     applyFilters();
 }
 
@@ -175,7 +174,7 @@ function handleExportExcel(filename) {
         '#': idx + 1,
         'Nombre del Sector': row.nombreSector,
         'Descripción': row.descripcion || '',
-        'Fecha': formatDate(row.fecha),
+        'Fecha': formatFecha(row.fecha),
         'Usuario': row.get_user?.name || row.user?.name || '',
         'Institución': row.get_user?.institucion || row.user?.institucion || '',
         'Provincia': row.get_user?.provincia || row.user?.provincia || '',
@@ -289,6 +288,9 @@ function confirmDelete(sector) {
             :rows="sectores.data || []"
             :pagination="sectores"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar en todos los registros..."
             export-filename="sectores_aula"
             :loading="loading"
@@ -326,7 +328,7 @@ function confirmDelete(sector) {
                     {{ row.nombreSector }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.fecha) }}
+                    {{ formatFecha(row.fecha) }}
                 </td>
                 <td class="px-4 py-3 text-center no-export align-middle whitespace-nowrap">
                     <button

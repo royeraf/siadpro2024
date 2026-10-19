@@ -8,6 +8,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import { formatFecha } from '@/Utils/fecha';
 import DetailModal from '@/Components/UI/DetailModal.vue';
 import FileViewerModal from '@/Components/UI/FileViewerModal.vue';
 import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
@@ -71,6 +72,8 @@ const localFilters = reactive({
     nivel: props.filters.nivel || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const niveles = ['Escolarizado', 'No escolarizado - PRONOEI'];
@@ -139,6 +142,8 @@ watch(() => props.filters, (f) => {
     localFilters.nivel = f.nivel || '';
     localFilters.buscar = f.buscar || '';
     localFilters.per_page = f.per_page || 10;
+    localFilters.sort = f.sort || '';
+    localFilters.direction = f.direction || '';
 
     if (props.showFullFilters && localFilters.ugels && !instOptions.value.length) {
         reloadChain();
@@ -152,9 +157,9 @@ onMounted(() => {
 });
 
 const columns = [
-    { key: 'nombreProduccion', label: 'Tipo de Producción', sortable: false },
-    { key: 'name', label: 'Usuario', sortable: false },
-    { key: 'fecha', label: 'Fecha', width: '110px', sortable: false },
+    { key: 'nombreProduccion', label: 'Tipo de Producción', sortable: true },
+    { key: 'name', label: 'Usuario', sortable: true },
+    { key: 'fecha', label: 'Fecha', width: '110px', sortable: true },
     { key: 'documento', label: 'Documento', width: '90px', align: 'center', class: 'no-export' },
     { key: 'opciones', label: 'Acciones', width: '90px', align: 'center', class: 'no-export' },
 ];
@@ -170,7 +175,7 @@ function openDetail(row) {
     detalle.title = row.nombreProduccion || 'Detalle de la producción';
     detalle.fields = [
         { label: 'Descripción', value: row.descripcion, full: true },
-        { label: 'Fecha', value: formatDate(row.fecha) },
+        { label: 'Fecha', value: formatFecha(row.fecha) },
         { label: 'Usuario', value: row.name },
         { label: 'Cargo', value: row.cargo },
         { label: 'Institución', value: row.institucion, full: true },
@@ -202,18 +207,6 @@ function openViewer(produccion) {
     viewer.show = true;
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    try {
-        const parts = dateStr.split(' ')[0].split('-');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    } catch (e) {
-    }
-    return dateStr;
-}
-
 function getCleanParams() {
     const params = {};
     if (localFilters.year) params.year = localFilters.year;
@@ -224,6 +217,8 @@ function getCleanParams() {
     if (localFilters.nivel) params.nivel = localFilters.nivel;
     if (localFilters.buscar) params.buscar = localFilters.buscar;
     if (localFilters.per_page && localFilters.per_page !== 10) params.per_page = localFilters.per_page;
+    if (localFilters.sort) params.sort = localFilters.sort;
+    if (localFilters.direction) params.direction = localFilters.direction;
     return params;
 }
 
@@ -273,6 +268,12 @@ function handleClearFilters() {
     localFilters.buscar = '';
     instOptions.value = [];
     docOptions.value = [];
+    applyFilters();
+}
+
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
     applyFilters();
 }
 
@@ -351,6 +352,9 @@ function handleExportExcel() {
             :rows="produccions.data || []"
             :pagination="produccions"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar en todos los registros..."
             :loading="loading"
             @search="handleSearch"
@@ -456,7 +460,7 @@ function handleExportExcel() {
                     {{ row.name || '-' }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.fecha) }}
+                    {{ formatFecha(row.fecha) }}
                 </td>
                 <td class="px-4 py-3 text-center no-export align-middle whitespace-nowrap">
                     <button

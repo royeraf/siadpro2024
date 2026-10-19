@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Models\Evidencia;
 use App\Models\User;
 use App\Models\Ugel;
@@ -19,6 +20,7 @@ class EvidenciaController extends Controller
 {
     use HasScopeTabs;
     use ValidaDocumento;
+    use HasSorting;
 
     public function __construct(){
         $this->middleware('auth');
@@ -64,7 +66,12 @@ class EvidenciaController extends Controller
             $perPage = 10;
         }
 
-        $evidencias = $evidenciasQuery->orderBy('fecha', 'desc')->paginate($perPage)->withQueryString();
+        $evidenciasQuery = $this->applySort($request, $evidenciasQuery, [
+            'nombreEvidencia' => 'pro_evidencias.nombreEvidencia',
+            'fecha' => 'pro_evidencias.fecha',
+        ], 'pro_evidencias.fecha');
+
+        $evidencias = $evidenciasQuery->paginate($perPage)->withQueryString();
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -79,7 +86,7 @@ class EvidenciaController extends Controller
 
         return Inertia::render('Evidencia/Index', [
             'evidencias' => $evidencias,
-            'filters' => $request->only(['texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs' => $this->tabsEvidencia('index'),
             'can' => [
                 'create'  => Auth::user()->can('evidencias.create'),
@@ -201,7 +208,13 @@ class EvidenciaController extends Controller
             }
         }
 
-        return $query->orderBy('pro_evidencias.fecha', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombreEvidencia' => 'pro_evidencias.nombreEvidencia',
+            'name' => 'users.name',
+            'fecha' => 'pro_evidencias.fecha',
+        ], 'pro_evidencias.fecha');
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     private function ajaxEvidenciasResponse(Request $request, $evidencias)
@@ -260,7 +273,7 @@ class EvidenciaController extends Controller
             'exportRoute' => '/exportar-evidencias',
             'scope' => 'general',
             'tabs' => $this->tabsEvidencia('general'),
-            'filters' => $request->only(['anio', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -307,7 +320,7 @@ class EvidenciaController extends Controller
             'exportRoute' => '/exportar-evidencias',
             'scope' => 'ugel',
             'tabs' => $this->tabsEvidencia('ugel'),
-            'filters' => $request->only(['anio', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -347,7 +360,7 @@ class EvidenciaController extends Controller
             'exportRoute' => '/exportar-evidencias',
             'scope' => 'director',
             'tabs' => $this->tabsEvidencia('director'),
-            'filters' => $request->only(['anio', 'texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['anio', 'texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

@@ -10,9 +10,12 @@ use App\Models\Institucion;
 use App\Models\User;
 use App\Models\Ugel;
 use Inertia\Inertia;
+use App\Http\Controllers\Concerns\HasSorting;
 
 class InstitucionController extends Controller
 {
+    use HasSorting;
+
     public function __construct(){
         $this->middleware('auth')->except(['buscarPorCodModular']);
         
@@ -58,7 +61,18 @@ class InstitucionController extends Controller
             }
         }
 
-        $institucions = $query->orderBy('id', 'asc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'id' => 'institucions.id',
+            'nomInstitucion' => 'institucions.nomInstitucion',
+            'codModular' => 'institucions.codModular',
+            'nivel' => 'institucions.nivel',
+            'provincia' => 'institucions.provincia',
+            'distrito' => 'institucions.distrito',
+            'centropoblado' => 'institucions.centropoblado',
+            'ugel' => 'institucions.ugel',
+        ], 'institucions.id', 'asc');
+
+        $institucions = $query->paginate($perPage)->withQueryString();
 
         // El datatable Blade legacy pide filas por ajax; Inertia también envía
         // X-Requested-With, así que hay que excluir X-Inertia para no devolver
@@ -92,7 +106,7 @@ class InstitucionController extends Controller
             'institucions' => $institucions,
             'listaUgels' => $listaUgels,
             'listaNiveles' => $listaNiveles,
-            'filters' => $request->only(['buscar', 'institucion', 'codModular', 'ugels', 'nivel', 'per_page']),
+            'filters' => $request->only(['buscar', 'institucion', 'codModular', 'ugels', 'nivel', 'per_page', 'sort', 'direction']),
             'can' => [
                 'create' => Auth::user()->can('institucions.create'),
                 'edit' => Auth::user()->can('institucions.edit'),

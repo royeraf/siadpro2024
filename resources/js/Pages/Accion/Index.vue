@@ -11,6 +11,7 @@ import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import CreateButton from '@/Components/UI/CreateButton.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import { formatFecha } from '@/Utils/fecha';
 import DetailModal from '@/Components/UI/DetailModal.vue';
 import FileViewerModal from '@/Components/UI/FileViewerModal.vue';
 import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
@@ -44,12 +45,14 @@ const localFilters = reactive({
     fecha: props.filters.fecha || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const columns = computed(() => {
     return [
-        { key: 'nombreAccion', label: 'Nombre de la Acción', sortable: false },
-        { key: 'fecha', label: 'Fecha', width: '110px', sortable: false },
+        { key: 'nombreAccion', label: 'Nombre de la Acción', sortable: true },
+        { key: 'fecha', label: 'Fecha', width: '110px', sortable: true },
         { key: 'documento', label: 'Documento', width: '90px', align: 'center', class: 'no-export' },
         { key: 'opciones', label: 'Acciones', width: '130px', align: 'center', class: 'no-export' },
     ];
@@ -88,7 +91,7 @@ function openDetail(row) {
     detalle.fields = [
         { label: 'Descripción', value: row.descripcion, full: true },
         { label: 'Lugar', value: row.lugar },
-        { label: 'Fecha', value: formatDate(row.fecha) },
+        { label: 'Fecha', value: formatFecha(row.fecha) },
         { label: 'Usuario', value: row.get_user?.name || row.user?.name },
         { label: 'Institución', value: row.get_user?.institucion || row.user?.institucion, full: true },
         { label: 'UGEL', value: row.get_user?.ugel || row.user?.ugel },
@@ -128,19 +131,6 @@ function openViewer(accion) {
     viewer.show = true;
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    try {
-        const parts = dateStr.split('-');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    } catch (e) {
-        // Fallback
-    }
-    return dateStr;
-}
-
 // ── Manejo de Filtros y Búsqueda con Inertia ──
 function applyFilters() {
     loading.value = true;
@@ -150,6 +140,8 @@ function applyFilters() {
         fecha: localFilters.fecha || undefined,
         buscar: localFilters.buscar || undefined,
         per_page: localFilters.per_page !== 10 ? localFilters.per_page : undefined,
+        sort: localFilters.sort || undefined,
+        direction: localFilters.direction || undefined,
     }, {
         onFinish: () => {
             loading.value = false;
@@ -167,6 +159,12 @@ function handleClearFilters() {
     localFilters.lugar = '';
     localFilters.fecha = '';
     localFilters.buscar = '';
+    applyFilters();
+}
+
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
     applyFilters();
 }
 
@@ -194,7 +192,7 @@ function handleExportExcel(filename) {
         'Nombre de la Acción': row.nombreAccion,
         'Descripción': row.descripcion || '',
         'Lugar': row.lugar || '',
-        'Fecha': formatDate(row.fecha),
+        'Fecha': formatFecha(row.fecha),
         'Usuario': row.get_user?.name || row.user?.name || '',
         'Institución': row.get_user?.institucion || row.user?.institucion || '',
         'Provincia': row.get_user?.provincia || row.user?.provincia || '',
@@ -314,6 +312,9 @@ function confirmDelete(accion) {
             :rows="accions.data || []"
             :pagination="accions"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar en todos los registros..."
             export-filename="acciones_sensibilizacion"
             :loading="loading"
@@ -365,7 +366,7 @@ function confirmDelete(accion) {
                     {{ row.nombreAccion }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.fecha) }}
+                    {{ formatFecha(row.fecha) }}
                 </td>
                 <td class="px-4 py-3 text-center no-export align-middle whitespace-nowrap">
                     <button

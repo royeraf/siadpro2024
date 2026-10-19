@@ -9,6 +9,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseTable from '@/Components/UI/BaseTable.vue';
+import { formatFecha } from '@/Utils/fecha';
 import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
 import EvidenciaStack from './Partials/EvidenciaStack.vue';
 
@@ -73,6 +74,8 @@ const localFilters = reactive({
     nivel: props.filters.nivel || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const niveles = ['Escolarizado', 'No escolarizado - PRONOEI'];
@@ -84,29 +87,23 @@ watch(() => props.filters, (f) => {
     localFilters.nivel = f.nivel || '';
     localFilters.buscar = f.buscar || '';
     localFilters.per_page = f.per_page || 10;
+    localFilters.sort = f.sort || '';
+    localFilters.direction = f.direction || '';
 }, { deep: true });
 
 const columns = [
-    { key: 'nomDocente', label: 'Docente', sortable: false },
-    { key: 'title', label: 'Nombre de la agenda', sortable: false },
-    { key: 'evento', label: 'Descripción', sortable: false },
-    { key: 'start', label: 'Fecha Inicio', width: '110px', sortable: false },
-    { key: 'end', label: 'Fecha Fin', width: '110px', sortable: false },
+    { key: 'nomDocente', label: 'Docente', sortable: true },
+    { key: 'title', label: 'Nombre de la agenda', sortable: true },
+    { key: 'evento', label: 'Descripción', sortable: true },
+    { key: 'start', label: 'Fecha Inicio', width: '110px', sortable: true },
+    { key: 'end', label: 'Fecha Fin', width: '110px', sortable: true },
     { key: 'evidencias_count', label: 'Evidencias', width: '110px', sortable: false },
-    { key: 'institucion', label: 'Institución', sortable: false },
+    { key: 'institucion', label: 'Institución', sortable: true },
     { key: 'nivelinstitucion', label: 'Tipo de II.EE', sortable: false },
-    { key: 'provincia', label: 'Provincia', sortable: false },
-    { key: 'distrito', label: 'Distrito', sortable: false },
-    { key: 'ugel', label: 'UGEL', width: '90px', sortable: false },
+    { key: 'provincia', label: 'Provincia', sortable: true },
+    { key: 'distrito', label: 'Distrito', sortable: true },
+    { key: 'ugel', label: 'UGEL', width: '90px', sortable: true },
 ];
-
-function formatDate(value) {
-    if (!value) return '-';
-    const fecha = new Date(String(value).replace(' ', 'T'));
-    if (Number.isNaN(fecha.getTime())) return String(value);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(fecha.getDate())}-${pad(fecha.getMonth() + 1)}-${fecha.getFullYear()}`;
-}
 
 function getCleanParams() {
     const params = {};
@@ -116,6 +113,8 @@ function getCleanParams() {
     if (localFilters.nivel) params.nivel = localFilters.nivel;
     if (localFilters.buscar) params.buscar = localFilters.buscar;
     if (localFilters.per_page && localFilters.per_page !== 10) params.per_page = localFilters.per_page;
+    if (localFilters.sort) params.sort = localFilters.sort;
+    if (localFilters.direction) params.direction = localFilters.direction;
     return params;
 }
 
@@ -146,6 +145,12 @@ function handleClearFilters() {
     applyFilters();
 }
 
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
+    applyFilters();
+}
+
 function handlePageChange(newPage) {
     loading.value = true;
     AgendasService.list({
@@ -173,8 +178,8 @@ function handleExportExcel(filename) {
         'Docente': row.nomDocente || '',
         'Nombre de la agenda': row.title || '',
         'Descripción': row.evento || '',
-        'Fecha Inicio': formatDate(row.start),
-        'Fecha Fin': formatDate(row.end),
+        'Fecha Inicio': formatFecha(row.start),
+        'Fecha Fin': formatFecha(row.end),
         'Evidencias': row.evidencias_count || 0,
         'Institución': row.institucion || '',
         'Tipo de II.EE': row.nivelinstitucion || '',
@@ -209,6 +214,9 @@ function handleExportExcel(filename) {
             :rows="agendas.data || []"
             :pagination="agendas"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar en todos los registros..."
             export-filename="agendas_lectura_ugel"
             :loading="loading"
@@ -278,10 +286,10 @@ function handleExportExcel(filename) {
                     {{ row.evento || '-' }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.start) }}
+                    {{ formatFecha(row.start) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-slate-600 align-middle">
-                    {{ formatDate(row.end) }}
+                    {{ formatFecha(row.end) }}
                 </td>
                 <td class="px-4 py-3 align-middle">
                     <EvidenciaStack

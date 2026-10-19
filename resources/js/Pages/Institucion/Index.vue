@@ -44,18 +44,20 @@ const localFilters = reactive({
     nivel: props.filters.nivel || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 15,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const columns = computed(() => {
     const cols = [
-        { key: 'id', label: 'ID', width: '70px', align: 'center' },
-        { key: 'nomInstitucion', label: 'Institución' },
-        { key: 'codModular', label: 'Cód. Modular', width: '140px', align: 'center' },
-        { key: 'nivel', label: 'Nivel', width: '130px' },
-        { key: 'provincia', label: 'Provincia' },
-        { key: 'distrito', label: 'Distrito' },
-        { key: 'centropoblado', label: 'Centro Poblado' },
-        { key: 'ugel', label: 'UGEL', width: '120px' },
+        { key: 'id', label: 'ID', width: '70px', align: 'center', sortable: true },
+        { key: 'nomInstitucion', label: 'Institución', sortable: true },
+        { key: 'codModular', label: 'Cód. Modular', width: '140px', align: 'center', sortable: true },
+        { key: 'nivel', label: 'Nivel', width: '130px', sortable: true },
+        { key: 'provincia', label: 'Provincia', sortable: true },
+        { key: 'distrito', label: 'Distrito', sortable: true },
+        { key: 'centropoblado', label: 'Centro Poblado', sortable: true },
+        { key: 'ugel', label: 'UGEL', width: '120px', sortable: true },
     ];
     if (props.can?.edit || props.can?.destroy) {
         cols.push({ key: 'opciones', label: 'Opciones', width: '110px', align: 'center', class: 'no-export' });
@@ -102,6 +104,8 @@ function getCleanParams() {
     if (localFilters.buscar) params.buscar = localFilters.buscar;
     if (localFilters.per_page && String(localFilters.per_page) !== '15') {
         params.per_page = localFilters.per_page;
+        if (localFilters.sort) params.sort = localFilters.sort;
+        if (localFilters.direction) params.direction = localFilters.direction;
     }
     return params;
 }
@@ -126,6 +130,12 @@ function handleClearFilters() {
     localFilters.ugels = '';
     localFilters.nivel = '';
     localFilters.buscar = '';
+    applyFilters();
+}
+
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
     applyFilters();
 }
 
@@ -245,6 +255,9 @@ function confirmDelete(row) {
             :rows="institucions.data || []"
             :pagination="institucions"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar por nombre, código modular..."
             :export-url="exportUrl"
             :loading="loading"

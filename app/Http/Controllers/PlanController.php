@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\HasScopeTabs;
 use App\Http\Controllers\Concerns\ValidaDocumento;
+use App\Http\Controllers\Concerns\HasSorting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -17,6 +18,7 @@ class PlanController extends Controller
 {
     use HasScopeTabs;
     use ValidaDocumento;
+    use HasSorting;
 
     /** Regla de tipo de archivo admitida por este recurso. */
     protected $documentoTypeRule = 'mimetypes:application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -68,7 +70,12 @@ class PlanController extends Controller
             $perPage = 10;
         }
 
-        $plans = $query->orderBy('id', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombrePlan' => 'pro_plans.nombrePlan',
+            'fecha' => 'pro_plans.fecha',
+        ], 'pro_plans.id');
+
+        $plans = $query->paginate($perPage)->withQueryString();
 
         if ($request->ajax() && !$request->header('X-Inertia')) {
             return response()->json([
@@ -84,7 +91,7 @@ class PlanController extends Controller
         return Inertia::render('Plan/Index', [
             'plans' => $plans,
             'listaAnios' => $this->listaAniosPlan(),
-            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
             'tabs' => $this->tabsPlan('index'),
             'can' => [
                 'create'  => Auth::user()->can('plans.create'),
@@ -200,7 +207,13 @@ class PlanController extends Controller
             }
         }
 
-        return $query->orderBy('pro_plans.fecha', 'desc')->paginate($perPage)->withQueryString();
+        $query = $this->applySort($request, $query, [
+            'nombrePlan' => 'pro_plans.nombrePlan',
+            'name' => 'users.name',
+            'fecha' => 'pro_plans.fecha',
+        ], 'pro_plans.fecha');
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
     private function ajaxPlansResponse(Request $request, $plans)
@@ -259,7 +272,7 @@ class PlanController extends Controller
             'exportRoute' => '/exportar-planes',
             'scope' => 'general',
             'tabs' => $this->tabsPlan('general'),
-            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'ugels', 'instituciones', 'docentes', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -304,7 +317,7 @@ class PlanController extends Controller
             'exportRoute' => '/exportar-planes',
             'scope' => 'ugel',
             'tabs' => $this->tabsPlan('ugel'),
-            'filters' => $request->only(['year', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'instituciones', 'nivel', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 
@@ -344,7 +357,7 @@ class PlanController extends Controller
             'exportRoute' => '/exportar-planes',
             'scope' => 'director',
             'tabs' => $this->tabsPlan('director'),
-            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page']),
+            'filters' => $request->only(['year', 'texto', 'fecha', 'buscar', 'per_page', 'sort', 'direction']),
         ]);
     }
 

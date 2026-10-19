@@ -63,13 +63,15 @@ const localFilters = reactive({
     institucion: props.filters.institucion || '',
     buscar: props.filters.buscar || '',
     per_page: props.filters.per_page || 10,
+    sort: props.filters.sort || '',
+    direction: props.filters.direction || '',
 });
 
 const columns = computed(() => {
     return [
         { key: 'estado', label: 'Estado', width: '90px', align: 'center' },
-        { key: 'dni', label: 'DNI', width: '120px', align: 'center' },
-        { key: 'name', label: 'Usuario' },
+        { key: 'dni', label: 'DNI', width: '120px', align: 'center', sortable: true },
+        { key: 'name', label: 'Usuario', sortable: true },
         { key: 'roles', label: 'Roles', width: '200px' },
         { key: 'opciones', label: 'Acciones', width: '130px', align: 'center', class: 'no-export' },
     ];
@@ -158,6 +160,8 @@ function getCleanParams() {
     if (localFilters.buscar) params.buscar = localFilters.buscar;
     if (localFilters.per_page && String(localFilters.per_page) !== '10') {
         params.per_page = localFilters.per_page;
+        if (localFilters.sort) params.sort = localFilters.sort;
+        if (localFilters.direction) params.direction = localFilters.direction;
     }
     return params;
 }
@@ -182,6 +186,12 @@ function handleClearFilters() {
     localFilters.ugel = '';
     localFilters.institucion = '';
     localFilters.buscar = '';
+    applyFilters();
+}
+
+function handleSort({ key, order }) {
+    localFilters.sort = key;
+    localFilters.direction = order;
     applyFilters();
 }
 
@@ -307,6 +317,9 @@ function confirmToggleEstado(row) {
             :rows="users.data || []"
             :pagination="users"
             :search-value="localFilters.buscar"
+            :sort-key="localFilters.sort"
+            :sort-order="localFilters.direction"
+            @sort="handleSort"
             search-placeholder="Buscar por DNI, nombre, correo, cargo, institución..."
             :export-url="exportUrl"
             :loading="loading"
