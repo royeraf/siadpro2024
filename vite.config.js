@@ -8,7 +8,6 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
-                'resources/sass/app.scss',
                 'resources/js/app.js',
             ],
             refresh: true,
@@ -22,6 +21,19 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        // pdf.worker y docx-preview son librerías externas que no se pueden
+        // dividir sin fragmentar el propio paquete.
+        chunkSizeWarningLimit: 1100,
+        rollupOptions: {
+            onwarn(warning, warn) {
+                // pdfjs-dist incluye un build con `eval`; es una dependencia de
+                // terceros y no se puede modificar desde el proyecto.
+                if (warning.code === 'EVAL' && warning.id?.includes('pdfjs-dist')) return;
+                warn(warning);
+            },
+        },
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, 'resources/js'),

@@ -72,6 +72,7 @@ const submit = handleSubmit((values) => {
 
     <div
         class="login-bg flex min-h-screen w-full flex-col items-center justify-center bg-white px-4 py-8 sm:py-10"
+        :style="{ backgroundImage: `url('/vendor/adminlte/dist/img/infantil.jpg')` }"
     >
         <div class="mb-5 flex items-center justify-center gap-2.5 sm:mb-6 sm:gap-3">
             <img
@@ -211,7 +212,6 @@ const submit = handleSubmit((values) => {
  * (que es apaisada); en pantallas grandes se estira al 100% para mostrar todo.
  */
 .login-bg {
-    background-image: url('/vendor/adminlte/dist/img/infantil.jpg');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;
