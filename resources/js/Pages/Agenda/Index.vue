@@ -347,8 +347,8 @@ function abrirCreacionHoy() {
  * Clic/toque simple sobre un día.
  *
  * En la vista mensual abre el modal con todos los eventos del día (también si
- * está vacío, para poder crear desde ahí). En semana/día se conserva el
- * comportamiento anterior: crear una agenda para la fecha pulsada.
+ * está vacío). En semana/día se conserva el comportamiento anterior: crear una
+ * agenda para la fecha pulsada.
  *
  * En pantallas táctiles el evento `select` de FullCalendar solo se dispara
  * tras una pulsación larga (`selectLongPressDelay`, 1000 ms por defecto), así
@@ -476,14 +476,6 @@ async function cerrarDetalle() {
         hoja.eventos = eventosDelDia(hoja.fecha);
         hoja.show = true;
     }
-}
-
-/** Crea una agenda para la fecha del bottom sheet. */
-async function agregarDesdeHoja() {
-    const fecha = hoja.fecha || toFechaISO(new Date());
-    hoja.show = false;
-    await nextTick();
-    abrirCreacion([{ fecha, hora_inicio: '', hora_fin: '' }]);
 }
 
 /** Abre el formulario en edición con los días ya cargados por el detalle. */
@@ -800,24 +792,7 @@ const calendarOptions = computed(() => ({
                 <p class="text-xs font-semibold text-slate-500 m-0">
                     No hay eventos programados para este día.
                 </p>
-                <p v-if="can.create" class="text-[11px] text-slate-400 m-0 mt-1">
-                    Puedes crear una agenda para esta fecha.
-                </p>
             </div>
-
-            <!-- Espacio para que el último evento pueda desplazarse por encima
-                 del FAB y no quede oculto. -->
-            <div v-if="can.create" class="h-16" aria-hidden="true"></div>
-
-            <!-- FAB universal (móvil y escritorio): crear agenda para este día. -->
-            <template #fab>
-                <AddFab
-                    v-if="can.create"
-                    label="Agregar"
-                    aria-label="Agregar agenda para este día"
-                    @click="agregarDesdeHoja"
-                />
-            </template>
         </BaseModal>
 
         <!-- FAB universal de la página: crear una agenda (abre el formulario). -->

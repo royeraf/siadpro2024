@@ -165,7 +165,7 @@ function confirmDelete(role) {
             subtitle="Gestiona los roles del sistema y consulta el catálogo de permisos"
         />
 
-        <div class="mb-4 max-w-full">
+        <div class="sticky top-16 z-20 mb-2 w-full max-w-full bg-slate-50/95 py-2 backdrop-blur-sm">
             <div class="inline-flex max-w-full overflow-x-auto pb-0.5">
                 <ul class="flex items-center p-1 list-none rounded-lg bg-slate-100 min-w-max gap-1" role="list">
                     <li v-for="tab in tabs" :key="tab.key">

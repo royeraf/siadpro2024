@@ -33,7 +33,10 @@ function getTabClasses(tab) {
 </script>
 
 <template>
-    <div v-if="tabs && tabs.length > 1" class="mb-4 max-w-full">
+    <div
+        v-if="tabs && tabs.length > 1"
+        class="sticky top-16 z-20 mb-2 w-full max-w-full bg-slate-50/95 py-2 backdrop-blur-sm"
+    >
         <div class="inline-flex max-w-full overflow-x-auto pb-0.5">
             <ul class="flex items-center p-1 list-none rounded-lg bg-slate-100 min-w-max gap-1" data-tabs="tabs" role="list">
                 <li 
