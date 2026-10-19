@@ -32,6 +32,14 @@ export const AgendasService = {
     },
 
     /**
+     * Eventos del calendario del Director para un rango de fechas.
+     * FullCalendar envía `start` y `end` (exclusivo) al navegar.
+     */
+    async eventosRango(params = {}) {
+        return http.json(http.buildUrl('/agenda/view/events', params));
+    },
+
+    /**
      * Sube las evidencias de un día **fuera del ciclo de visitas de Inertia**
      * (axios/XHR). Así la subida sigue en segundo plano aunque el usuario cierre
      * el modal o navegue, en lugar de cancelarse. Devuelve una promesa y reporta

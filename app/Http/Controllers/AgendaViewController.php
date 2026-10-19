@@ -12,6 +12,7 @@ use App\Models\Institucion;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 
 class AgendaViewController extends Controller
@@ -20,19 +21,80 @@ class AgendaViewController extends Controller
 
     public function __construct(){
         $this->middleware('auth');
-        $this->middleware('can:agendas.view')->only('index');
+        $this->middleware('can:agendas.view')->only('index', 'eventos');
         $this->middleware('can:agendas.ugel')->only('ugel', 'buscarUgel');
         $this->middleware('can:agendas.general')->only('general', 'buscarGeneral', 'exportarTodos');
     }
     public function index()
     {
+        // La página se renderiza de inmediato; el calendario pide los eventos
+        // del rango visible aparte (ver eventos()), en lugar de cargar todas
+        // las agendas de la institución en el primer render.
+        return Inertia::render('Agenda/Director', [
+            'tabs' => $this->tabsAgenda('view'),
+        ]);
+    }
+
+    /**
+     * Eventos del calendario para el rango visible.
+     *
+     * FullCalendar pasa `start` y `end` (exclusivo) cada vez que se navega a
+     * otro mes/semana/día. Solo se devuelven las agendas con días dentro del
+     * rango (y las históricas sin días, que son pocas), evitando enviar miles
+     * de registros y días que ni siquiera se están mostrando.
+     */
+    public function eventos(Request $request)
+    {
+        $validated = $request->validate([
+            'start' => ['required', 'date'],
+            'end'   => ['required', 'date', 'after_or_equal:start'],
+        ]);
+
+        $inicio = Carbon::parse($validated['start'])->toDateString();
+        $fin = Carbon::parse($validated['end'])->subDay()->toDateString();
+        if ($fin < $inicio) {
+            $fin = $inicio;
+        }
+
         $institucionId = Auth::user()->institucion_id;
-        $events = Agenda::select('pro_agendas.*')
+
+        $events = Agenda::select([
+                'pro_agendas.id',
+                'pro_agendas.idUser',
+                'pro_agendas.title',
+                'pro_agendas.evento',
+                'pro_agendas.color',
+                'pro_agendas.nomDocente',
+                'pro_agendas.start',
+                'pro_agendas.end',
+            ])
             ->join('users', 'users.id', '=', 'pro_agendas.idUser')
             ->where('users.institucion_id', $institucionId)
             ->where('pro_agendas.estado', '1')
-            ->with(['user', 'dias'])
-            ->withCount(['evidencias' => fn ($q) => $q->where('pro_agenda_evidencias.estado', 1)])
+            ->where(function ($query) use ($inicio, $fin) {
+                $query->whereHas('dias', function ($dias) use ($inicio, $fin) {
+                    $dias->whereBetween('fecha', [$inicio, $fin])->reorder();
+                })->orWhere(function ($query) use ($inicio, $fin) {
+                    // Agendas históricas sin días: solo si su rango se cruza con
+                    // el rango visible. Evita enviar registros de otros años
+                    // (y rangos con fechas inválidas que expandían miles de días).
+                    $query->whereDoesntHave('dias', fn ($dias) => $dias->reorder())
+                        ->whereDate('pro_agendas.start', '<=', $fin)
+                        ->where(function ($query) use ($inicio) {
+                            $query->whereDate('pro_agendas.end', '>=', $inicio)
+                                ->orWhereNull('pro_agendas.end')
+                                ->orWhere('pro_agendas.end', '');
+                        });
+                });
+            })
+            ->with([
+                'user:id,name',
+                // Solo los días del rango: el detalle completo se carga al
+                // abrir el evento (AgendaDetailModal).
+                'dias' => fn ($dias) => $dias
+                    ->select('id', 'agenda_id', 'fecha', 'hora_inicio', 'hora_fin')
+                    ->whereBetween('fecha', [$inicio, $fin]),
+            ])
             ->get()
             ->map(fn ($e) => [
                 'id'       => $e->id,
@@ -43,7 +105,6 @@ class AgendaViewController extends Controller
                 'nomDocente' => $e->nomDocente ?? ($e->user->name ?? ''),
                 'start'    => $this->isoDateTime($e->start),
                 'end'      => $this->isoDateTime($e->end),
-                'evidencias' => (int) ($e->evidencias_count ?? 0),
                 'dias'     => $e->dias->map(fn ($d) => [
                     'id'          => $d->id,
                     'fecha'       => $d->fecha?->format('Y-m-d'),
@@ -52,12 +113,7 @@ class AgendaViewController extends Controller
                 ])->values(),
             ]);
 
-        $tabs = $this->tabsAgenda('view');
-
-        return Inertia::render('Agenda/Director', [
-            'events' => $events,
-            'tabs'   => $tabs,
-        ]);
+        return response()->json($events);
     }
 
     /**

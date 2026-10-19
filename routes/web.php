@@ -226,6 +226,7 @@ Route::delete('agendas/evidencias/{evidencia}', [AgendaEvidenciaController::clas
 Route::get('agendas/evidencias/{evidencia}/download', [AgendaEvidenciaController::class, 'download'])->middleware('auth')->name('agendas.evidencias.download');
 
 Route::get('agenda/view', [App\Http\Controllers\AgendaViewController::class, 'index'])->middleware('auth')->name('agendas.view');
+Route::get('agenda/view/events', [App\Http\Controllers\AgendaViewController::class, 'eventos'])->middleware('auth')->name('agendas.view.events');
 // Punto de entrada del menú (ver AgendaController::landing()): agendas.index/agendas.view
 // no cubren a EspecDRE/EspecUGEL, así que el enlace del menú no puede apuntar fijo a /agendas.
 Route::get('/agenda-inicio', [App\Http\Controllers\AgendaController::class, 'landing'])->middleware('auth')->name('agendas.landing');

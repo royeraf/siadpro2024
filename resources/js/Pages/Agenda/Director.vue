@@ -1,33 +1,39 @@
 <script setup>
-import { reactive, computed, nextTick } from 'vue';
+import { reactive, computed, nextTick, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import esLocale from '@fullcalendar/core/locales/es.js';
-import { MoreHorizontal, CalendarDays } from 'lucide-vue-next';
+import { MoreHorizontal, CalendarDays, Loader2, AlertCircle } from 'lucide-vue-next';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import SectionTabs from '@/Components/UI/SectionTabs.vue';
 import BaseModal from '@/Components/UI/BaseModal.vue';
 import { useMediaQuery } from '@/Composables/useMediaQuery';
+import { AgendasService } from '@/Services/agenda';
 import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
 
 // En móvil cada día tiene muy poco ancho: se oculta la hora de las píldoras
 // del mes para priorizar el título. La altura del calendario es automática.
 const isCompact = useMediaQuery('(max-width: 767px)');
 
-const props = defineProps({
-    events: {
-        type: Array,
-        default: () => [],
-    },
+defineProps({
     tabs: {
         type: Array,
         default: () => [],
     },
 });
+
+// Agendas del rango que FullCalendar tiene visible en este momento. Se piden
+// aparte (carga perezosa) para no traer toda la institución en el primer render.
+const agendasCargadas = ref([]);
+const cargandoEventos = ref(false);
+const errorEventos = ref('');
+// Rango visible que pide FullCalendar. Se usa para no expandir rangos
+// históricos inválidos fuera de la vista.
+const rangoVisible = ref({ start: '', end: '' });
 
 const detalle = reactive({
     show: false,
@@ -47,7 +53,7 @@ const hoja = reactive({
 });
 
 function findEvent(id) {
-    return (props.events || []).find((e) => String(e.id) === String(id)) || null;
+    return (agendasCargadas.value || []).find((e) => String(e.id) === String(id)) || null;
 }
 
 /** "14:30" -> "02:30p" (12 h con sufijo a/p, como en la referencia). */
@@ -88,7 +94,21 @@ function eventosCalendario(list) {
         const dias = Array.isArray(e.dias) && e.dias.length ? e.dias : null;
 
         if (!dias) {
-            return [{ ...base, id: String(e.id), start: e.start, end: e.end }];
+            // Agendas históricas sin días: se acota al rango visible para no
+            // arrastrar rangos inválidos (p. ej. años con ceros de más).
+            const rango = fechasDeRango(e.start, e.end, rangoVisible.value);
+            if (!rango.length) return [];
+
+            const finDia = parseFechaLocal(rango[rango.length - 1]);
+            finDia.setDate(finDia.getDate() + 1);
+
+            return [{
+                ...base,
+                id: String(e.id),
+                start: rango[0],
+                end: toFechaISO(finDia),
+                allDay: true,
+            }];
         }
 
         return dias.map((d) => {
@@ -143,18 +163,38 @@ function parseFechaLocal(value) {
 }
 
 /** Fechas (YYYY-MM-DD) que abarca un rango; el fin es inclusivo. */
-function fechasDeRango(startValue, endValue) {
-    const inicio = parseFechaLocal(startValue);
+function fechasDeRango(startValue, endValue, bounds = null) {
+    let inicio = parseFechaLocal(startValue);
     if (!inicio) return [];
 
-    const fin = parseFechaLocal(endValue);
-    if (!fin || fin < inicio) return [toFechaISO(inicio)];
-
-    const textoFin = String(endValue ?? '').replace(' ', 'T');
-    if (!/T\d{2}:\d{2}/.test(textoFin)) {
-        fin.setDate(fin.getDate() - 1);
+    let fin = parseFechaLocal(endValue);
+    if (!fin || fin < inicio) {
+        fin = new Date(inicio);
+    } else {
+        const textoFin = String(endValue ?? '').replace(' ', 'T');
+        if (!/T\d{2}:\d{2}/.test(textoFin)) {
+            fin.setDate(fin.getDate() - 1);
+        }
+        if (fin < inicio) fin.setTime(inicio.getTime());
     }
-    if (fin < inicio) fin.setTime(inicio.getTime());
+
+    // Solo interesan las fechas dentro del rango visible: evita expandir
+    // rangos con fechas inválidas (p. ej. años con ceros de más) que antes
+    // generaban cientos de miles de entradas y congelaban la vista.
+    if (bounds?.start && bounds?.end) {
+        const bInicio = parseFechaLocal(bounds.start);
+        const bFin = parseFechaLocal(bounds.end);
+        if (bInicio && inicio < bInicio) {
+            inicio = new Date(bInicio);
+        }
+        if (bFin) {
+            // FullCalendar entrega `end` como exclusivo.
+            const ultimo = new Date(bFin);
+            ultimo.setDate(ultimo.getDate() - 1);
+            if (fin > ultimo) fin = ultimo;
+        }
+        if (fin < inicio) return [];
+    }
 
     const fechas = [];
     for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
@@ -188,7 +228,7 @@ const eventosPorFecha = computed(() => {
         mapa[fecha].push(evento);
     };
 
-    (props.events || []).forEach((e) => {
+    (agendasCargadas.value || []).forEach((e) => {
         const base = {
             agendaId: e.id,
             title: e.title,
@@ -218,7 +258,7 @@ const eventosPorFecha = computed(() => {
             return;
         }
 
-        fechasDeRango(e.start, e.end).forEach((fecha) => {
+        fechasDeRango(e.start, e.end, rangoVisible.value).forEach((fecha) => {
             agregar(fecha, {
                 ...base,
                 id: `${e.id}-${fecha}`,
@@ -374,6 +414,34 @@ async function cerrarDetalle() {
     }
 }
 
+/**
+ * Fuente de eventos de FullCalendar: pide solo el rango visible.
+ * FullCalendar la llama al montar y cada vez que se navega a otro mes/semana/día.
+ */
+async function cargarEventos(info, successCallback, failureCallback) {
+    cargandoEventos.value = true;
+    errorEventos.value = '';
+    rangoVisible.value = { start: info.startStr, end: info.endStr };
+    // Evita mostrar por un instante los eventos del rango anterior al navegar.
+    agendasCargadas.value = [];
+
+    try {
+        const data = await AgendasService.eventosRango({
+            start: info.startStr,
+            end: info.endStr,
+        });
+
+        agendasCargadas.value = Array.isArray(data) ? data : [];
+        successCallback(eventosCalendario(agendasCargadas.value));
+    } catch (e) {
+        agendasCargadas.value = [];
+        errorEventos.value = 'No se pudieron cargar los eventos. Intenta de nuevo.';
+        failureCallback(e);
+    } finally {
+        cargandoEventos.value = false;
+    }
+}
+
 // Vista de solo lectura: sin editable, sin selectable y sin handlers de
 // arrastre (el Blade del Director no modificaba nada).
 const calendarOptions = computed(() => ({
@@ -408,7 +476,7 @@ const calendarOptions = computed(() => ({
     // la pinta el slot #eventContent, no FullCalendar.
     eventDisplay: 'block',
     displayEventTime: false,
-    events: eventosCalendario(props.events),
+    events: cargarEventos,
     dateClick: handleDateClick,
     eventClick: handleEventClick,
 }));
@@ -427,7 +495,28 @@ const calendarOptions = computed(() => ({
 
         <SectionTabs :tabs="tabs" color="pink" />
 
-        <div class="agenda-calendar bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+        <div class="agenda-calendar relative bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+            <div
+                v-if="cargandoEventos"
+                role="status"
+                aria-live="polite"
+                class="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-4"
+            >
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-sm">
+                    <Loader2 class="w-3.5 h-3.5 animate-spin" />
+                    Cargando eventos…
+                </span>
+            </div>
+            <div
+                v-else-if="errorEventos"
+                role="alert"
+                class="absolute inset-x-0 top-16 z-20 flex justify-center px-4"
+            >
+                <span class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold text-rose-700 shadow-sm">
+                    <AlertCircle class="w-3.5 h-3.5" />
+                    {{ errorEventos }}
+                </span>
+            </div>
             <div class="p-3 sm:p-5 max-w-[860px] mx-auto">
                 <FullCalendar :options="calendarOptions">
                     <!-- Vista mes: un solo botón por día con hasta 5 eventos. -->
