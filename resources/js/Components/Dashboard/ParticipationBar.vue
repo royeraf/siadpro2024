@@ -5,7 +5,8 @@ import { useThemeColors } from '@/Composables/useThemeColors';
 import StatsModal from './StatsModal.vue';
 import { 
     CalendarCheck, Megaphone, Radio, FileText, 
-    BookHeart, NotebookPen, BookOpen, Folder, Map 
+    BookHeart, NotebookPen, BookOpen, Folder, Map,
+    Loader2, AlertCircle
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -99,10 +100,10 @@ onMounted(() => {
                     </h6>
                     <small class="text-slate-500 text-xs block">
                         <span v-if="loading" class="text-slate-400">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>Cargando resumen...
+                            <Loader2 class="w-3 h-3 animate-spin mr-1 inline" />Cargando resumen...
                         </span>
                         <span v-else-if="error" class="text-rose-500">
-                            <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+                            <AlertCircle class="w-3 h-3 mr-1 inline" />{{ error }}
                         </span>
                         <span v-else>
                             {{ statsData?.scope }} · {{ statsData?.totalDocentes?.toLocaleString() }} docentes

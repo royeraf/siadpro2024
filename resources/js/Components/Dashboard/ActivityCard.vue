@@ -2,7 +2,8 @@
 import { Link } from '@inertiajs/vue3';
 import { 
     Megaphone, Radio, LayoutGrid, FileText, 
-    BookOpen, BookHeart, NotebookPen, CalendarCheck, Folder 
+    BookOpen, BookHeart, NotebookPen, CalendarCheck, Folder,
+    ArrowRight
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -88,7 +89,7 @@ const iconComponent = icons[props.theme.icon] || Folder;
                 }"
             >
                 <span>Ir al módulo</span>
-                <i class="fas fa-arrow-right ml-1.5 text-xs"></i>
+                <ArrowRight class="w-3 h-3 ml-1.5" />
             </a>
 
             <!-- Ilustración inferior derecha -->

@@ -1,6 +1,6 @@
 <script setup>
 import BaseModal from '@/Components/UI/BaseModal.vue';
-import { BarChart3 } from 'lucide-vue-next';
+import { BarChart3, MapPin, Loader2, AlertCircle, X } from 'lucide-vue-next';
 import MapaParticipacionUgel from './MapaParticipacionUgel.vue';
 
 /**
@@ -88,7 +88,7 @@ function badgeClass(pct) {
         <!-- Mapa de participación por UGEL -->
         <div class="mt-4">
             <div class="flex items-center gap-2 mb-3">
-                <i class="fas fa-map-marked-alt text-indigo-500"></i>
+                <MapPin class="w-4 h-4 text-indigo-500" />
                 <h4 class="font-bold text-slate-800 text-sm mb-0">
                     Participación por UGEL — Mapa de Huánuco
                 </h4>
@@ -96,10 +96,10 @@ function badgeClass(pct) {
 
             <div class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
                 <div v-if="mapaLoading && !mapa" class="flex items-center justify-center py-12 text-slate-400 text-xs">
-                    <i class="fas fa-spinner fa-spin mr-2"></i>Cargando mapa...
+                    <Loader2 class="w-3.5 h-3.5 animate-spin mr-2" />Cargando mapa...
                 </div>
                 <div v-else-if="mapaError" class="py-10 text-center text-rose-500 text-xs">
-                    <i class="fas fa-exclamation-circle mr-1"></i>{{ mapaError }}
+                    <AlertCircle class="w-3.5 h-3.5 mr-1 inline" />{{ mapaError }}
                 </div>
                 <MapaParticipacionUgel v-else-if="mapa" :data="mapa" />
                 <div v-else class="py-10 text-center text-slate-400 text-xs">
@@ -145,7 +145,7 @@ function badgeClass(pct) {
                     class="max-sm:flex-1 inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-xl transition-colors shadow-2xs cursor-pointer"
                     @click="emit('close')"
                 >
-                    <i class="fas fa-times mr-1.5"></i>Cerrar
+                    <X class="w-3.5 h-3.5 mr-1.5" />Cerrar
                 </button>
             </div>
         </template>

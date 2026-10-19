@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import { 
     Search, X, Eraser, FileSpreadsheet, Inbox, 
-    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight 
+    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -182,7 +182,7 @@ const visiblePages = computed(() => {
 
                     <!-- Spinner de carga -->
                     <div v-if="loading" class="absolute inset-y-0 right-8 flex items-center pointer-events-none">
-                        <i class="fas fa-spinner fa-spin text-blue-500 text-xs"></i>
+                        <Loader2 class="w-3.5 h-3.5 animate-spin text-blue-500" />
                     </div>
                 </div>
 
