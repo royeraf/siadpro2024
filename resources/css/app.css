@@ -319,25 +319,158 @@ button.close:hover {
     text-transform: capitalize;
 }
 
-/* ── Números de día (centrados) y "hoy" ── */
+/* ── Celdas del mes: un botón por día con hasta 5 eventos ── */
+.agenda-calendar .fc .fc-daygrid-day-frame {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+}
+
 .agenda-calendar .fc .fc-daygrid-day-top {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: stretch;
+    align-items: stretch;
+    min-height: 0;
+    padding: 0;
+}
+
+/* La celda nativa de eventos se oculta: el resumen lo pinta .agenda-day-cell. */
+.agenda-calendar .fc .fc-daygrid-day-events {
+    display: none;
+}
+
+/* FullCalendar envuelve el contenido personalizado en un <a> sin href (el
+   `navLinks` por defecto es false). Se elimina su caja para que el botón sea
+   el elemento que ocupa la celda. */
+.agenda-calendar .fc .fc-daygrid-day-top > .fc-daygrid-day-number {
+    display: contents;
+}
+
+/* Altura uniforme en el mes: ahora cada celda solo muestra el número y la
+   lista (máximo 5 eventos + indicador de "más"), así que todas miden igual. */
+.agenda-calendar .fc .fc-daygrid-day-frame {
+    height: 8.5rem;
+    overflow: hidden;
+}
+
+.agenda-calendar .fc .fc-daygrid-day-top {
+    height: 100%;
+}
+
+.agenda-calendar .fc .agenda-day-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    padding: 0.15rem 0.2rem 0.25rem;
+    border: 0;
+    border-radius: 0.45rem;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.agenda-calendar .fc .agenda-day-cell:hover {
+    background: rgba(248, 250, 252, 0.9);
+}
+
+.agenda-calendar .fc .agenda-day-cell:focus-visible {
+    outline: 2px solid #db2777;
+    outline-offset: -2px;
+}
+
+/* Número del día: píldora rectangular redondeada; "hoy" va relleno. */
+.agenda-calendar .fc .agenda-day-number {
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-}
-
-.agenda-calendar .fc .fc-daygrid-day-number {
+    align-self: center;
+    min-width: 1.9em;
+    height: 1.55em;
+    padding: 0 0.45em;
+    border-radius: 0.45rem;
     color: #475569;
-    font-weight: 600;
     font-size: 0.8rem;
-    width: 1.7em;
-    height: 1.7em;
-    display: grid;
-    place-items: center;
-    border-radius: 9999px;
+    font-weight: 700;
+    line-height: 1;
 }
 
-.agenda-calendar .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+.agenda-calendar .fc .agenda-day-number.is-today {
     background: #db2777; /* pink-600 */
     color: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+}
+
+.agenda-calendar .fc .agenda-day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.agenda-calendar .fc .agenda-day-event {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 1px 4px 1px 3px;
+    border-left: 2px solid transparent;
+    border-radius: 0.3rem;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.agenda-calendar .fc .agenda-day-event-dot {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 9999px;
+    flex: 0 0 auto;
+}
+
+.agenda-calendar .fc .agenda-day-event-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #334155;
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.agenda-calendar .fc .agenda-day-event-time {
+    flex: 0 0 auto;
+    color: #64748b;
+    font-size: 0.58rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.agenda-calendar .fc .agenda-day-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.05rem 0 0;
+    color: #94a3b8;
+    line-height: 1;
+}
+
+.agenda-calendar .fc .agenda-day-more svg {
+    width: 0.85rem;
+    height: 0.85rem;
+}
+
+/* Días de otro mes: se atenúan un poco, pero siguen siendo clicables. */
+.agenda-calendar .fc .fc-day-other .fc-daygrid-day-top {
+    opacity: 0.6;
 }
 
 /* Tinte sutil de fin de semana */
@@ -472,20 +605,41 @@ button.close:hover {
         padding: 3px 2px;
     }
 
-    .agenda-calendar .fc .fc-daygrid-day-number {
-        font-size: 0.72rem;
+    /* Altura uniforme reducida para el mes en móvil. */
+    .agenda-calendar .fc .fc-daygrid-day-frame {
+        height: 6.75rem;
     }
 
-    .agenda-calendar .fc .fc-daygrid-day-events {
-        margin-bottom: 0;
+    .agenda-calendar .fc .agenda-day-cell {
+        gap: 0.05rem;
+        padding: 1px;
     }
 
-    .agenda-calendar .fc .fc-daygrid-event {
-        font-size: 0.7rem;
+    .agenda-calendar .fc .agenda-day-number {
+        min-width: 1.65em;
+        height: 1.45em;
+        padding: 0 0.3em;
+        border-radius: 0.35rem;
+        font-size: 0.68rem;
     }
 
-    .agenda-calendar .fc .fc-daygrid-more-link {
-        font-size: 0.7rem;
+    .agenda-calendar .fc .agenda-day-event {
+        gap: 1px;
+        padding: 0.5px 2px;
+    }
+
+    .agenda-calendar .fc .agenda-day-event-title {
+        font-size: 0.56rem;
+    }
+
+    .agenda-calendar .fc .agenda-day-event-dot {
+        width: 0.25rem;
+        height: 0.25rem;
+    }
+
+    .agenda-calendar .fc .agenda-day-more svg {
+        width: 0.7rem;
+        height: 0.7rem;
     }
 }
 

@@ -692,6 +692,15 @@ class PlanController extends Controller
             $query->where("institucions.nomInstitucion", "LIKE", "%$nominstitucion%");
         }
 
+        // Búsqueda libre (misma que el listado general).
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_plans.nombrePlan', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_plans.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
         // Obtener TODOS los resultados (sin paginar)
         $plans = $query->orderBy('pro_plans.fecha', 'desc')->get();
 

@@ -648,6 +648,16 @@ class AgendaViewController extends Controller
             $this->aplicarFiltroNivel($query, $nivel);
         }
 
+        // Búsqueda libre (misma que el listado general).
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_agendas.title', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_agendas.evento', 'LIKE', "%{$buscar}%")
+                  ->orWhere('users.name', 'LIKE', "%{$buscar}%");
+            });
+        }
+
         // Obtener TODOS los resultados (sin paginar)
         $agendas = $query->orderBy('pro_agendas.start', 'desc')->get();
 

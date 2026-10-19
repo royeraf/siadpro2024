@@ -728,6 +728,15 @@ class InformeController extends Controller
             $query->where("institucions.nomInstitucion", "LIKE", "%$nominstitucion%");
         }
 
+        // Búsqueda libre (misma que el listado general).
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_informes.nombreInforme', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_informes.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
         // Obtener TODOS los resultados (sin paginar)
         $informes = $query->orderBy('pro_informes.fecha', 'desc')->get();
 

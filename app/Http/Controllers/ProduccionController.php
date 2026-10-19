@@ -726,6 +726,15 @@ class ProduccionController extends Controller
             $query->whereRaw($this->nivelInstitucionCondicion() . " = ?", [$nivel]);
         }
 
+        // Búsqueda libre (misma que el listado general).
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_produccions.nombreProduccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_produccions.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
         // Obtener TODOS los resultados (sin paginar)
         $produccions = $query->orderBy('pro_produccions.fecha', 'desc')->get();
 

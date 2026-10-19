@@ -580,6 +580,18 @@ class UserController extends Controller
             });
         }
 
+        // Búsqueda libre (misma que en index).
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                foreach (['dni', 'name', 'email', 'cargo'] as $col) {
+                    $q->orWhere($col, 'LIKE', "%{$buscar}%");
+                }
+                $q->orWhereHas('institucionRel', fn ($i) => $i->where('nomInstitucion', 'LIKE', "%{$buscar}%"))
+                  ->orWhereHas('ugelRel', fn ($u) => $u->where('nombre', 'LIKE', "%{$buscar}%"));
+            });
+        }
+
         $users = $query->with(['institucionRel:id,nomInstitucion,nivel,provincia,distrito', 'ugelRel:id,nombre,provincia,distrito'])
             ->orderBy('id', 'desc')
             ->get();

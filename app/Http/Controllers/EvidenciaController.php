@@ -748,6 +748,15 @@ class EvidenciaController extends Controller
             $query->whereRaw($this->nivelInstitucionCase() . " = ?", [$request->input('nivel')]);
         }
 
+        // Búsqueda libre (misma que el listado general).
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_evidencias.nombreEvidencia', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_evidencias.descripcion', 'LIKE', "%{$buscar}%");
+            });
+        }
+
         $evidencias = $query->orderBy('pro_evidencias.fecha', 'desc')->get();
 
         return $this->exportToExcel($evidencias);

@@ -238,7 +238,7 @@ onUnmounted(() => {
         @click.self="handleClose"
     >
         <div 
-            class="bg-white rounded-t-[28px] rounded-b-none sm:rounded-3xl shadow-2xl w-full border-t border-x sm:border border-slate-200 overflow-hidden flex flex-col min-h-0 max-h-[92vh] sm:max-h-[90vh] animate-in fade-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-250 ease-out"
+            class="relative bg-white rounded-t-[28px] rounded-b-none sm:rounded-3xl shadow-2xl w-full border-t border-x sm:border border-slate-200 overflow-hidden flex flex-col min-h-0 max-h-[92vh] sm:max-h-[90vh] animate-in fade-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-250 ease-out"
             :class="maxWidthClass"
             @click.stop
         >
@@ -322,6 +322,15 @@ onUnmounted(() => {
                     </slot>
                 </div>
             </component>
+
+            <!-- Acción flotante opcional (FAB), fija al borde inferior derecho
+                 del modal en cualquier tamaño de pantalla. -->
+            <div
+                v-if="$slots.fab"
+                class="absolute bottom-4 right-4 z-20 sm:bottom-5 sm:right-5"
+            >
+                <slot name="fab" />
+            </div>
         </div>
     </div>
 </template>

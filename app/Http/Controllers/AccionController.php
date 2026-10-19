@@ -814,7 +814,17 @@ class AccionController extends Controller
         if (!empty($docente)) {
             $query->where("users.name", "LIKE", "%{$docente}%");
         }
-        
+
+        // Búsqueda libre (misma que el listado general).
+        if ($request->filled('buscar')) {
+            $buscar = trim($request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('pro_accions.nombreAccion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_accions.descripcion', 'LIKE', "%{$buscar}%")
+                  ->orWhere('pro_accions.lugar', 'LIKE', "%{$buscar}%");
+            });
+        }
+
         // Si es especialista UGEL, filtrar por su UGEL
         if ($cargo == 'Especialista UGEL') {
             $query->where("users.ugel_id", Auth::user()->ugel_id);

@@ -5,6 +5,7 @@ import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import esLocale from '@fullcalendar/core/locales/es.js';
+import { MoreHorizontal, CalendarDays } from 'lucide-vue-next';
 
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
@@ -13,8 +14,8 @@ import BaseModal from '@/Components/UI/BaseModal.vue';
 import { useMediaQuery } from '@/Composables/useMediaQuery';
 import AgendaDetailModal from './Partials/AgendaDetailModal.vue';
 
-// En móvil el calendario ocupa el ancho completo: la altura fija de 550px
-// deja filas muy comprimidas, así que se deja crecer según su contenido.
+// En móvil cada día tiene muy poco ancho: se oculta la hora de las píldoras
+// del mes para priorizar el título. La altura del calendario es automática.
 const isCompact = useMediaQuery('(max-width: 767px)');
 
 const props = defineProps({
@@ -31,12 +32,16 @@ const props = defineProps({
 const detalle = reactive({
     show: false,
     event: null,
+    // El detalle se abrió desde el listado del día: al cerrarlo se vuelve a
+    // mostrar el listado en lugar de cerrar todas las capas.
+    volverHoja: false,
 });
 
-// Bottom sheet (móvil) para el "+N más" del calendario; en escritorio se usa el
-// popover nativo de FullCalendar.
+// Modal con la lista completa de eventos del día. Se abre desde la celda
+// agrupada del mes (tanto en móvil como en escritorio).
 const hoja = reactive({
     show: false,
+    fecha: '',
     titulo: '',
     eventos: [],
 });
@@ -111,6 +116,159 @@ function eventosCalendario(list) {
     });
 }
 
+/** Formatea un Date a YYYY-MM-DD con componentes locales (sin UTC). */
+function toFechaISO(value) {
+    const fecha = value instanceof Date ? value : parseFechaLocal(value);
+    if (!fecha) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}`;
+}
+
+/** Convierte un valor de fecha a un Date local (sin desfase de zona horaria). */
+function parseFechaLocal(value) {
+    if (value instanceof Date) {
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    const texto = String(value ?? '');
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+        return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    }
+
+    const fecha = new Date(texto.replace(' ', 'T'));
+    return Number.isNaN(fecha.getTime())
+        ? null
+        : new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+}
+
+/** Fechas (YYYY-MM-DD) que abarca un rango; el fin es inclusivo. */
+function fechasDeRango(startValue, endValue) {
+    const inicio = parseFechaLocal(startValue);
+    if (!inicio) return [];
+
+    const fin = parseFechaLocal(endValue);
+    if (!fin || fin < inicio) return [toFechaISO(inicio)];
+
+    const textoFin = String(endValue ?? '').replace(' ', 'T');
+    if (!/T\d{2}:\d{2}/.test(textoFin)) {
+        fin.setDate(fin.getDate() - 1);
+    }
+    if (fin < inicio) fin.setTime(inicio.getTime());
+
+    const fechas = [];
+    for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+        fechas.push(toFechaISO(d));
+    }
+    return fechas;
+}
+
+/** Fondo tenue (rgba) a partir del hex de la sección. */
+function softColor(hex, alpha = 0.16) {
+    const valor = String(hex || '').replace('#', '');
+    if (!/^[0-9a-fA-F]{6}$/.test(valor)) return 'rgba(148, 163, 184, 0.14)';
+
+    const r = parseInt(valor.slice(0, 2), 16);
+    const g = parseInt(valor.slice(2, 4), 16);
+    const b = parseInt(valor.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Eventos agrupados por fecha para la vista mensual. Se construye desde los
+ * datos originales (no desde los eventos de FullCalendar) para conservar la
+ * hora y el `agendaId` de cada día.
+ */
+const eventosPorFecha = computed(() => {
+    const mapa = {};
+
+    const agregar = (fecha, evento) => {
+        if (!fecha) return;
+        if (!mapa[fecha]) mapa[fecha] = [];
+        mapa[fecha].push(evento);
+    };
+
+    (props.events || []).forEach((e) => {
+        const base = {
+            agendaId: e.id,
+            title: e.title,
+            color: e.color,
+            evento: e.evento,
+            seccion: e.seccion,
+            nomDocente: e.nomDocente || '',
+        };
+
+        const dias = Array.isArray(e.dias) ? e.dias : [];
+
+        if (dias.length) {
+            dias.forEach((d) => {
+                const conHora = Boolean(d.hora_inicio && d.hora_fin);
+                agregar(d.fecha, {
+                    ...base,
+                    id: `${e.id}-${d.id}`,
+                    hora: rangoHora(d.hora_inicio, d.hora_fin),
+                    // En la celda solo cabe la hora inicial; el rango completo
+                    // se muestra en el modal.
+                    horaInicioTexto: formatearHora(d.hora_inicio),
+                    horaInicio: d.hora_inicio || '',
+                    horaFin: d.hora_fin || '',
+                    allDay: !conHora,
+                });
+            });
+            return;
+        }
+
+        fechasDeRango(e.start, e.end).forEach((fecha) => {
+            agregar(fecha, {
+                ...base,
+                id: `${e.id}-${fecha}`,
+                hora: '',
+                horaInicioTexto: '',
+                horaInicio: '',
+                horaFin: '',
+                allDay: true,
+            });
+        });
+    });
+
+    Object.values(mapa).forEach((lista) => {
+        lista.sort((a, b) => {
+            if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
+            return (a.horaInicio || '').localeCompare(b.horaInicio || '');
+        });
+    });
+
+    return mapa;
+});
+
+function eventosDelDia(fecha) {
+    return eventosPorFecha.value[fecha] || [];
+}
+
+/** Primeros 5 eventos que se previsualizan en la celda del mes. */
+function previewDia(fecha) {
+    return eventosDelDia(fecha).slice(0, 5);
+}
+
+function totalDia(fecha) {
+    return eventosDelDia(fecha).length;
+}
+
+function etiquetaDia(arg) {
+    const fecha = toFechaISO(arg.date);
+    const total = totalDia(fecha);
+    const base = tituloFecha(fecha);
+
+    if (!total) return `${base}. Sin eventos`;
+    return `${base}. ${total} evento${total === 1 ? '' : 's'}. Ver todos`;
+}
+
+const subtituloHoja = computed(() => {
+    const total = hoja.eventos.length;
+    if (!total) return 'Sin eventos programados';
+    return `${total} evento${total === 1 ? '' : 's'} programado${total === 1 ? '' : 's'}`;
+});
+
 /**
  * Cierra el popover de "+N más" del calendario.
  *
@@ -134,6 +292,9 @@ function cerrarPopoverCalendario() {
 function handleEventClick(arg) {
     cerrarPopoverCalendario();
 
+    // Abierto directo desde el calendario: al cerrar no se reabre el listado.
+    detalle.volverHoja = false;
+
     const agendaId = arg.event.extendedProps?.agendaId ?? arg.event.id;
     const original = findEvent(agendaId);
     detalle.event = original
@@ -148,7 +309,10 @@ function handleEventClick(arg) {
 }
 
 /** Título legible de una fecha (p. ej. "Lunes, 16 de octubre"). */
-function tituloFecha(fecha) {
+function tituloFecha(value) {
+    const fecha = value instanceof Date ? value : parseFechaLocal(value);
+    if (!fecha) return '';
+
     const texto = fecha.toLocaleDateString('es-PE', {
         weekday: 'long',
         day: 'numeric',
@@ -157,35 +321,27 @@ function tituloFecha(fecha) {
     return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
-/** Abre el bottom sheet con todos los eventos del día (solo móvil). */
-function abrirHoja(arg) {
-    // `arg.date` de FullCalendar es un marker en UTC; se convierte a fecha local
-    // para evitar el desfase de un día (p. ej. en Perú, UTC-5).
-    const fechaLocal = new Date(
-        arg.date.getUTCFullYear(),
-        arg.date.getUTCMonth(),
-        arg.date.getUTCDate()
-    );
-    hoja.titulo = tituloFecha(fechaLocal);
-    hoja.eventos = (arg.allSegs || []).map((seg) => {
-        const ev = seg.event;
-        return {
-            id: ev.id,
-            agendaId: ev.extendedProps?.agendaId ?? ev.id,
-            title: ev.title,
-            hora: ev.extendedProps?.hora || '',
-            color: ev.backgroundColor || '',
-            evento: ev.extendedProps?.evento || '',
-            seccion: ev.extendedProps?.seccion || '',
-            nomDocente: ev.extendedProps?.nomDocente || '',
-        };
-    });
+/** Abre el modal con la lista completa de eventos de una fecha. */
+function abrirListadoDia(fecha) {
+    const normalizada = toFechaISO(parseFechaLocal(fecha) || fecha);
+
+    hoja.fecha = normalizada;
+    hoja.titulo = tituloFecha(normalizada);
+    hoja.eventos = eventosDelDia(normalizada);
     hoja.show = true;
+}
+
+/** En la vista mensual, cualquier clic sobre el día abre la lista. */
+function handleDateClick(arg) {
+    if (!arg.view?.type?.startsWith('dayGrid')) return;
+    abrirListadoDia(toFechaISO(arg.date));
 }
 
 /** Abre el detalle del evento elegido en el bottom sheet. */
 async function abrirDesdeHoja(ev) {
     hoja.show = false;
+    // Marca que el detalle viene del listado: al cerrarlo se reabre la lista.
+    detalle.volverHoja = true;
     const original = findEvent(ev.agendaId);
     detalle.event = original
         ? { ...original }
@@ -199,6 +355,23 @@ async function abrirDesdeHoja(ev) {
     // para que no se pisen al restaurar el scroll del body.
     await nextTick();
     detalle.show = true;
+}
+
+/**
+ * Cierra el detalle. Si se abrió desde el listado del día, vuelve a mostrarlo
+ * (en lugar de dejar cerrado todo). Se espera un tick para que el detalle
+ * libere su bloqueo de scroll antes de que el listado lo vuelva a tomar.
+ */
+async function cerrarDetalle() {
+    detalle.show = false;
+
+    if (detalle.volverHoja) {
+        detalle.volverHoja = false;
+        await nextTick();
+        // Refresca la lista por si el evento se actualizó mientras estaba abierto.
+        hoja.eventos = eventosDelDia(hoja.fecha);
+        hoja.show = true;
+    }
 }
 
 // Vista de solo lectura: sin editable, sin selectable y sin handlers de
@@ -225,24 +398,19 @@ const calendarOptions = computed(() => ({
     },
     locale: esLocale,
     firstDay: 1,
-    height: isCompact.value ? 'auto' : 550,
-    // En móvil la altura es 'auto' y la celda crece con el contenido, por lo que
-    // 'true' nunca mostraría el "+N más". Se limita a 2 eventos por día (deja
-    // espacio libre y hace aparecer antes el "+N", que abre el bottom sheet).
-    dayMaxEvents: isCompact.value ? 2 : true,
-    // En la vista mes los eventos se ven como píldoras (no puntos) y la hora
+    // El mes crece según el contenido: cada celda muestra hasta 5 eventos y no
+    // debe recortarlos. Semana/día conservan su altura fija.
+    height: 'auto',
+    // En el mes no se pintan las píldoras nativas: la celda usa un botón
+    // agrupado con los primeros 5 eventos y el resto se ve en el modal.
+    dayMaxEvents: 0,
+    // En semana/día los eventos se ven como píldoras (no puntos) y la hora
     // la pinta el slot #eventContent, no FullCalendar.
     eventDisplay: 'block',
     displayEventTime: false,
     events: eventosCalendario(props.events),
+    dateClick: handleDateClick,
     eventClick: handleEventClick,
-    // En móvil el "+N más" abre un bottom sheet en vez del popover nativo.
-    // Devolver `true` evita que FullCalendar muestre su popover.
-    moreLinkClick: (arg) => {
-        if (!isCompact.value) return 'popover';
-        abrirHoja(arg);
-        return true;
-    },
 }));
 </script>
 
@@ -262,6 +430,56 @@ const calendarOptions = computed(() => ({
         <div class="agenda-calendar bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
             <div class="p-3 sm:p-5 max-w-[860px] mx-auto">
                 <FullCalendar :options="calendarOptions">
+                    <!-- Vista mes: un solo botón por día con hasta 5 eventos. -->
+                    <template #dayCellContent="arg">
+                        <button
+                            type="button"
+                            class="agenda-day-cell"
+                            :aria-label="etiquetaDia(arg)"
+                            @click.stop="abrirListadoDia(toFechaISO(arg.date))"
+                        >
+                            <span
+                                class="agenda-day-number"
+                                :class="{ 'is-today': arg.isToday }"
+                            >
+                                {{ arg.dayNumberText }}
+                            </span>
+
+                            <span
+                                v-if="totalDia(toFechaISO(arg.date))"
+                                class="agenda-day-events"
+                            >
+                                <span
+                                    v-for="ev in previewDia(toFechaISO(arg.date))"
+                                    :key="ev.id"
+                                    class="agenda-day-event"
+                                    :style="{
+                                        backgroundColor: softColor(ev.color),
+                                        borderLeftColor: ev.color || '#94a3b8',
+                                    }"
+                                >
+                                    <span
+                                        class="agenda-day-event-dot"
+                                        :style="{ backgroundColor: ev.color || '#94a3b8' }"
+                                    ></span>
+                                    <span class="agenda-day-event-title">{{ ev.title }}</span>
+                                    <span
+                                        v-if="!isCompact && ev.horaInicioTexto"
+                                        class="agenda-day-event-time"
+                                    >{{ ev.horaInicioTexto }}</span>
+                                </span>
+
+                                <span
+                                    v-if="totalDia(toFechaISO(arg.date)) > 5"
+                                    class="agenda-day-more"
+                                    aria-hidden="true"
+                                >
+                                    <MoreHorizontal class="w-3.5 h-3.5" />
+                                </span>
+                            </span>
+                        </button>
+                    </template>
+
                     <template #eventContent="{ event, view }">
                         <div class="agenda-ev">
                             <span class="fc-event-title">{{ event.title }}</span><span
@@ -279,22 +497,22 @@ const calendarOptions = computed(() => ({
             :agenda="detalle.event"
             :can-edit="false"
             :can-evidencia="false"
-            @close="detalle.show = false"
+            @close="cerrarDetalle"
         />
 
-        <!-- Bottom sheet (móvil) con los eventos del día al pulsar "+N más" -->
+        <!-- Modal con la lista completa de eventos del día (vista mensual) -->
         <BaseModal
             :show="hoja.show"
             :is-form="false"
             :has-footer="false"
             :title="hoja.titulo"
-            subtitle="Eventos programados"
+            :subtitle="subtituloHoja"
             icon="CalendarCheck"
             color="pink"
             max-width="md"
             @close="hoja.show = false"
         >
-            <div class="space-y-2">
+            <div v-if="hoja.eventos.length" class="space-y-2">
                 <button
                     v-for="ev in hoja.eventos"
                     :key="ev.id"
@@ -308,10 +526,29 @@ const calendarOptions = computed(() => ({
                     ></span>
                     <span class="min-w-0 flex-1">
                         <span class="block text-xs font-bold text-slate-800 truncate">{{ ev.title }}</span>
-                        <span v-if="ev.hora" class="block text-[11px] font-semibold text-slate-500">{{ ev.hora }}</span>
-                        <span v-if="ev.evento" class="block text-[11px] text-slate-400 truncate">{{ ev.evento }}</span>
+                        <span class="mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                            <span
+                                v-if="ev.hora"
+                                class="inline-flex items-center gap-1"
+                            >{{ ev.hora }}</span>
+                            <span
+                                v-else
+                                class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500"
+                            >Todo el día</span>
+                        </span>
+                        <span v-if="ev.evento" class="mt-0.5 block text-[11px] text-slate-400 truncate">{{ ev.evento }}</span>
                     </span>
                 </button>
+            </div>
+
+            <div
+                v-else
+                class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center"
+            >
+                <CalendarDays class="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p class="text-xs font-semibold text-slate-500 m-0">
+                    No hay eventos programados para este día.
+                </p>
             </div>
         </BaseModal>
     </AppLayout>
