@@ -256,7 +256,6 @@ function handleExportExcel() {
             :pagination="accions"
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
-            :export-filename="`acciones_sensibilizacion_${scope}`"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

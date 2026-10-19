@@ -181,7 +181,7 @@ function handlePerPageChange(newPerPage) {
     applyFilters();
 }
 
-function handleExportExcel() {
+function handleExportExcel(filename) {
     const dataToExport = (props.produccions.data || []).map((row, idx) => ({
         '#': idx + 1,
         'Tipo de Producción': row.nombreProduccion,
@@ -197,7 +197,7 @@ function handleExportExcel() {
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Producción de Textos');
-    XLSX.writeFile(wb, `produccion_textos_infantiles_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function confirmDelete(produccion) {

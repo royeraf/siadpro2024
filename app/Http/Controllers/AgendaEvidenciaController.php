@@ -48,9 +48,12 @@ class AgendaEvidenciaController extends Controller
 
         return response()->json([
             'agenda' => [
-                'id'     => $agenda->id,
-                'title'  => $agenda->title,
-                'evento' => $agenda->evento,
+                'id'         => $agenda->id,
+                'title'      => $agenda->title,
+                'evento'     => $agenda->evento,
+                'color'      => $agenda->color,
+                'seccion'    => $agenda->seccion,
+                'nomDocente' => $agenda->nomDocente,
             ],
             'dias' => $agenda->dias->map(fn ($dia) => [
                 'id'          => $dia->id,

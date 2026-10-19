@@ -205,6 +205,15 @@ class AgendaController extends Controller
             $inicio = $dia['hora_inicio'] ?? null;
             $fin    = $dia['hora_fin'] ?? null;
 
+            // La hora es "todo o nada": el formulario ya lo valida, pero la API
+            // también debe rechazar días a medio configurar (solo inicio o solo
+            // fin), que dejarían el día como evento de todo el día.
+            if (($inicio && ! $fin) || (! $inicio && $fin)) {
+                throw ValidationException::withMessages([
+                    "dias.$i.hora_fin" => 'Indique la hora inicial y final, o deje ambas vacías.',
+                ]);
+            }
+
             if ($inicio && $fin && $fin <= $inicio) {
                 throw ValidationException::withMessages([
                     "dias.$i.hora_fin" => 'La hora final debe ser posterior a la inicial.',

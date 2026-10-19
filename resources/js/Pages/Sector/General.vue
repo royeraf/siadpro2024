@@ -252,7 +252,6 @@ function handleExportExcel() {
             :pagination="sectores"
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
-            :export-filename="`sectores_${scope}`"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

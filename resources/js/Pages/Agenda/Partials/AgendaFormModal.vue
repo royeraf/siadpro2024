@@ -3,7 +3,7 @@ import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { AgendasService } from '@/Services/agenda';
 import { useForm as useVeeForm } from 'vee-validate';
 import * as yup from 'yup';
-import { AlertCircle, Trash2, Plus, CalendarDays, Clock, X, Loader2, Ban, Check, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { AlertCircle, Trash2, Plus, CalendarDays, Clock, X, Loader2, Ban, Check, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-vue-next';
 import BaseModal from '@/Components/UI/BaseModal.vue';
 
 const props = defineProps({
@@ -79,16 +79,44 @@ function scrollColorDir(dir) {
     el.scrollBy({ left: dir * paso, behavior: 'smooth' });
 }
 
+/* ── Menú de acciones (botón de 3 puntos) ── */
+const menuEliminar = ref(false);
+const menuEliminarRef = ref(null);
+
+function alternarMenuEliminar() {
+    menuEliminar.value = !menuEliminar.value;
+}
+
+function cerrarMenuEliminar() {
+    menuEliminar.value = false;
+}
+
+/** Cierra el menú al hacer clic fuera de él. */
+function alClicFueraMenu(e) {
+    if (!menuEliminar.value) return;
+    if (menuEliminarRef.value?.contains(e.target)) return;
+    cerrarMenuEliminar();
+}
+
+function eliminarDesdeMenu() {
+    cerrarMenuEliminar();
+    emit('delete', props.event);
+}
+
 onMounted(() => {
     nextTick(actualizarFlechas);
     window.addEventListener('resize', actualizarFlechas);
+    document.addEventListener('click', alClicFueraMenu);
 });
 
 onBeforeUnmount(() => {
     window.removeEventListener('resize', actualizarFlechas);
+    document.removeEventListener('click', alClicFueraMenu);
 });
 
-/* ── Días programados (fuente de verdad del rango) ── */let secuencia = 0;
+/* ── Días programados (fuente de verdad del rango) ── */
+let secuencia = 0;
+
 function crearDia(fecha = '', hora_inicio = '', hora_fin = '') {
     return { _key: ++secuencia, fecha, hora_inicio, hora_fin };
 }
@@ -189,20 +217,30 @@ function errorDia(index) {
     return diaErrors.value[index] || horaErrors.value[index] || '';
 }
 
-async function cargarDiasDesdeServidor() {
-    if (!props.event?.id) return;
+// Token para descartar respuestas que lleguen después de cerrar el modal o
+// cambiar de evento (evita cargar días de otra agenda).
+let diasToken = 0;
 
+async function cargarDiasDesdeServidor() {
+    const eventId = props.event?.id;
+    if (!eventId) return;
+
+    const token = ++diasToken;
     cargandoDias.value = true;
+
     try {
-        const data = await AgendasService.evidencias(props.event.id);
+        const data = await AgendasService.evidencias(eventId);
+        if (token !== diasToken || !props.show || String(props.event?.id) !== String(eventId)) return;
+
         dias.value = (data.dias || []).map((d) => crearDia(d.fecha, d.hora_inicio || '', d.hora_fin || ''));
         if (!dias.value.length) {
             dias.value = [crearDia(hoyISO(), '', '')];
         }
     } catch (e) {
+        if (token !== diasToken) return;
         dias.value = [crearDia(hoyISO(), '', '')];
     } finally {
-        cargandoDias.value = false;
+        if (token === diasToken) cargandoDias.value = false;
     }
 }
 
@@ -240,16 +278,28 @@ function valoresOriginales() {
     };
 }
 
-watch(() => props.show, (visible) => {
-    if (!visible) return;
-
+/** Deja el formulario en el estado inicial del evento/modo actual. */
+function reiniciarFormulario() {
     eventoHint.value = '';
     diasError.value = '';
     diaErrors.value = {};
     horaErrors.value = {};
+    cerrarMenuEliminar();
     setErrors({});
     resetForm({ values: valoresOriginales() });
     dias.value = diasDesdeEvento();
+}
+
+watch(() => props.show, (visible) => {
+    if (!visible) {
+        // Descarta cargas en vuelo y evita que quede en "Cargando días…".
+        diasToken++;
+        cargandoDias.value = false;
+        cerrarMenuEliminar();
+        return;
+    }
+
+    reiniciarFormulario();
 
     // Edición directa (sin el detalle cargado): los días se traen del servidor.
     if (props.mode === 'edit' && props.event?.id && !Array.isArray(props.event?.dias)) {
@@ -261,11 +311,7 @@ watch(() => props.show, (visible) => {
 
 watch([() => props.mode, () => props.event], () => {
     if (!props.show) return;
-    resetForm({ values: valoresOriginales() });
-    dias.value = diasDesdeEvento();
-    diasError.value = '';
-    diaErrors.value = {};
-    horaErrors.value = {};
+    reiniciarFormulario();
 });
 
 // Reglas heredadas del formulario legacy: el campo "evento" no admite Enter
@@ -296,6 +342,17 @@ function validarTeclaEvento(e) {
 }
 
 const submit = handleSubmit((values) => {
+    // El botón ya se deshabilita, pero el envío también puede dispararse con
+    // Enter desde un input: se evita un segundo request.
+    if (submitting.value) return;
+
+    // Mientras los días se traen del servidor no se puede guardar: se enviaría
+    // el placeholder (hoy) y borraría los días reales con sus evidencias.
+    if (cargandoDias.value) {
+        diasError.value = 'Espere a que terminen de cargar los días.';
+        return;
+    }
+
     const errorDias = validarDias();
     if (errorDias) {
         diasError.value = errorDias;
@@ -572,48 +629,75 @@ const submit = handleSubmit((values) => {
                     Sin días. Agregue al menos uno.
                 </p>
             </div>
-
-            <div
-                v-if="isEdit && canDestroy"
-                class="border border-rose-200 bg-rose-50/60 rounded-xl p-3 flex items-start justify-between gap-3"
-            >
-                <div class="min-w-0">
-                    <p class="text-xs font-bold text-rose-800 m-0">Eliminar Evento</p>
-                    <p class="text-[11px] text-rose-600 m-0 mt-0.5">
-                        Quita el evento de la agenda. No se puede deshacer desde aquí.
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    @click="emit('delete', event)"
-                    class="inline-flex items-center justify-center px-3 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 border border-transparent rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
-                >
-                    <Trash2 class="w-3.5 h-3.5 mr-1.5" />
-                    Eliminar
-                </button>
-            </div>
         </div>
 
         <template #footer>
-            <div class="flex items-center gap-2.5 max-sm:w-full">
-                <button
-                    type="button"
-                    @click="emit('cancel')"
-                    :disabled="submitting"
-                    class="max-sm:flex-1 inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-xl transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+            <div class="flex items-center gap-2.5 w-full">
+                <!-- Acciones destructivas: a la izquierda, dentro de un menú -->
+                <div
+                    v-if="isEdit && canDestroy"
+                    ref="menuEliminarRef"
+                    class="relative shrink-0"
                 >
-                    Cancelar
-                </button>
-                <button
-                    type="submit"
-                    :disabled="submitting"
-                    class="max-sm:flex-1 inline-flex items-center justify-center px-5 py-2.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-colors shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    :class="submitting
-                        ? 'bg-pink-400 text-white'
-                        : 'bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white focus:ring-pink-500'"
-                >
-                    <span>{{ submitting ? 'Guardando...' : (isCreate ? 'Registrar' : 'Modificar') }}</span>
-                </button>
+                    <button
+                        type="button"
+                        @click="alternarMenuEliminar"
+                        :disabled="submitting"
+                        aria-haspopup="menu"
+                        :aria-expanded="menuEliminar"
+                        aria-label="Más acciones"
+                        title="Más acciones"
+                        class="inline-flex items-center justify-center w-10 h-10 rounded-xl border transition-colors disabled:opacity-50 cursor-pointer"
+                        :class="menuEliminar
+                            ? 'bg-slate-100 border-slate-300 text-slate-700'
+                            : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
+                    >
+                        <MoreVertical class="w-5 h-5" />
+                    </button>
+
+                    <!-- Se abre hacia arriba porque el disparador está en el pie -->
+                    <div
+                        v-if="menuEliminar"
+                        role="menu"
+                        class="absolute bottom-full left-0 mb-2 z-30 w-60 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden"
+                    >
+                        <button
+                            type="button"
+                            role="menuitem"
+                            @click="eliminarDesdeMenu"
+                            class="w-full flex items-start gap-2.5 px-3.5 py-3 text-left hover:bg-rose-50 transition-colors cursor-pointer"
+                        >
+                            <Trash2 class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                            <span class="min-w-0">
+                                <span class="block text-xs font-bold text-rose-700">Eliminar evento</span>
+                                <span class="block text-[11px] text-slate-500 mt-0.5">
+                                    Quita el evento de la agenda.
+                                </span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2.5 max-sm:flex-1 sm:ml-auto">
+                    <button
+                        type="button"
+                        @click="emit('cancel')"
+                        :disabled="submitting"
+                        class="max-sm:flex-1 inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-xl transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        :disabled="submitting || cargandoDias"
+                        class="max-sm:flex-1 inline-flex items-center justify-center px-5 py-2.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-colors shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        :class="submitting || cargandoDias
+                            ? 'bg-pink-400 text-white'
+                            : 'bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white focus:ring-pink-500'"
+                    >
+                        <span>{{ submitting ? 'Guardando...' : (isCreate ? 'Registrar' : 'Modificar') }}</span>
+                    </button>
+                </div>
             </div>
         </template>
     </BaseModal>

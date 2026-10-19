@@ -247,7 +247,6 @@ function confirmDelete(row) {
             :search-value="localFilters.buscar"
             search-placeholder="Buscar por nombre, código modular..."
             :export-url="exportUrl"
-            export-filename="instituciones"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

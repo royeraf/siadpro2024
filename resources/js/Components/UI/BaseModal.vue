@@ -5,6 +5,7 @@ import {
     LayoutGrid, FileText, BookOpen, BookHeart, 
     NotebookPen, CalendarCheck, Landmark, Users, House 
 } from 'lucide-vue-next';
+import { useBodyScrollLock } from '@/Composables/useBodyScrollLock';
 
 const props = defineProps({
     show: {
@@ -74,6 +75,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'submit']);
+
+// Capas apiladas (p. ej. visor de archivos sobre el detalle): el scroll se
+// bloquea una sola vez y se restaura al cerrar la última.
+const bodyScroll = useBodyScrollLock();
 
 const icons = {
     Megaphone,
@@ -211,11 +216,11 @@ function handleKeyDown(e) {
 
 watch(() => props.show, (newVal) => {
     if (newVal) {
-        document.body.style.overflow = 'hidden';
+        bodyScroll.lock();
     } else {
-        document.body.style.overflow = '';
+        bodyScroll.unlock();
     }
-});
+}, { immediate: true });
 
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -223,7 +228,6 @@ onMounted(() => {
 
 onUnmounted(() => {
     window.removeEventListener('keydown', handleKeyDown);
-    document.body.style.overflow = '';
 });
 </script>
 

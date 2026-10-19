@@ -301,7 +301,6 @@ const exportUrl = computed(() => AgendasService.exportUrl(getCleanParams(), prop
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
             :export-url="exportUrl"
-            export-filename="agendas_lectura_general"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

@@ -2,8 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import { 
     Search, X, Eraser, FileSpreadsheet, Inbox, 
-    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-    ArrowUpNarrowWide, ArrowDownWideNarrow 
+    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight 
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -59,25 +58,11 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
-    headerBg: {
-        type: String,
-        default: 'bg-slate-100 text-slate-700 border-b border-slate-200',
-    },
-    hoverBg: {
-        type: String,
-        default: 'hover:bg-blue-100/70',
-    },
-    stacked: {
-        type: Boolean,
-        default: false,
-    },
 });
 
-const emit = defineEmits(['search', 'clear', 'sort', 'pageChange', 'perPageChange', 'export']);
+const emit = defineEmits(['search', 'clear', 'pageChange', 'perPageChange', 'export']);
 
 const search = ref(props.searchValue);
-const currentSortCol = ref(null);
-const currentSortAsc = ref(true);
 let debounceTimer = null;
 
 watch(() => props.searchValue, (newVal) => {
@@ -106,20 +91,6 @@ function handleClearAll() {
     search.value = '';
     clearTimeout(debounceTimer);
     emit('clear');
-}
-
-function handleSort(col) {
-    if (!col.sortable) return;
-    if (currentSortCol.value === col.key) {
-        currentSortAsc.value = !currentSortAsc.value;
-    } else {
-        currentSortCol.value = col.key;
-        currentSortAsc.value = true;
-    }
-    emit('sort', {
-        key: currentSortCol.value,
-        order: currentSortAsc.value ? 'asc' : 'desc',
-    });
 }
 
 function changePerPage(e) {
@@ -248,7 +219,7 @@ const visiblePages = computed(() => {
                         <button 
                             v-else
                             type="button"
-                            @click="emit('export')"
+                            @click="emit('export', exportFilename)"
                             class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors border-0 cursor-pointer"
                         >
                             <FileSpreadsheet class="w-3.5 h-3.5 mr-1.5" />
@@ -264,9 +235,9 @@ const visiblePages = computed(() => {
 
         <!-- ══ TABLA RESPONSIVA (ESTILO BOOTSTRAP) ══ -->
         <div class="table-responsive w-full overflow-x-auto transition-opacity" :class="{ 'opacity-50 pointer-events-none': loading }">
-            <table class="w-full min-w-full text-left align-middle border-collapse divide-y divide-slate-200 text-xs sm:text-sm text-slate-700" :class="{ 'table-stacked': stacked }">
+            <table class="w-full min-w-full text-left align-middle border-collapse divide-y divide-slate-200 text-xs sm:text-sm text-slate-700">
                 <!-- Cabecera de la tabla -->
-                <thead :class="headerBg" class="select-none">
+                <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 select-none">
                     <slot name="header">
                         <tr>
                             <!-- Columna Índice (#) -->
@@ -281,20 +252,12 @@ const visiblePages = computed(() => {
                                 :key="col.key"
                                 class="px-4 py-3 font-bold transition-colors whitespace-nowrap align-middle"
                                 :class="[
-                                    col.sortable ? 'cursor-pointer hover:bg-slate-200/75' : '',
                                     col.class || '',
                                     col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'
                                 ]"
                                 :style="col.width ? { width: col.width } : {}"
-                                @click="handleSort(col)"
                             >
-                                <div class="flex items-center justify-between gap-1.5">
-                                    <span>{{ col.label }}</span>
-                                    <span v-if="col.sortable" class="flex items-center shrink-0">
-                                        <ArrowUpNarrowWide v-if="currentSortCol === col.key && currentSortAsc" class="w-3.5 h-3.5" />
-                                        <ArrowDownWideNarrow v-else-if="currentSortCol === col.key && !currentSortAsc" class="w-3.5 h-3.5" />
-                                    </span>
-                                </div>
+                                <span>{{ col.label }}</span>
                             </th>
                         </tr>
                     </slot>
@@ -307,8 +270,7 @@ const visiblePages = computed(() => {
                             <tr 
                                 v-for="(row, idx) in rows" 
                                 :key="row.id || idx" 
-                                class="transition-colors border-b border-slate-100 last:border-b-0 cursor-default"
-                                :class="hoverBg"
+                                class="transition-colors border-b border-slate-100 last:border-b-0 cursor-default hover:bg-blue-100/70"
                                 data-table-row
                             >
                                 <!-- Celda Índice (#) -->

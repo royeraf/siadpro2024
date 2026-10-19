@@ -361,7 +361,6 @@ function handleExportExcel() {
             :pagination="plans"
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
-            :export-filename="`espacio_lectura_hogar_${scope}`"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

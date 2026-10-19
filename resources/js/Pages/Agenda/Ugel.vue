@@ -167,7 +167,7 @@ function handlePerPageChange(newPerPage) {
 // /exportar-agendas, exige agendas.general), igual que en el Blade original,
 // cuyo export era client-side: se replica con la misma librería que el resto
 // de los módulos migrados.
-function handleExportExcel() {
+function handleExportExcel(filename) {
     const dataToExport = (props.agendas.data || []).map((row, idx) => ({
         '#': idx + 1,
         'Docente': row.nomDocente || '',
@@ -186,7 +186,7 @@ function handleExportExcel() {
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Agenda de Lectura');
-    XLSX.writeFile(wb, `agendas_lectura_ugel_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 </script>
 

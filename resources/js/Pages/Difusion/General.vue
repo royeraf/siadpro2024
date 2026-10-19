@@ -247,7 +247,6 @@ function handleExportExcel() {
             :pagination="difusions"
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
-            :export-filename="`acciones_difusion_${scope}`"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

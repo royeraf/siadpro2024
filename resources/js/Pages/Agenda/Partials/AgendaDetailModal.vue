@@ -70,13 +70,32 @@ const {
 
 const visor = ref({ show: false, diaId: null, index: -1, url: '', name: '', downloadUrl: '' });
 
-const titulo = computed(() => agendaInfo.value?.title || props.agenda?.title || 'Evento');
+// El detalle combina lo que ya tenía el listado/calendario con lo que devuelve
+// el servidor al abrirse. Lo del servidor manda: después de editar y volver al
+// detalle, el título, la descripción y el color deben reflejar el cambio.
+const datos = computed(() => {
+    const base = props.agenda || {};
+    const servidor = {};
+
+    // Solo se pisa lo que el servidor devuelve con valor: si viniera `null`
+    // (p. ej. un docente sin usuario), no debe borrar lo que ya traía el
+    // listado/calendario.
+    Object.entries(agendaInfo.value || {}).forEach(([clave, valor]) => {
+        if (valor !== null && valor !== undefined) servidor[clave] = valor;
+    });
+
+    return { ...base, ...servidor };
+});
+
+const titulo = computed(() => datos.value.title || 'Evento');
+const eventoTexto = computed(() => datos.value.evento || '');
+const nomDocente = computed(() => datos.value.nomDocente || '');
 
 // Hex de la sección del evento para teñir el encabezado del modal (solo si el
 // evento tiene una sección seleccionada; "sin color" no tiñe).
 const tintHex = computed(() => {
-    const seccion = props.agenda?.seccion;
-    const color = props.agenda?.color;
+    const seccion = datos.value.seccion;
+    const color = datos.value.color;
     if (!seccion || typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)) return '';
     return color;
 });
@@ -94,22 +113,34 @@ const visorItems = computed(() => listaEvidencias.value.map((ev) => ({
     name: ev.nombre_original || ev.enlace,
 })));
 
+// Cada carga recibe un token: si el usuario cierra el modal o cambia de agenda
+// antes de que responda la petición anterior, esa respuesta se descarta.
+let cargaToken = 0;
+
 async function cargar() {
-    if (!props.agenda?.id) return;
+    const agendaId = props.agenda?.id;
+    if (!agendaId) return;
+
+    const token = ++cargaToken;
 
     cargando.value = true;
     errorCarga.value = '';
     diaActivo.value = null;
+    dias.value = [];
+    agendaInfo.value = null;
     clear();
 
     try {
-        const data = await AgendasService.evidencias(props.agenda.id);
+        const data = await AgendasService.evidencias(agendaId);
+        if (token !== cargaToken || !props.show || String(props.agenda?.id) !== String(agendaId)) return;
+
         agendaInfo.value = data.agenda || null;
         dias.value = data.dias || [];
     } catch (e) {
+        if (token !== cargaToken) return;
         errorCarga.value = 'No se pudieron cargar los días y archivos del evento.';
     } finally {
-        cargando.value = false;
+        if (token === cargaToken) cargando.value = false;
     }
 }
 
@@ -117,6 +148,8 @@ watch(() => props.show, (visible) => {
     if (visible) {
         cargar();
     } else {
+        cargaToken++;
+        cargando.value = false;
         dias.value = [];
         agendaInfo.value = null;
         errorCarga.value = '';
@@ -140,12 +173,13 @@ function fechaLarga(iso) {
 function rangoHora(dia) {
     if (dia.hora_inicio && dia.hora_fin) return `${dia.hora_inicio} – ${dia.hora_fin}`;
     if (dia.hora_inicio) return `Desde ${dia.hora_inicio}`;
+    if (dia.hora_fin) return `Hasta ${dia.hora_fin}`;
     return 'Sin hora definida';
 }
 
-function totalArchivos() {
-    return dias.value.reduce((acc, d) => acc + (d.evidencias?.length || 0), 0);
-}
+const totalArchivos = computed(() =>
+    dias.value.reduce((acc, d) => acc + (d.evidencias?.length || 0), 0)
+);
 
 /* ── Subida por día ── */
 function alternarDropzone(diaId) {
@@ -158,8 +192,15 @@ function alternarDropzone(diaId) {
     clear();
 }
 
+// Igual que la carga: si se cierra/cambia de agenda mientras sube, la
+// respuesta ya no debe tocar el estado del modal que esté abierto.
+let subidaToken = 0;
+
 function subir(diaId) {
-    if (!canSubmit.value) return;
+    const agendaId = props.agenda?.id;
+    if (!agendaId || !canSubmit.value) return;
+
+    const token = ++subidaToken;
 
     const formData = new FormData();
     formData.append('agenda_dia_id', String(diaId));
@@ -169,14 +210,21 @@ function subir(diaId) {
 
     // Subida fuera del ciclo de Inertia: continúa en segundo plano aunque el
     // usuario cierre el modal o navegue, así no se pierden los archivos.
-    AgendasService.subirEvidencias(props.agenda.id, formData, {
+    AgendasService.subirEvidencias(agendaId, formData, {
         onProgress: (pct) => trackProgress({ percentage: pct }),
     })
         .then(async (resp) => {
+            if (token !== subidaToken) return;
+
             finishUpload();
-            clear();
-            diaActivo.value = null;
-            await cargar();
+
+            // Si el modal sigue en la misma agenda, se refrescan los días;
+            // si se cerró, no se pinta nada sobre una vista oculta.
+            if (props.show && String(props.agenda?.id) === String(agendaId)) {
+                clear();
+                diaActivo.value = null;
+                await cargar();
+            }
 
             Swal.fire({
                 toast: true,
@@ -188,6 +236,8 @@ function subir(diaId) {
             });
         })
         .catch((err) => {
+            if (token !== subidaToken) return;
+
             finishUpload();
 
             const data = err?.response?.data || {};
@@ -293,6 +343,7 @@ function visorSiguiente() {
         :tint="tintHex"
         max-width="3xl"
         :is-form="false"
+        :closeable="!visor.show"
         @close="emit('close')"
     >
         <div class="space-y-4">
@@ -302,17 +353,17 @@ function visorSiguiente() {
                     <CalendarDays class="w-4 h-4 text-pink-600 shrink-0" />
                     <p class="text-sm font-black text-slate-800 m-0 truncate">{{ titulo }}</p>
                 </div>
-                <p v-if="agenda?.evento || agendaInfo?.evento" class="text-xs text-slate-600 m-0 whitespace-pre-line">
-                    {{ agenda?.evento || agendaInfo?.evento }}
+                <p v-if="eventoTexto" class="text-xs text-slate-600 m-0 whitespace-pre-line">
+                    {{ eventoTexto }}
                 </p>
                 <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-semibold">
-                    <span v-if="agenda?.nomDocente" class="inline-flex items-center gap-1">
+                    <span v-if="nomDocente" class="inline-flex items-center gap-1">
                         <FileText class="w-3 h-3 shrink-0" />
-                        {{ agenda.nomDocente }}
+                        {{ nomDocente }}
                     </span>
                     <span class="inline-flex items-center gap-1">
                         <Paperclip class="w-3 h-3 shrink-0" />
-                        {{ totalArchivos() }} archivo(s)
+                        {{ totalArchivos }} archivo(s)
                     </span>
                 </div>
             </div>

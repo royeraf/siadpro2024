@@ -10,6 +10,7 @@ import {
 } from 'lucide-vue-next';
 import { esImagenArchivo } from '@/Utils/archivoIconos';
 import ArchivoIcono from '@/Components/UI/ArchivoIcono.vue';
+import { useBodyScrollLock } from '@/Composables/useBodyScrollLock';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -59,6 +60,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'prev', 'next', 'select']);
+
+// El visor es una capa sobre el modal de detalle: el bloqueo del scroll se
+// comparte para no liberarlo al cerrar solo el visor.
+const bodyScroll = useBodyScrollLock();
 
 // ── Extensiones conocidas ──
 const IMG_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
@@ -845,11 +850,11 @@ async function loadFile() {
 
 watch(() => props.show, (val) => {
     if (val) {
-        document.body.style.overflow = 'hidden';
+        bodyScroll.lock();
         loadFile();
         centrarDiferido(true);
     } else {
-        document.body.style.overflow = '';
+        bodyScroll.unlock();
         cleanup();
     }
 });
@@ -1046,7 +1051,7 @@ function handleKeydown(e) {
 onMounted(() => {
     window.addEventListener('keydown', handleKeydown);
     if (props.show) {
-        document.body.style.overflow = 'hidden';
+        bodyScroll.lock();
         loadFile();
         centrarDiferido(true);
     }
@@ -1054,7 +1059,6 @@ onMounted(() => {
 
 onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown);
-    document.body.style.overflow = '';
     stripObserver?.disconnect();
     cleanup();
     unbindScrollCancel();

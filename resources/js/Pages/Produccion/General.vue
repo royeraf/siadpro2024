@@ -352,7 +352,6 @@ function handleExportExcel() {
             :pagination="produccions"
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
-            :export-filename="`produccion_textos_infantiles_${scope}`"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

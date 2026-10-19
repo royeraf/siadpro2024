@@ -181,7 +181,7 @@ function handlePerPageChange(newPerPage) {
     applyFilters();
 }
 
-function handleExportExcel() {
+function handleExportExcel(filename) {
     const dataToExport = (props.informes.data || []).map((row, idx) => ({
         '#': idx + 1,
         'Nombre de la Biblioteca': row.nombreInforme,
@@ -197,7 +197,7 @@ function handleExportExcel() {
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Biblioteca del Aula');
-    XLSX.writeFile(wb, `biblioteca_aula_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function confirmDelete(informe) {

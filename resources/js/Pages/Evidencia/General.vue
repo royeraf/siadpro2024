@@ -326,7 +326,6 @@ function handleExportExcel() {
             :pagination="evidencias"
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
-            :export-filename="`asistencia_tecnica_${scope}`"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

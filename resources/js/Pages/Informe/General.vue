@@ -326,7 +326,6 @@ function handleExportExcel() {
             :pagination="informes"
             :search-value="localFilters.buscar"
             search-placeholder="Buscar en todos los registros..."
-            :export-filename="`biblioteca_aula_${scope}`"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"

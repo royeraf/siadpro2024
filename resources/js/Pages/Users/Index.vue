@@ -309,7 +309,6 @@ function confirmToggleEstado(row) {
             :search-value="localFilters.buscar"
             search-placeholder="Buscar por DNI, nombre, correo, cargo, institución..."
             :export-url="exportUrl"
-            :export-filename="estado === '1' ? 'usuarios_activos' : 'usuarios_inhabilitados'"
             :loading="loading"
             @search="handleSearch"
             @clear="handleClearFilters"
